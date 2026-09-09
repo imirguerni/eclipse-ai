@@ -1,0 +1,7 @@
+# Fichiers secrets
+.env
+google-credentials.json
+serviceAccountKey.json
+
+# Dépendances
+node_modules/

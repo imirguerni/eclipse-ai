@@ -1,0 +1,3309 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  /* SUPPRIME : height: 100%; */
+  min-height: 100vh; /* Utilise min-height à la place */
+  scrollbar-width: none;  
+  -ms-overflow-style: none;
+}
+
+::-webkit-scrollbar {
+  display: none !important;
+}
+
+.landing-container {
+  min-height: 100vh;
+  background-color: #030712;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  position: relative;
+  /* EMPÊCHE LE DÉBORDEMENT DE LA VIDÉO */
+  overflow-x: hidden; 
+  overflow-y: auto;
+}
+
+/* Lueur violette en haut de page */
+.glow-top {
+  position: absolute;
+  top: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* --- NAVIGATION --- */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  padding: 5px 0;
+  background: rgb(0, 0, 0);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 1000;
+}
+
+/* Trouve la classe qui englobe tout ton header/nav */
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1400px; /* Ou la largeur max que tu as définie */
+  margin: 0 auto; /* Centre le conteneur */
+  
+  /* --- AJOUTE CE PADDING --- */
+  padding: 0 30px; /* <--- 0 en haut/bas, 50px à gauche et à droite */
+  /* Cela va instantanément créer un espace de sécurité de 50px de chaque côté */
+  
+  box-sizing: border-box;
+}
+
+.nav-logo-img {
+  width: 150px; /* Teste 220px au lieu de 280px pour voir la différence */
+  height: auto;
+  display: block;
+  mix-blend-mode: lighten;
+  filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.4));
+  transition: transform 0.3s ease;
+}
+
+.nav-logo-img:hover {
+  transform: scale(1.05);
+}
+
+.nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important; /* On supprime tout espace entre les deux */
+  margin-left: auto; /* Pousse le groupe vers la droite */
+  padding-right: 0 !important;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  
+}
+
+
+.btn-primary-mini:hover {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* --- HERO SECTION --- */
+.hero {
+  padding-top: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-badge {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 30px;
+  animation: fadeInDown 0.8s ease;
+}
+
+.hero-title {
+  /* Taille et graisse identiques */
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  max-width: 900px;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  margin-bottom: 25px;
+  text-align: center;
+
+  /* --- LE NOUVEAU STYLE GRIS MÉTALLIQUE SUR TOUT LE TITRE --- */
+  background: linear-gradient(to bottom, #ffffff 40%, #a1a1aa 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  
+  /* Ajout d'une ombre portée pour le relief (style cinématique) */
+  filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.3));
+  
+  /* Force l'affichage du bloc pour le dégradé */
+  display: block; 
+}
+
+/* --- NETTOYAGE : Supprime ou commente l'ancien .text-glow --- */
+/* .text-glow {
+  background: linear-gradient(to right, #60a5fa, #c084fc, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.3));
+} */
+
+.text-glow {
+  /* L'ACCENT VIOLET DOIT RESTER VIOLET */
+  background: linear-gradient(to right, #a855f7, #e879f9) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.6)) !important;
+}
+.hero-subtitle {
+  color: #9ca3af;
+  font-size: 1.2rem;
+  max-width: 650px;
+  line-height: 1.6;
+  margin-bottom: 45px;
+}
+
+.main-launch-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  color: white;
+  border: none;
+  padding: 18px 40px;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.main-launch-btn:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 15px 50px rgba(139, 92, 246, 0.6);
+}
+
+.cta-note {
+  color: #4b5563;
+  font-size: 13px;
+  margin-top: 15px;
+}
+
+/* --- MOCKUP STUDIO --- */
+.video-showcase-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2; /* Pour être au-dessus du glow de fond */
+  margin-top: 80px;
+}
+
+.hero-mockup-modern {
+  width: 100%;
+  max-width: 1400px;
+  height: 700px;
+  background: #000;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative; /* Ajouté */
+}
+.video-reflection {
+  width: 100%;
+  max-width: 1100px;
+  height: 150px;
+  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+  margin-top: -75px; /* Pour faire remonter la lueur sous la vidéo */
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+@keyframes revealText {
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+/* Le petit point qui clignote pour le côté "Live" */
+
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
+.generation-status {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+/* --- SECTION PROMPT ANIMÉ --- */
+.prompt-showcase {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* On donne assez de place en bas pour que la vidéo "respire" */
+  padding-bottom: 350px; 
+  position: relative;
+}
+
+.prompt-header {
+  margin-bottom: 50px; /* Plus d'espace sous le titre */
+}
+
+.prompt-box {
+  text-align: left;
+}
+
+/* Correction pour le 'g' et harmonisation des titres H2 */
+.prompt-main-title, .img-vid-title {
+  font-size: clamp(2rem, 5vw, 3.5rem); 
+  font-weight: 900;
+  text-align: center;
+  /* On augmente légèrement le line-height pour laisser respirer les lettres */
+  line-height: 1.3; 
+  letter-spacing: -2px;
+  margin-bottom: 15px;
+  
+  /* On ajoute un espace en bas pour que le dégradé ne coupe pas le 'g' */
+  padding-bottom: 15px; 
+  
+  /* L'effet métallique gris */
+  background: linear-gradient(to bottom, #ffffff 40%, #a1a1aa 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  
+  filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.3));
+  
+  /* Important : block ou inline-block pour que le padding soit pris en compte */
+  display: block; 
+}
+.prompt-subtitle {
+  color: #9ca3af;
+  font-size: 1.2rem;
+  font-weight: 400;
+  margin-bottom: 50px; /* Espace avant le bloc noir du prompt */
+  opacity: 0.8;
+  text-align: center;
+}
+
+.prompt-content-wrapper {
+  position: relative; /* Indispensable pour l'absolute au-dessus */
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  backdrop-filter: blur(15px);
+}
+.prompt-label {
+  color: #8b5cf6;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+.prompt-text {
+  color: #9ca3af;
+  font-size: 1.1rem;
+  font-style: italic;
+  line-height: 1.4;
+  /* Utilise l'animation revealText */
+  animation: revealText 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+/* --- ANIMATIONS --- */
+
+.dot-pulse {
+  width: 8px;
+  height: 8px;
+  background-color: #8b5cf6;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 10px;
+  box-shadow: 0 0 10px #8b5cf6;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Pour les très petits écrans (iPhone SE, etc.) */
+@media (max-width: 480px) {
+  .hero-mockup-modern {
+    height: 250px;
+  }
+  
+  .main-launch-btn {
+    width: 90%;
+    padding: 15px 20px;
+  }
+}
+
+/* Barre de saisie style pilule */
+.prompt-input-bar {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  padding: 10px 10px 10px 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(20px);
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.typing-text {
+  color: #ffffff;
+  font-size: 1.1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.cursor {
+  color: #8b5cf6;
+  font-weight: bold;
+  margin-left: 2px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.generate-pill-btn {
+  background: white;
+  color: black;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 100px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.generate-pill-btn:hover {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+.prompt-input-bar {
+  position: relative; /* Très important pour que la souris reste dans la barre */
+  overflow: hidden;
+  /* ... tes autres styles ... */
+}
+
+.virtual-cursor {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); /* Mouvement organique */
+}
+
+.generate-pill-btn.active-click {
+  transform: scale(0.92);
+  background-color: #f0f0f0;
+  transition: all 0.2s;
+}
+.demo-pagination {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px; /* Espace léger au-dessus de la barre */
+  justify-content: center;
+  align-items: center;
+}
+
+.pagination-dot {
+  width: 35px;           /* Largeur de base */
+  height: 2px;           /* Très fin comme sur Deevid */
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pagination-dot.active {
+  background: #8b5cf6;   /* Violet vif */
+  width: 55px;           /* S'étire pour montrer la progression */
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+}
+.prompt-typing-area {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Centre le texte à l'intérieur de la zone */
+  flex-grow: 1;
+}
+.prompt-footer-info {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Centre les infos sous la barre */
+  gap: 15px;
+  width: 100%;
+  color: #9ca3af;
+  font-size: 13px;
+  margin-top: 5px;
+}
+/* --- EXTRAIT VIDÉO  --- */
+.video-result-preview {
+  position: absolute;
+  /* On la centre par rapport au prompt-content-wrapper */
+  top: 110%; 
+  left: 50%;
+  transform: translateX(-50%) translateY(0) scale(0.9);
+  
+  width: 90%;
+  max-width: 550px;
+  background: #000;
+  border: 0px solid rgba(139, 92, 246, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 1), 0 0 30px rgba(139, 92, 246, 0.2);
+  z-index: 99;
+  
+  /* L'astuce pour ne pas faire bouger le site */
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.video-result-preview.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-20px) scale(1); /* Elle remonte légèrement sans pousser */
+}
+
+.preview-header {
+  padding: 8px 15px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11px;
+  color: #a78bfa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.video-result-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dot-pulse-mini {
+  width: 6px;
+  height: 6px;
+  background-color: #8b5cf6;
+  border-radius: 50%;
+  margin-right: 10px;
+  box-shadow: 0 0 8px #8b5cf6;
+  animation: pulse 1.5s infinite;
+}
+
+.main-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Assure que la vidéo remplit bien le bloc */
+  display: block;
+}
+.showcase-section {
+  padding: 100px 0;
+  background: #000;
+  overflow: hidden; /* Pour ne pas avoir de barre de défilement en bas de page */
+  text-align: center;
+}
+
+.showcase-header {
+  max-width: 800px;
+  margin: 0 auto 50px;
+  padding: 0 20px;
+}
+
+.showcase-title {
+  display: inline-block;
+  background: #1a365d; /* Bleu sombre comme sur la capture */
+  color: #fff;
+  padding: 5px 20px;
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.showcase-subtitle {
+  color: #ffffff;             /* On le passe en blanc pur pour qu'il ressorte */
+  font-size: 1.3rem;          /* On agrandit la taille (ajuste entre 1.5 et 2.2 selon tes goûts) */
+  font-weight: 700;           /* On le met bien en gras */
+  line-height: 1.4;           /* Un interligne équilibré */
+  max-width: 800px;           /* Pour éviter que le texte ne s'étale trop sur les grands écrans */
+  margin: 0 auto;             /* Centrage horizontal */
+  letter-spacing: -0.02em;    /* Un léger resserrement pour le côté premium */
+  opacity: 1;                 /* On s'assure qu'il est bien opaque */
+}
+
+/* Optionnel : ajouter un dégradé subtil sur le texte pour le style Eclipse */
+.text-gradient {
+  background: linear-gradient(to bottom, #ffffff, #a1a1aa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Le Slider */
+.slider-container {
+  position: relative;
+  width: 70%; /* Largeur de la vidéo centrale */
+  margin: 0 auto;
+}
+
+.slider-track {
+  display: flex;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-item {
+  min-width: 100%; /* Chaque slide prend toute la largeur du container */
+  padding: 0 20px;
+  box-sizing: border-box;
+  transition: all 0.8s ease;
+  opacity: 0.3; /* Les vidéos sur les côtés sont assombries */
+  transform: scale(0.85); /* Et plus petites */
+}
+
+.slide-item.focused {
+  opacity: 1;
+  transform: scale(1.05); /* La vidéo centrale est plus grande */
+}
+
+.slide-item video {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+/* --- SÉPARATEUR EN POINTE (AMÉLIORÉ LUMINEUX) --- */
+.section-divider-v {
+  width: 100%;
+  height: 100px;
+  line-height: 0;
+  position: relative;
+  z-index: 10;
+  margin-top: -60px; /* Recouvrement léger de la vidéo */
+  pointer-events: none; /* Ne bloque pas les interactions */
+}
+
+.section-divider-v svg {
+  width: 100%;
+  height: 100%;
+  
+  /* --- COUCHE 1 : HALO VIOLET DISCRET --- */
+  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.2));
+  
+  /* On prépare l'animation */
+  transition: filter 0.5s ease;
+}
+
+/* --- COUCHE 2 : EFFET DE LUMIÈRE PULSÉ SUR LA POINTE --- */
+/* On utilise un pseudo-élément (:after) pour créer un point lumineux centré */
+.section-divider-v:after {
+  content: "";
+  position: absolute;
+  top: 80%; /* Place le point sur la pointe de lumière (80% dans le SVG) */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px; /* Très petit point de base */
+  height: 10px;
+  border-radius: 50%;
+  
+  /* --- COUCHE 3 : GLOW VIOLET INTENSE AUTOUR DU POINT --- */
+  box-shadow: 
+    0 0 10px rgba(139, 92, 246, 0.8), /* Halo moyen et intense */
+    0 0 20px rgba(139, 92, 246, 0.4), /* Halo large et doux */
+    0 0 30px rgba(139, 92, 246, 0.2); /* Halo extra-large */
+  
+  /* Animation de pulsation */
+  animation: pointPulse 2s infinite alternate ease-in-out;
+  opacity: 1;
+}
+
+/* --- LOGIQUE DE L'ANIMATION DE PULSATION --- */
+@keyframes pointPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.9);
+    box-shadow: 
+      0 0 8px rgba(139, 92, 246, 0.7),
+      0 0 18px rgba(139, 92, 246, 0.3),
+      0 0 28px rgba(139, 92, 246, 0.1);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.1); /* S'étire légèrement */
+    box-shadow: 
+      0 0 15px rgba(139, 92, 246, 1),    /* Plus brillant */
+      0 0 25px rgba(139, 92, 246, 0.5),
+      0 0 35px rgba(139, 92, 246, 0.3);
+  }
+}
+
+/* --- HARMONISATION DE LA SECTION DU BAS --- */
+.showcase-section {
+  background-color: #000000;
+  position: relative;
+  z-index: 5;
+  padding-top: 100px; /* Plus d'espace pour ne pas masquer la pointe */
+}
+.bottom-divider {
+  margin-top: -2px; /* On fait remonter un peu plus pour "écraser" la ligne */
+  outline: none;    /* Supprime tout contour éventuel */
+  border: none;     /* Supprime toute bordure */
+}
+
+.bottom-divider svg {
+  width: 100%;
+  height: 100%;
+  filter: 
+    drop-shadow(0 0 3px #ffffff)
+    drop-shadow(0 0 12px #a855f7)
+    drop-shadow(0 0 35px rgba(168, 85, 247, 0.5));
+
+}
+.laser-line {
+  /* ... tes autres propriétés ... */
+  stroke-width: 3; /* On épaissit légèrement la ligne de base */
+  animation: laserGlow 2s infinite alternate ease-in-out;
+}
+
+@keyframes laserGlow {
+  0% {
+    opacity: 0.8;
+    stroke-width: 3;
+  }
+  100% {
+    opacity: 1;
+    stroke-width: 5; /* La ligne "gonfle" avec la lumière */
+  }
+}
+/* --- SECTION IMAGE-TO-VIDEO --- */
+.image-to-video-section {
+  padding: 100px 0;
+  background-color: #030712;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.img-vid-container {
+  width: 100%;
+  max-width: 1300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+}
+
+/* --- LE SLIDER WRAPPER --- */
+.library-slider-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.deevid-style-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+}
+
+/* --- RANGÉE MÉDIAS ASYMÉTRIQUE --- */
+.media-comparison-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  width: 100%;
+}
+
+.compare-box {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  overflow: hidden;
+  height: 400px; /* Force une hauteur identique pour tous les médias */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Image (Petite) */
+.column-small .compare-box {
+  width: 300px;
+  aspect-ratio: 2 / 3; /* Force le ratio 300x450 */
+  height: auto; 
+  flex-shrink: 0; /* INTERDIT au navigateur de rétrécir ce cadre */
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Vidéo (Grande + Reflet) */
+.column-large .compare-box {
+  width: 600px;
+  aspect-ratio: 4 / 3; /* Ou 16/9 selon ton choix, mais garde-le fixe */
+  height: auto;
+  flex-shrink: 0; /* INTERDIT au navigateur de rétrécir ce cadre */
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+/* Effet Shimmer sur la vidéo */
+.column-large .compare-box::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.05), transparent);
+  transform: skewX(-25deg);
+  animation: shimmer 6s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -150%; }
+  30% { left: 150%; }
+  100% { left: 150%; }
+}
+
+.compare-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* REMPLIT le cadre sans jamais le déformer */
+  display: block;
+}
+
+/* --- SÉPARATEUR (FLÈCHE) --- */
+.sep-icon {
+  width: 60px;
+  height: 40px;
+  background: #a855f7;
+  clip-path: polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%);
+  filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.8));
+  animation: arrowPulse 2s infinite ease-in-out;
+}
+
+/* --- BARRE DE PROMPT (PILULE) --- */
+.prompt-pill-display {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  padding: 12px 30px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.prompt-badge {
+  color: #a855f7;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(168, 85, 247, 0.1);
+  padding: 4px 10px;
+  border-radius: 50px;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+/* --- RESPONSIVE OPTIMISÉ --- */
+@media (max-width: 1100px) {
+ .media-comparison-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 15px !important; /* Rapproche l'image de la flèche et de la vidéo */
+  width: 100%;
+}
+  
+  .column-large .compare-box, .column-small .compare-box {
+    width: 90vw; /* On s'adapte à l'écran */
+    height: auto;
+    aspect-ratio: 16/9; /* Garde un bon format sur mobile */
+  }
+
+  .column-small .compare-box {
+      aspect-ratio: 3/4; /* L'image reste un peu plus haute */
+      max-height: 400px;
+  }
+
+  .sep-icon {
+    transform: rotate(90deg); /* La flèche pointe vers le bas */
+  }
+}
+
+
+/* --- LES CADRES PORTRAIT RÉDUITS --- */
+.compare-box {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+/* --- TAILLES ASYMÉTRIQUES --- */
+
+/* L'IMAGE : On la garde compacte */
+.column-small .compare-box {
+  width: 280px;  /* Largeur de l'image */
+  height: 420px; /* Hauteur de l'image */
+}
+
+/* LA VIDÉO : On la ralonge (plus large et plus haute) */
+.column-large .compare-box {
+  width: 550px;  /* Largeur beaucoup plus grande */
+  height: 500px; /* Hauteur légèrement supérieure pour l'emphase */
+  border: 1px solid rgba(168, 85, 247, 0.3); /* Bordure violette plus marquée */
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.15); /* Petite lueur pour la vidéo */
+}
+
+/* Pour que les médias remplissent bien leurs boîtes respectives */
+.compare-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Ajustement de la flèche entre les deux */
+.sep-icon {
+  font-size: 40px;
+  color: #a855f7;
+  opacity: 0.8;
+}
+
+/* --- MÉDIAS --- */
+.compare-media {
+  width: 100%;
+  height: 100%; /* Remplit toute la hauteur du cadre fixe */
+  object-fit: cover; /* Recadre intelligemment sans déformer */
+  display: block;
+}
+
+.box-label {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #a855f7;
+  z-index: 10;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+/* --- SÉPARATEUR : GRANDE FLÈCHE HORIZONTALE ÉPAISSE --- */
+.compare-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px; /* Espace réduit */
+  height: 100%;
+}
+
+/* --- SÉPARATEUR UNIQUE : FLÈCHE CENTRALE --- */
+.sep-icon {
+  width: 50px; 
+  height: 35px;
+  background: #a855f7;
+  position: relative;
+  /* Forme de flèche vers la droite */
+  clip-path: polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%);
+  
+  /* Éclat néon violet */
+  filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.8));
+  opacity: 0.9;
+  
+  /* Sécurité pour l'alignement */
+  flex-shrink: 0;
+  margin: 0 15px;
+  display: inline-block;
+  
+  /* Animation subtile pour attirer l'oeil */
+  animation: arrowPulse 2s infinite ease-in-out;
+}
+
+@keyframes arrowPulse {
+  0%, 100% { transform: translateX(0); opacity: 0.8; }
+  50% { transform: translateX(5px); opacity: 1; }
+}
+
+/* --- NAVIGATION LATÉRALE (Les flèches ‹ et ›) --- */
+.lib-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff !important;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 100;
+  flex-shrink: 0;
+  backdrop-filter: blur(5px);
+}
+
+.lib-nav-btn:hover {
+  background: #a855f7;
+  border-color: #ffffff;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+
+  
+}
+/* --- DESIGN DU TITRE IMAGE-TO-VIDEO --- */
+.img-vid-text-content {
+  text-align: center;
+  margin-bottom: 40px;
+  z-index: 2;
+}
+
+.img-vid-title {
+  font-size: clamp(2rem, 5vw, 3.5rem); /* Taille dynamique selon l'écran */
+  font-weight: 900;
+  letter-spacing: -2px;
+  margin-bottom: 15px;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+/* L'effet de dégradé violet sur le texte */
+.purple-glow-text {
+  background: linear-gradient(to right, #a855f7, #e879f9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.4));
+  font-weight: 900;
+}
+
+.img-vid-description {
+  color: #9ca3af;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+
+/* Lueur de fond derrière le titre pour la profondeur */
+.img-vid-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
+  filter: blur(50px);
+  z-index: -1;
+}
+.section-divider-v.bottom-transition {
+  margin-top: -10px; /* Colle le séparateur à la section précédente */
+  margin-bottom: 80px;
+  position: relative;
+  height: 100px;
+}
+
+.laser-glow-dot {
+  position: absolute;
+  top: 80px; /* Aligné sur la pointe du SVG */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 
+    0 0 20px #a855f7, 
+    0 0 40px #a855f7, 
+    0 0 60px rgba(168, 85, 247, 0.5);
+  animation: pulseGlow 2s infinite alternate;
+}
+
+@keyframes pulseGlow {
+  from { opacity: 0.7; transform: translate(-50%, -50%) scale(0.8); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+}
+/* Le conteneur qui englobe Flèche + Vidéos + Flèche */
+.library-slider-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Centre l'ensemble */
+  gap: 60px;               /* Espace entre les flèches et les cadres */
+  width: 100%;
+  max-width: 1400px;       /* Empêche d'aller trop loin sur les côtés */
+  margin: 0 auto;
+  padding: 0 40px;         /* Marge de sécurité sur les bords de l'écran */
+}
+
+/* --- ANIMATION DE TRANSITION DOUCE --- */
+.animated-media {
+  animation: fadeInBlur 0.6s ease-out forwards;
+  opacity: 1;
+}
+
+@keyframes fadeInBlur {
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+.lib-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Bordure un peu plus visible */
+  color: #ffffff !important; /* Force le blanc pour les symboles < et > */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 100; /* Passe au-dessus des effets de fond */
+  flex-shrink: 0; /* Empêche le bouton de s'écraser */
+  backdrop-filter: blur(5px);
+}
+
+.lib-nav-btn:hover {
+  background: #a855f7;
+  border-color: #ffffff;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+}
+.lib-counter {
+  margin-top: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 1px;
+}
+/* --- CSS À MODIFIER --- */
+
+.media-comparison-row {
+  display: flex;
+  flex-direction: row; /* Côte à côte */
+  align-items: center; /* Aligne verticalement */
+  justify-content: center; /* Centre horizontalement */
+  
+  /* --- MODIFICATION ICI : Réduire le gap pour rapprocher les cadres --- */
+  gap: 10px !important; /* Espace réduit entre l'image, la flèche et la vidéo */
+  
+  width: 100%;
+}
+
+/* --- DIMENSIONS ASYMÉTRIQUES (L'IMAGE VS LA VIDÉO) --- */
+
+/* La colonne de gauche (Image) */
+.comparison-column.column-small {
+  flex: 0 0 auto; /* Ne s'étire pas */
+}
+
+.column-small .compare-box {
+  width: 300px;  /* Largeur compacte */
+  height: 450px; /* Hauteur portrait */
+}
+
+/* La colonne de droite (Vidéo - RALONGÉE) */
+.comparison-column.column-large {
+  flex: 0 0 auto;
+}
+
+.column-large .compare-box {
+  width: 600px;  /* RALONGÉ : Deux fois plus large que l'image */
+  height: 450px; /* Même hauteur pour garder l'alignement propre */
+  border: 1px solid rgba(168, 85, 247, 0.3); /* Bordure violette accentuée */
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.15);
+}
+
+/* Conteneur générique des cadres */
+.compare-box {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.compare-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* --- SÉPARATEUR CENTRAL --- */
+.compare-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sep-icon {
+  font-size: 45px;
+  color: #a855f7;
+  filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.8));
+  animation: arrowPulse 2s infinite ease-in-out;
+}
+
+/* --- LA BARRE DE PROMPT STYLE PILULE (CENTRÉE) --- */
+.prompt-instruction-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.prompt-pill-display {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px; /* Look Pilule */
+  padding: 12px 30px;
+  max-width: 850px;
+  width: fit-content;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.prompt-badge {
+  color: #a855f7;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  padding: 5px 12px;
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: 50px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  flex-shrink: 0;
+}
+
+.instruction-text-styled {
+  color: #d1d5db;
+  font-size: 15px;
+  font-style: italic;
+  margin: 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 1024px) {
+  
+  /* --- STRUCTURE & HERO MOCKUP --- */
+  .hero-mockup-modern {
+    height: 500px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .prompt-showcase {
+    padding-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* --- TYPOGRAPHIES & EFFETS DE TEXTE --- */
+  .hero-title {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 900;
+    max-width: 900px;
+    line-height: 1.1;
+    letter-spacing: -2px;
+    margin-bottom: 25px;
+    text-align: center;
+    display: inline-block;
+    background: linear-gradient(to bottom, #ffffff 40%, #a1a1aa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .text-glow-purple, .purple-glow-text {
+    background: linear-gradient(to right, #a855f7, #e879f9) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
+    filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.6)) !important;
+    display: inline-block;
+  }
+
+  .prompt-text { font-size: 0.95rem; }
+  .nav-logo-img { width: 160px; }
+
+  /* --- SECTION COMPARATIVE (TABLETTE INTERMÉDIAIRE) --- */
+  .media-comparison-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 30px !important;
+    width: 100% !important;
+  }
+
+  .compare-box {
+    position: relative !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .column-small .compare-box { width: 300px !important; height: 450px !important; }
+  .column-large .compare-box {
+    width: 600px !important;
+    height: 450px !important;
+    border: 1px solid rgba(168, 85, 247, 0.3) !important;
+    box-shadow: 0 0 40px rgba(168, 85, 247, 0.1) !important;
+  }
+
+  .column-large .compare-box::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important; left: -150% !important;
+    width: 50% !important; height: 100% !important;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.05), transparent) !important;
+    transform: skewX(-25deg) !important;
+    animation: shimmer 6s infinite !important;
+  }
+
+  @keyframes shimmer {
+    0% { left: -150%; }
+    30% { left: 150%; }
+    100% { left: 150%; }
+  }
+
+  .compare-media {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+  .sep-icon {
+    width: 60px !important;
+    height: 40px !important;
+    background: #a855f7 !important;
+    clip-path: polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%) !important;
+    filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.8)) !important;
+  }
+
+  .prompt-pill-display {
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 100px !important;
+    padding: 12px 30px !important;
+    backdrop-filter: blur(12px) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+  }
+
+  .prompt-badge {
+    color: #a855f7 !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    background: rgba(168, 85, 247, 0.1) !important;
+    padding: 4px 10px !important;
+    border-radius: 50px !important;
+  }
+
+  .instruction-text-styled {
+    color: #9ca3af !important;
+    font-size: 15px !important;
+    font-style: italic !important;
+    margin: 0 !important;
+  }
+
+  .lib-nav-btn {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    cursor: pointer !important;
+    transition: 0.3s !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
+  }
+
+  .lib-nav-btn:hover {
+    background: #a855f7 !important;
+    border-color: white !important;
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4) !important;
+  }
+}
+
+/* Pour l'image (Petit cadre Portrait) */
+.column-small .compare-box {
+  width: 300px;
+  aspect-ratio: 2 / 3; /* Force un ratio 2:3 (ex: 300x450) */
+  height: auto; /* Laisse le ratio gérer la hauteur */
+  flex-shrink: 0; /* Empêche le cadre de s'écraser */
+}
+
+/* Pour la vidéo (Large cadre Paysage/Cinématique) */
+.column-large .compare-box {
+  width: 600px;
+  aspect-ratio: 4 / 3; /* Ou 16/9 selon ton envie, mais garde le fixe */
+  height: auto;
+  flex-shrink: 0;
+}
+
+/* INDISPENSABLE : Pour que le contenu remplisse le cadre sans le déformer */
+.compare-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Coupe l'image/vidéo pour qu'elle remplisse le cadre sans s'étirer */
+}
+
+.instruction-text-styled {
+  transition: all 0.5s ease;
+  /* On évite que le bloc saute si un texte est plus long que l'autre */
+  min-height: 40px; 
+}
+.social-media-section {
+  padding: 8px 0; /* Plus d'espace en haut pour laisser la pointe du laser respirer */
+  background: #000;
+  text-align: center;
+}
+
+.social-main-title {
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  margin-bottom: 25px;
+  
+  /* L'effet gris métal brillant */
+  background: linear-gradient(to bottom, #ffffff 40%, #a1a1aa 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.5));
+}
+
+.social-subtitle {
+  color: #9ca3af;
+  font-size: 1.25rem;
+  max-width: 650px;
+  margin: 0 auto;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* Animation de remontée fluide */
+.fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.fade-in-up-delay {
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* --- LAYOUT SOCIAL FEATURE --- */
+.social-feature-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 50px;
+  margin-top: 60px;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.social-visual-side {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.mobile-mockup-container {
+display: flex;
+  gap: 0.5px; /* Espace entre les deux fenêtres */
+  perspective: 1000px;
+  /* On augmente la largeur max du groupe de fenêtres */
+  width: 100%;
+  max-width: 850px; 
+  margin: 0 auto;
+}
+
+.mobile-card {
+  position: relative;
+  width: 320px;
+  height: 500px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+/* On s'assure que l'image à l'intérieur suit la taille */
+.mobile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Important pour ne pas déformer l'image */
+}
+mobile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Empêche l'image d'être déformée */
+  border-radius: 15px; /* Aligne l'arrondi avec la carte */
+  display: block;
+}
+
+.mobile-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Badge sur les vidéos */
+.card-badge {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.card-badge.purple { background: #a855f7; }
+
+/* Prompt flottant style ta capture */
+.floating-mini-prompt {
+  position: absolute;
+  bottom: 20px;
+  left: 10px;
+  right: 10px;
+  background: white;
+  color: black;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+/* --- TEXT SIDE --- */
+.social-text-side {
+  flex: 1;
+  text-align: left;
+}
+
+.feature-main-title {
+  display: block !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  font-size: 2.5rem;
+  font-weight: 900;
+}
+
+.feature-description {
+  color: #9ca3af;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 40px;
+  max-width: 500px;
+}
+
+/* BOUTON VERT NÉON (Style Photo-Cat) */
+.neon-download-btn {
+  background: linear-gradient(90deg, #22c55e, #84cc16);
+  color: #052e16;
+  padding: 18px 40px;
+  border-radius: 100px;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3);
+}
+
+.neon-download-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(34, 197, 94, 0.5);
+  filter: brightness(1.1);
+}
+@media (max-width: 968px) {
+  .social-feature-layout {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+    gap: 30px;
+  }
+
+  .social-text-side {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .mobile-mockup-container {
+    flex-direction: column; /* Les mobiles l'un sous l'autre sur petit écran */
+    width: 100%;
+    align-items: center;
+  }
+}
+/* On s'assure que le conteneur prend toute la largeur et espace les éléments */
+.social-visual-side {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Propulse les flèches aux bords */
+  width: 100%;
+  max-width: 900px; /* Ajuste selon ton design */
+  margin: 0 auto;
+  gap: 20px;
+}
+
+/* On force les flèches à rester rondes et visibles */
+.lib-nav-btn {
+  flex-shrink: 0; /* Empêche la flèche de s'écraser */
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: white;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.lib-nav-btn:hover {
+  background: #a855f7;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.6);
+
+}
+
+@media (max-width: 768px) {
+
+  /* ------------------------------------------------------------------------
+     1. FORCE LE PARENT GLOBAL & SECTIONS
+     ------------------------------------------------------------------------ */
+  .social-visual-side {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    position: relative !important;
+    padding: 0 !important; 
+    margin: 0 calc(-50vw + 50%) !important;
+    min-height: auto !important;
+  }
+
+  .social-media-section, 
+  .showcase-section {
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+  }
+
+  /* Donne de l'air en haut de la section Crabe pour éviter l'écrasement du texte */
+  .image-to-video-section {
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+    padding-top: 140px !important; /* Crée l'espace nécessaire pour passer sous le laser */
+    padding-bottom: 40px !important;
+  }
+
+  /* Si tu as un titre au-dessus d'une section, contrôle de la marge */
+  h2 {
+    margin-bottom: 10px !important;
+  }
+
+  /* CORRECTION DU BOUTON VERT FLUO QUI S'ÉCRASE */
+  .social-media-section button {
+    height: auto !important;         
+    padding: 14px 20px !important;   
+    line-height: 1.4 !important;     
+  }
+
+  /* ------------------------------------------------------------------------
+     2. GRILLE ET CARTES DES MOTEURS (ENGINES)
+     ------------------------------------------------------------------------ */
+  .engines-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important; 
+    padding: 0 16px !important;
+    margin-top: 10px !important;    
+    margin-bottom: 0px !important;
+  }
+
+  .engine-card {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important; /* Répartit le logo en haut, le texte en bas */
+    align-items: center !important;
+    aspect-ratio: auto !important; 
+    min-height: 220px !important; /* Hauteur stable pour préserver l'alignement vertical */
+    background: rgba(10, 10, 10, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 12px !important;
+    padding: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  .engine-logo-wrapper {
+    width: 100% !important;
+    height: 100px !important; /* Force la zone du logo pour stabiliser l'affichage */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    margin-bottom: 10px !important;
+  }
+
+  .engine-card img, 
+  .engine-card svg {
+    width: auto !important;   
+    height: auto !important;
+    max-height: 85% !important; /* Aligne la taille des images proportionnellement */
+    max-width: 85% !important;
+    object-fit: contain !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     3. CONTENEURS MOCKUPS, COMPARAISONS ET CARTES SOCIALES
+     ------------------------------------------------------------------------ */
+  .mobile-mockup-container {
+    display: flex !important;
+    flex-direction: row !important; 
+    align-items: stretch !important;
+    justify-content: center !important;
+    width: 100% !important;      
+    padding: 0 16px !important;  
+    gap: 8px !important;        
+    box-sizing: border-box !important;
+    margin-top: 10px !important;    
+    margin-bottom: 120px !important; 
+    position: relative !important;
+  }
+
+  .mobile-mockup-container .mobile-card {
+    flex: 1 !important;
+    width: 50% !important;
+    height: auto !important;
+    aspect-ratio: 3 / 4 !important;
+    position: relative !important;
+    border-radius: 16px !important;
+    overflow: visible !important; 
+    background: transparent !important;
+  }
+
+  .mobile-mockup-container .mobile-card img,
+  .mobile-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 16px !important;
+  }
+
+  .hero-mockup-modern {
+    height: auto !important;
+    max-width: 100% !important; 
+    margin-top: 0px !important; 
+  }
+
+  /* Force le passage en colonne des comparaisons de médias */
+  .media-comparison-row {
+    flex-direction: column !important;
+    gap: 20px !important;
+    width: 100% !important;
+  }
+
+  .column-small .compare-box,
+  .column-large .compare-box {
+    width: calc(100% - 32px) !important; 
+    max-width: 340px !important;        
+    height: 210px !important;           
+    aspect-ratio: 16 / 10 !important;
+    margin: 0 auto !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     4. BADGES, FLÈCHES ET PILULES DE PROMPTS
+     ------------------------------------------------------------------------ */
+  .card-badge {
+    position: absolute !important;
+    top: -31px !important;       
+    left: 50% !important;        
+    transform: translateX(-50%) !important; 
+    font-size: 0.7rem !important;
+    padding: 4px 10px !important;
+    background-color: rgba(168, 85, 247, 0.2) !important;
+    border: 1px solid rgba(168, 85, 247, 0.4) !important;
+    backdrop-filter: blur(4px) !important;
+    color: #ffffff !important;
+    border-radius: 20px !important;
+    white-space: nowrap !important;
+    z-index: 10 !important;
+  }
+
+  .floating-mini-prompt {
+    position: absolute !important;
+    top: calc(100% + 15px) !important;
+    bottom: auto !important;
+    left: 105% !important;
+    transform: translateX(-50%) !important;
+    width: calc(200% - 32px) !important;
+    max-width: 400px !important;
+    text-align: center !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    color: #ffffff !important;
+    padding: 10px 14px !important;
+    font-size: 0.8rem !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    z-index: 5 !important;
+  }
+
+  .prompt-pill-display {
+    flex-direction: column !important;
+    border-radius: 16px !important;
+    padding: 12px 15px !important;
+    width: calc(100% - 32px) !important;
+    max-width: 340px !important;
+    gap: 8px !important;
+    margin: 15px auto !important;
+  }
+
+  .instruction-text-styled {
+    font-size: 13px !important;
+    text-align: center !important; 
+  }
+
+  /* Clip-path faisant pointer la flèche vers le BAS sur Mobile */
+  .sep-icon {
+    width: 40px !important;
+    height: 30px !important;
+    background: #a855f7 !important;
+    clip-path: polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%) !important;
+    filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.8)) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     5. NAVIGATION INTERNE ET COMPTEURS SÉPARÉS
+     ------------------------------------------------------------------------ */
+  .social-visual-side .lib-nav-btn {
+    position: absolute !important;
+    top: calc(100% - 50px) !important;
+    width: 44px !important;
+    height: 44px !important;
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(168, 85, 247, 0.45) !important;
+    border-radius: 50% !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10 !important;
+    transform: none !important;
+  }
+
+  .social-visual-side .lib-nav-btn:first-of-type { left: calc(50% - 52px) !important; }
+  .social-visual-side .lib-nav-btn:last-of-type { left: calc(50% + 8px) !important; }
+
+  .library-slider-wrapper {
+    margin-top: 10px !important;
+    padding-bottom: 20px !important;
+  }
+
+/* Suppression des marges négatives et du positionnement flottant */
+.social-visual-side .lib-counter, 
+.social-text-side .lib-counter {
+  position: relative !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: -180px auto 200px auto !important; /* Ajoute de l'espace au-dessus ET en-dessous */
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  width: fit-content !important;
+  padding: 6px 16px !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+  border-radius: 20px !important;
+  background: rgba(10, 10, 10, 0.4) !important;
+  font-size: 0.85rem !important;
+  color: #a855f7 !important;
+  z-index: 10 !important;
+}
+
+
+  .feature-main-title, .social-text-side h2, h2[class*="title"] {
+    font-size: 1.2rem !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 0 20px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* FORCE TOUS LES PARAGRAPHES DE CES SECTIONS À DESCENTE À 14PX */
+  .social-footer-text p,
+  .social-subtitle,
+  .engine-card p,
+  .mobile-card p {
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+    padding: 1px !important; /* Évite que le texte colle aux bords de l'écran */
+    margin-bottom: 15px !important;
+    display: block !important;
+
+  }
+/* 1. Le conteneur parent */
+.social-text-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+  padding: 0 15px !important;
+  gap: 20px !important; /* Espace propre entre les éléments */
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+}
+
+/* 1. Le Titre en premier */
+.social-text-side h2, 
+.social-text-side .feature-main-title {
+  order: 1 !important;
+  margin: 0 !important;
+}
+
+/* 2. Le Compteur en deuxième */
+.lib-counter {
+  order: 2 !important;
+  margin: 0 !important;
+  /* Optionnel : style pour le badge */
+  padding: 4px 12px !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+  border-radius: 20px !important;
+}
+
+/* 3. Le texte en troisième */
+.social-text-side p {
+  order: 3 !important;
+  margin: 0 !important;
+  margin-top: -70px !important;
+}
+
+.social-footer-text {
+  order: 3 !important;    /* Le texte en troisième */
+  margin: 0 !important;
+}
+
+/* 3. Ajustement spécifique */
+.social-media-section .social-footer-text {
+  margin-top: 0 !important;   /* REMPLACÉ 25px par 0 pour laisser le 'gap' du parent travailler */
+}
+
+  .token-text-dee {
+    display: none; /* Cache le mot "Éclairs" pour économiser de la place */
+  }
+  
+  .token-icon-dee-lightning {
+    width: 24px; 
+  }
+
+  /* ------------------------------------------------------------------------
+     7. SÉPARATEURS VISUELS LASER
+     ------------------------------------------------------------------------ */
+  .section-line-divider {
+    display: none; 
+  }
+
+  .section-divider-v {
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+    height: 20px !important;
+    position: relative !important;
+    z-index: 99 !important;
+  }
+
+  header + .section-divider-v,
+  .showcase-section + .section-divider-v {
+    margin-top: -160px !important; 
+  }
+
+  .section-divider-v svg {
+    transform: none !important; 
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .section-divider-v .laser-line {
+    stroke-width: 5px !important;  
+    stroke: #a855f7 !important;    
+    filter: drop-shadow(0px 0px 8px #a855f7) !important; 
+  }
+
+  /* ------------------------------------------------------------------------ *//* ------------------------------------------------------------------------
+     8. CHIRURGIE ET ALIGNEMENT FLUIDE DU FOOTER (CORRIGÉ 3 COLONNES)
+     ------------------------------------------------------------------------ */
+  .footer-content {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    gap: 30px !important;
+  }
+  
+  /* Permet aux 3 colonnes de respirer et de passer à la ligne si l'écran est trop petit */
+  .footer-links {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important; /* Permet à la 3e colonne de descendre proprement si besoin */
+    align-items: flex-start !important; 
+    justify-content: space-between !important; /* Aligne la première colonne à gauche et la dernière à droite */
+    gap: 20px 15px !important; /* Espace vertical de 20px (si wrap) et horizontal de 15px */
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+  }
+
+  /* Ajustement de la taille de chaque colonne pour s'adapter au format 3 colonnes */
+  .footer-col {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    min-width: 100px !important; /* Donne une base stable à chaque bloc */
+    flex: 1 1 25% !important; /* S'étale équitablement pour combler le vide à gauche */
+  }
+
+  /* Style des titres de colonnes (OUTILS, ENTREPRISE, COMMUNAUTÉ) */
+  .footer-col h3,
+  .footer-col h4,
+  .footer-col .footer-title {
+    font-size: 0.95rem !important;
+    margin-bottom: 15px !important;
+    white-space: nowrap !important; /* Évite que "COMMUNAUTÉ" ne se coupe */
+  }
+
+  /* Style des liens */
+  .footer-col a {
+    white-space: normal !important; /* Autorise le retour à la ligne par mot pour les textes longs */
+    word-break: break-word !important; 
+    font-size: 0.85rem !important;   
+    line-height: 1.4 !important;
+    margin-bottom: 12px !important; 
+    display: block !important;
+    width: 100% !important;
+  }
+  
+  .footer-bottom {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center !important;
+    padding-top: 20px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+} 
+/* Conteneur qui cache le débordement et crée l'effet de fondu sur les côtés */
+.tiktok-scroll-container {
+  width: 100%;
+  overflow: hidden;
+  margin-top: 40px;
+  position: relative;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+/* Le rail qui bouge tout seul */
+.tiktok-track {
+  display: flex;
+  gap: 20px;
+  width: max-content;
+  animation: scrollTikTok 25s linear infinite;
+}
+
+/* Style des cartes TikTok (format 9:16) */
+.tiktok-miniature {
+  width: 180px;
+  height: 320px;
+  background: #0a0a0a;
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  flex-shrink: 0;
+}
+
+.tiktok-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tiktok-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(168, 85, 247, 0.7);
+  backdrop-filter: blur(4px);
+  color: white;
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+/* Animation de défilement vers la gauche */
+@keyframes scrollTikTok {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-180px * 4 - 20px * 4)); }
+}
+
+/* S'arrête quand on passe la souris */
+.tiktok-track:hover {
+  animation-play-state: paused;
+}
+/* --- SECTION FAQ NETTOYÉE --- */
+.faq-section {
+  padding: 100px 20px;
+  background-color: #000;
+  display: flex;
+  justify-content: center;
+}
+
+.faq-container {
+  max-width: 900px;
+  width: 100%;
+}
+
+/* Le titre "Foire Aux Questions" en gris métal */
+.faq-container h2 {
+  text-align: center;
+  margin-bottom: 50px;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900;
+  background: linear-gradient(to bottom, #ffffff 40%, #a1a1aa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.faq-list {
+  border-top: 1px solid rgba(255, 255, 255, 0.1); /* Ligne de départ */
+}
+
+.faq-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Ligne entre chaque question */
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.faq-item:hover {
+  background: rgba(168, 85, 247, 0.03); /* Rappel violet très subtil */
+}
+
+.faq-question {
+  padding: 30px 0; /* Beaucoup d'air  */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.faq-icon {
+  font-size: 1.5rem;
+  color: #a855f7; /* Icône violette Eclipse */
+  transition: transform 0.4s ease;
+}
+
+.faq-item.active .faq-icon {
+  transform: rotate(45deg); /* Petit effet sympa à l'ouverture */
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.faq-answer.show {
+  max-height: 300px;
+  opacity: 1;
+  padding-bottom: 30px;
+}
+
+.faq-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 2.5rem;
+}
+.faq-divider {
+  margin-top: 100px;    /* Plus d'espace pour laisser respirer le bouton */
+  margin-bottom: 60px;
+  width: 100%;
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4)); /* Ajoute une lueur diffuse */
+}
+
+.faq-divider svg {
+  height: 20px;
+  width: 100%;
+}
+
+/* On s'assure que le conteneur de la FAQ n'a pas de bordure supérieure 
+   puisqu'on vient d'ajouter notre propre séparateur laser */
+.faq-list {
+  border-top: 1px solid rgba(255, 255, 255, 0.1); 
+  margin-top: 20px;
+}
+/* --- STYLE DES TRAITS LASER (SÉPARATEURS) --- */
+.section-line-divider {
+  width: 100%;
+  overflow: visible; /* Permet au filtre de flou (glow) de ne pas être coupé */
+  margin: 80px 0;    /* Espace vertical pour laisser respirer les sections */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.section-line-divider svg {
+  width: 100%;
+  height: 20px;      /* Hauteur du conteneur SVG */
+}
+
+/* Optionnel : Ajoute une lueur supplémentaire via CSS */
+.section-line-divider rect {
+  filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.6));
+}
+.section-line-divider, .faq-divider {
+  width: 100%;
+  overflow: visible !important; /* Crucial pour le filtre flou */
+  margin: 80px 0;
+  display: flex;
+  justify-content: center;
+  z-index: 5;
+}
+
+.section-line-divider svg, .faq-divider svg {
+  overflow: visible !important;
+}
+.footer-section {
+  background-color: #000;
+  padding: 80px 20px 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 50px;
+}
+
+.footer-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 60px;
+}
+
+.footer-logo {
+  width: 140px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+  filter: grayscale(1) brightness(2); /* Rend le logo blanc/argent */
+}
+
+.footer-tagline {
+  color: #6b7280;
+  font-size: 0.9rem;
+  max-width: 250px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 80px;
+}
+
+.footer-col h4 {
+  color: #ffffff;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.footer-col a {
+  display: block;
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  transition: color 0.3s ease;
+}
+
+.footer-col a:hover {
+  color: #a855f7; /* Ton violet fétiche */
+}
+
+/* 1. LES STYLES DES MOTEURS (Desktop) */
+.engines-section {
+  padding: 80px 20px;
+  background: #000;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.engines-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.engines-title {
+  color: #9ca3af;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 50px;
+  letter-spacing: 1px;
+}
+
+.engines-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 25px;
+  justify-content: center;
+}
+
+.engine-card {
+  background: rgba(255, 255, 255, 0);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 30px 20px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: default;
+}
+
+
+.engine-card:hover {
+  background: rgba(0, 0, 0, 0);
+  border-color: rgba(168, 85, 247, 0.4);
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgb(0, 0, 0), 0 0 20px rgba(168, 85, 247, 0.1);
+}
+
+.engine-logo-wrapper {
+  height: 60px;
+  width: 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  position: relative;
+}
+
+/* On ajoute un petit glow derrière les logos blancs */
+.engine-logo {
+  max-width: 45px;
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4));
+  transition: transform 0.3s ease;
+}
+
+.engine-card:hover .engine-logo {
+  transform: scale(1.1);
+}
+
+.engine-name {
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.engine-type-badge {
+  font-size: 0.65rem;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
+  padding: 3px 10px;
+  border-radius: 50px;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 2. LES STYLES DU FOOTER */
+.footer-bottom {
+  padding-top: 30px;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #4b5563;
+  font-size: 0.8rem;
+}
+
+.api-mention {
+  font-style: italic;
+  opacity: 0.6;
+
+}
+.engine-type-badge.hybride {
+  background: linear-gradient(45deg, #a855f7, #00d1ff);
+  color: white;
+  font-weight: bold;
+}
+.terms-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 80px 20px;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+}
+
+.terms-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.terms-header h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(90deg, #fff, #888);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.terms-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  transition: transform 0.3s ease;
+}
+
+.terms-card:hover {
+  border-color: #646cff; /* Couleur de ton thème */
+}
+
+.terms-card h2 {
+  color: #646cff;
+  font-size: 1.4rem;
+  margin-top: 0;
+}
+
+.terms-card ul {
+  padding-left: 20px;
+}
+
+.terms-footer-back {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.terms-footer-back a {
+  color: #888;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.terms-footer-back a:hover {
+  color: #fff;
+}
+/* Container pour éviter que le reste du site bouge */
+.user-menu-container {
+  min-width: 0px;
+  display: flex;
+  justify-content: flex-end;
+}
+.btn-secondary, .user-nav-profile {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(168, 85, 247, 0.2) !important;
+  border-radius: 0 20px 20px 0 !important; /* Arrondi seulement à droite */
+  padding: 0 10px !important;
+  margin: 0 !important;
+  height: 40px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Le menu en lui-même */
+.dropdown-menu {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  background: rgba(13, 13, 18, 0.95);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 12px;
+  width: 180px;
+  padding: 8px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  animation: fadeInDown 0.2s ease-out;
+}
+
+.dropdown-item {
+  padding: 10px 15px;
+  color: #e2e8f0;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dropdown-item:hover {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 0;
+}
+
+.dropdown-item.logout {
+  color: #ff4d4d;
+}
+
+.dropdown-item.logout:hover {
+  background: rgba(255, 77, 77, 0.1);
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Style pour le compteur de jetons dans la Nav */
+.token-display-dee {
+  display: flex;
+  align-items: center;
+  background: rgba(168, 85, 247, 0.1); /* Un léger fond violet */
+  padding: 6px 12px;
+  border-radius: 20px 0 0 20px; /* Arrondi seulement à gauche */
+  border: 2px solid rgba(167, 72, 255, 0.493);
+  margin-right: -1px; /* Pour "fusionner" la bordure avec l'élément suivant */
+}
+
+.token-icon-dee-lightning {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%; /* Ton logo eclipse devient une icône ronde */
+  object-fit: cover;
+}
+
+.token-text-dee {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffdc43;
+  letter-spacing: 1.5px;
+}
+
+/* Animation pour le défilement TikTok */
+@keyframes scrollTikTok {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.tiktok-track {
+  display: flex;
+  width: max-content;
+  animation: scrollTikTok 20s linear infinite;
+}
+/* Animation de pulsation sur le laser de la FAQ */
+.faq-divider svg rect {
+  animation: laserPulse 3s ease-in-out infinite;
+}
+
+@keyframes laserPulse {
+  0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 5px #a855f7); }
+  50% { opacity: 1; filter: drop-shadow(0 0 15px #a855f7); }
+}
+
+
+.nav-links-center {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Légèrement réduit pour éviter que ça pousse trop les jetons */
+  margin: 0 auto;
+}
+
+.nav-link-item {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Espace entre l'émoji et le texte */
+  color: #dcdee0;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap; /* Empêche le texte de passer à la ligne */
+}
+
+.nav-link-item:hover {
+  color: #ffffff;
+  transform: translateY(-1px); /* Petit effet de levier au survol */
+}
+
+.nav-link-icon {
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Optionnel : Ajoute une opacité réduite aux émojis par défaut */
+.nav-link-item .nav-link-icon {
+  opacity: 0.8;
+}
+
+.nav-link-item:hover .nav-link-icon {
+  opacity: 1;
+}
+@media (max-width: 900px) {
+
+  /* ------------------------------------------------------------------------
+     1. NAVIGATION ET HEADER MOBILE (CORRIGÉ - COMPTEURS LISIBLES)
+     ------------------------------------------------------------------------ */
+  .burger-menu {
+    display: flex !important; 
+    flex-direction: column !important;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  .nav-links-center {
+    display: none !important;
+  }
+
+  .nav-container {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 0 8px !important;
+  }
+
+  .badge-plan-mobile {
+    display: none !important; 
+  }
+
+  /* Correction de l'alignement des bulles d'éclairs et diamants */
+  .tokens-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important; 
+    flex-shrink: 1 !important;
+  }
+
+  /* Sécurise la visibilité des chiffres (8000, 0, etc.) */
+  .token-display-dee, 
+  [class*="token-display"], 
+  [class*="balance-display"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 6px 10px !important;
+    min-width: auto !important;
+    width: auto !important;
+    overflow: visible !important;
+  }
+
+  .token-text-dee, 
+  [class*="token-text"] {
+    display: inline-block !important;
+    font-size: 13px !important;
+    font-weight: bold !important;
+    color: #ffffff !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .nav-links-center.mobile-active {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    position: fixed !important;
+    top: 70px; 
+    left: 0;
+    width: 100vw !important;
+    height: calc(100vh - 70px) !important;
+    background: #0a0a0a !important; 
+    padding: 40px 24px !important;
+    gap: 25px !important;
+    z-index: 99999 !important;
+  }
+
+  .nav-links-center.mobile-active .nav-link-item {
+    font-size: 16px !important;
+    width: 100%;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08); 
+  }
+
+  .nav-links-center.mobile-active .nav-divider-vertical {
+    display: none !important;
+  }
+
+  .nav-logo-img {
+    height: 55px !important; 
+    max-width: 55px !important; 
+    object-fit: contain !important;
+    margin-left: -3px !important; 
+  }
+
+  .user-menu-container {
+    margin-left: 5px !important; 
+  }
+
+  .user-nav-profile img {
+    margin-left: 0 !important; 
+    flex-shrink: 0 !important; 
+  }
+
+  /* ------------------------------------------------------------------------
+     2. AJUSTEMENTS STRUCTURAUX ET REGLAGE ANTI-DEBORDEMENT DES TITRES
+     ------------------------------------------------------------------------ */
+  .main-viewport, .home-container, main, .landing-container, .legal-container {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    box-sizing: border-box !important;
+  }
+/* 1. Étalement universel et harmonisé de TOUS les paragraphes sur mobile */
+  p, 
+  .feature-description,
+  [class*="subtitle"],
+  [class*="description"],
+  [class*="text-side"] p {
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    text-align: center !important;
+    margin-bottom: 20px !important;
+    display: block !important;
+    
+    
+    /* Libération de la largeur pour s'approcher au maximum des bords */
+width: 100% !important;
+    max-width: 100% !important;      /* Occupe 100% de la largeur disponible */
+    padding-left: 0px !important;     /* Supprime toute marge interne à gauche */
+    padding-right: 0px !important;    /* Supprime toute marge interne à droite */
+    margin-left: 0px !important;      /* Aligne complètement à gauche */
+    margin-right: 0px !important;     /* Aligne complètement à droite */
+    
+  }
+
+  /* 2. Réduction et harmonisation de TOUS les grands titres à 1.8rem */
+  .legal-card h1,
+  .legal-card h2,
+  .legal-card h3,
+  .legal-container h2,
+  .social-main-title,
+  h2[class*="title"] {
+    font-size: 1.8rem !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;    /* Force les retours à la ligne propres */
+    word-wrap: break-word !important;  /* Coupe le mot si un terme est trop long */
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* 3. Conteneur vidéo */
+  .video-showcase-container {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: transparent !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .prompt-showcase {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    margin-top: 15px !important;
+    background: transparent !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     3. BARRE DE PROMPT (.prompt-input-bar)
+     ------------------------------------------------------------------------ */
+  .prompt-input-bar {
+    display: flex !important;
+    flex-direction: column !important; 
+    height: auto !important;          
+    border-radius: 16px !important;    
+    padding: 15px !important;          
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 12px !important;              
+  }
+
+  .prompt-typing-area {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 5px !important;
+    min-height: 45px !important;      
+  }
+
+  .typing-text {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    text-align: center !important;
+    white-space: normal !important;   
+    margin: 0 !important;
+  }
+
+  .generate-pill-btn {
+    width: 100% !important;           
+    max-width: 180px !important;      
+    height: 40px !important;          
+    margin: 0 auto !important;        
+    border-radius: 10px !important;   
+    padding: 0 15px !important;
+    position: relative !important;
+    right: auto !important;           
+    top: auto !important;
+  }
+
+  .virtual-cursor {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     4. CORRECTION DU SLIDER AUTOMATIQUE (FOND TRANSPARENT)
+     ------------------------------------------------------------------------ */
+  .showcase-section {
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    padding: 20px 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+  }
+
+  .slider-container {
+    width: 100% !important;
+    max-width: 340px !important;
+    height: auto !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    background: transparent !important;
+  }
+
+  .slider-track {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  .slide-item {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    background: transparent !important;
+  }
+
+  .slide-item video,
+  .compare-media,
+  .compare-box img,
+  .compare-box video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important; 
+    border-radius: 14px !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: transparent !important; 
+  }
+
+  .showcase-section .section-divider-v,
+  .showcase-section .section-line-divider {
+    display: block !important;
+    width: 100% !important;
+    max-width: 340px !important;
+    margin: 0 auto !important;
+    height: auto !important;
+    transform: translateY(20px) !important; 
+  }
+
+  .image-to-video-section,
+  .img-vid-container,
+  .deevid-style-wrapper,
+  .media-comparison-row,
+  .comparison-column,
+  .compare-box {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .image-to-video-section .social-footer-text,
+  .image-to-video-section div[style*="marginBottom"] {
+    margin-bottom: 20px !important;
+  }
+
+  .library-slider-wrapper {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important; 
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: auto !important;
+    min-height: auto !important;
+    margin-top: 0 !important;
+  }
+
+  .lib-nav-btn {
+    position: absolute !important;
+    top: 0px !important; 
+    transform: translateY(1220%) !important;
+    z-index: 99 !important; 
+    background: rgba(10, 10, 10, 0.8) !important; 
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important; 
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
+    backdrop-filter: blur(5px) !important;
+  }
+
+  .lib-nav-btn:first-of-type { left: 90px !important; }
+  .lib-nav-btn:last-of-type { right: 90px !important; }
+
+  .deevid-style-wrapper {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .media-comparison-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important; 
+    width: 100% !important;
+    align-items: center !important;
+  }
+
+  .comparison-column, .compare-box {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .compare-media,
+  .compare-box img,
+  .compare-box video {
+    width: calc(100% - 40px) !important; 
+    max-width: 320px !important; 
+    height: 200px !important; 
+    aspect-ratio: 16 / 10 !important; 
+    object-fit: cover !important; 
+    border-radius: 14px !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: transparent !important; 
+  }
+
+  .compare-separator {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 30px !important;
+    margin: 5px 0 !important;
+    transform: rotate(90deg) !important; 
+  }
+
+  .sep-icon {
+    font-size: 20px !important;
+    color: #a855f7 !important;
+  }
+
+  .prompt-instruction-container {
+    margin-top: 20px !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    padding: 0 20px !important;
+    box-sizing: border-box !important;
+  }
+
+  .prompt-pill-display {
+    width: 100% !important;
+    max-width: 320px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(168, 85, 247, 0.2) !important;
+    border-radius: 12px !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .prompt-header {
+    margin-top: -75px !important;   
+    padding-top: 0px !important;  
+    margin-bottom: 5px !important; 
+  }
+
+  /* ------------------------------------------------------------------------
+     6. BADGES ELEVÉS ET ÉTIQUETTES DE CARTES
+     ------------------------------------------------------------------------ */
+  .mobile-card, .compare-box {
+    position: relative !important;
+    overflow: visible !important; 
+    margin-top: 40px !important;  
+  }
+
+  .card-badge, .box-label {
+    position: absolute !important;
+    top: -40px !important;       
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 20 !important;      
+    background-color: rgba(0, 0, 0, 0.8) !important;
+    padding: 4px 15px !important;
+    border-radius: 20px !important;
+    font-size: 0.75rem !important;
+    color: white !important;
+    white-space: nowrap !important;
+    border: 1px solid rgba(255, 26, 224, 0.61) !important;
+    backdrop-filter: blur(4px) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     7. SECTION MOTEURS (ENGINES) RETOUR EN BLOC HORIZONTAL FLUIDE
+     ------------------------------------------------------------------------ */
+  .engines-section {
+    padding: 40px 0 20px !important; 
+  }
+
+  .engines-container > div:first-of-type {
+    margin-bottom: 25px !important; 
+  }
+
+  .engines-container span[style*="letterSpacing"] {
+    margin-bottom: 5px !important; 
+  }
+
+  .engines-container div[style*="margin: '30px auto 0'"] {
+    margin-top: 15px !important; 
+  }
+
+  .engines-title {
+    font-size: 1.6rem !important; 
+    line-height: 1.2 !important;
+  }
+
+  .engines-grid {
+    display: flex !important;
+    flex-direction: row !important; 
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 12px !important; 
+    width: 100% !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  .engine-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 calc(50% - 12px) !important; 
+    min-width: 140px !important;
+    max-width: 220px !important; 
+    height: 90px !important; 
+    background: rgba(10, 10, 10, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 12px !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .engine-logo-wrapper {
+    width: 100% !important;
+    height: 100% !important; 
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .engine-card img,
+  .engine-card svg {
+    max-height: 100% !important;
+    max-width: 90% !important;
+    object-fit: contain !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  /* --- SÉPARATEURS LASER --- */
+  .section-divider-v, 
+  .section-line-divider {
+    margin-top: 0 !important;
+    margin-bottom: 75px !important;     
+    height: auto !important;
+    transform: translateY(15px) !important; 
+  }
+
+  /* ------------------------------------------------------------------------
+     8. REGLAGE NOUVEAU : FOOTER MOBILE (EMPILE PROPREMENT LES LINKS SANS DEBORDEMENT)
+     ------------------------------------------------------------------------ */
+  footer, .footer-container, [class*="footer-links-grid"] {
+    display: flex !important;
+    flex-direction: column !important; /* Force l'empilement vertical propre comme l'image image_e441a3.png */
+    align-items: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    gap: 30px !important;
+    padding: 30px 15px !important;
+  }
+
+  /* Gère les colonnes "OUTILS", "ENTREPRISE", "COMMUNAUTÉ" */
+  footer div[style*="display"], 
+  .footer-column,
+  [class*="footer-col"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 0 10px 0 !important;
+  }
+
+  /* Harmonise les titres du footer */
+  footer h4, 
+  footer strong,
+  [class*="footer-title"] {
+    font-size: 16px !important;
+    letter-spacing: 0.1em !important;
+    margin-bottom: 12px !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* Harmonise et donne de la place aux liens cliquables du footer */
+  footer a, 
+  .footer-link {
+    font-size: 14px !important;
+    padding: 6px 0 !important;
+    display: block !important;
+    width: 100% !important;
+    white-space: normal !important; /* Empêche "Conditions d'Utilis..." de se couper */
+  }
+
+  .footer-bottom {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center !important;
+    padding-top: 20px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+/* Sécurité pour forcer les écrans encore plus petits (<768px) à garder les 14px */
+  p, .social-subtitle, [class*="subtitle"], .social-footer-text p {
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+  }
+  
+} /* Fin de la Media-Query Mobile 900px */
+/* Correction pour afficher l'image et la vidéo en entier sans troncature */
+.image-to-video-section .compare-box {
+  height: auto !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+}
+
+.image-to-video-section .compare-media {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 500px !important;
+  object-fit: contain !important; /* Affiche l'intégralité du média sans couper les bords */
+  display: block;
+
+}/* Le wrapper global du slider doit TOUJOURS rester en ligne (flex) */
+
+.library-slider-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  gap: 10px;
+}
+
+/* Empêche les boutons de flèches de se déformer ou de passer à la ligne */
+.library-slider-wrapper .lib-nav-btn {
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* S'assure que le contenu central prend l'espace disponible entre les flèches */
+.deevid-style-wrapper {
+  flex: 1;
+  min-width: 0; /* Évite les débordements flexbox sur mobile */
+  
+}
+
+@media (max-width: 768px) {
+  /* Empile les 3 blocs de comparaison verticalement sur mobile */
+  .media-comparison-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* Réduit légèrement les marges latérales pour gagner de la place */
+  .landing-container {
+    overflow-x: hidden;
+  }
+}

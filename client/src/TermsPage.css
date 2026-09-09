@@ -1,0 +1,175 @@
+/* ==========================================================================
+   STYLE GÉNÉRAL DE LA PAGE
+   ========================================================================== */
+.terms-wrapper {
+  background-color: #000000;
+  color: #ffffff;
+  min-height: 100vh;
+  padding: 60px 20px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  line-height: 1.6;
+  overflow-y: auto;
+  box-sizing: border-box;
+  position: relative; /* 👈 Indispensable pour positionner le bouton par rapport à la page */
+}
+
+.terms-container {
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+  padding-top: 20px; /* 👈 Ajoute un peu d'espace en haut pour éviter que le texte ne touche le bouton positionné en absolu */
+}
+
+/* Bouton Retour */
+.btn-back {
+  position: absolute; /* 👈 Sort le bouton du flux normal pour le coller où l'on veut */
+  top: 20px;          /* 👈 Le remonte tout en haut */
+  left: 20px;         /* 👈 Le décale bien à gauche */
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;   /* Correction de fontWeight en font-weight (syntaxe CSS valide) */
+  transition: background 0.2s;
+  z-index: 10;
+}
+.btn-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Header */
+.terms-header {
+  border-bottom: 1px solid #333;
+  padding-bottom: 30px;
+  margin-bottom: 40px;
+}
+.terms-header h1 {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+.terms-header p {
+  color: #a1a1aa;
+}
+
+/* Sections standards */
+.terms-content {
+  font-size: 15px;
+  color: #e4e4e7;
+}
+.terms-section {
+  margin-bottom: 40px;
+}
+.terms-section h2 {
+  color: #a855f7;
+  font-size: 22px;
+  margin-bottom: 15px;
+}
+.terms-section p, .terms-section ul {
+  margin-top: 10px;
+}
+.terms-section ul {
+  padding-left: 20px;
+}
+
+/* encadré Section 3 (Abonnements & Remboursements) */
+.section-critical {
+  margin-bottom: 40px;
+  padding: 25px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.section-critical h2 {
+  color: #ffffff;
+  font-size: 22px;
+  margin-bottom: 15px;
+}
+
+/* Bloc Alerte Rouge Strict */
+.alert-box {
+  margin-top: 20px;
+  padding: 15px;
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+.alert-title {
+  font-weight: 800;
+  color: #ef4444;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+/* Bloc Contact & Footer */
+.contact-box {
+  margin-bottom: 40px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid #222;
+}
+.contact-box h2 {
+  color: #ffffff;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+.contact-box p {
+  font-size: 14px;
+  color: #a1a1aa;
+}
+
+.terms-footer {
+  margin-top: 60px;
+  padding-bottom: 40px;
+  text-align: center;
+  color: #52525b;
+  font-size: 12px; /* Correction de fontSize en font-size */
+}
+
+/* ==========================================================================
+   RESPONSIVE - SÉCURITÉ MOBILE (MAX 900PX)
+   ========================================================================== */
+@media (max-width: 900px) {
+  .terms-wrapper {
+    padding: 40px 15px; 
+  }
+
+  .btn-back {
+    top: 15px;
+    left: 15px;
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .terms-container {
+    padding-top: 35px; /* Laisse de la place pour le bouton sur mobile */
+  }
+
+  .terms-header h1 {
+    font-size: 26px; 
+  }
+
+  .terms-section h2, 
+  .section-critical h2 {
+    font-size: 18px !important;
+    line-height: 1.4 !important;
+    white-space: normal !important;    
+    word-break: break-word !important;  
+    overflow-wrap: break-word !important;
+  }
+
+  .section-critical {
+    padding: 20px 15px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    overflow: hidden !important; 
+  }
+  
+  .alert-box {
+    padding: 12px !important;
+  }
+}
