@@ -2,16 +2,23 @@ const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 
-const serviceAccount = require('./serviceAccountKey.json');
+let credentials;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    // Si la variable d'environnement existe (sur Render)
+    credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+    // Sinon, on utilise le fichier local (sur ton PC)
+    credentials = require('./serviceAccountKey.json');
+}
 
 if (!getApps().length) {
     initializeApp({
-        credential: cert(serviceAccount)
+        credential: cert(credentials)
     });
 }
 
-// 🔎 Ligne à ajouter pour vérifier l'ID du projet chargé par le SDK Admin
-console.log("🔥 Firebase projectId :", serviceAccount.project_id);
+console.log("🔥 Firebase projectId :", credentials.project_id);
 
 const db = getFirestore();
 const auth = getAuth();
