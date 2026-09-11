@@ -85,13 +85,14 @@ const [qty, setQty] = useState(1000);
         </div>
       </div>
 
-      <input 
-        type="range" min="100" max="10000" step="100" 
-        value={qty} 
-        onChange={(e) => setQty(parseInt(e.target.value))}
-        className="custom-slider"
-        style={{ width: '100%', maxWidth: '600px', cursor: 'pointer' }}
-      />
+  <input 
+  type="range" min="100" max="10000" step="100" 
+  value={qty} 
+  onInput={(e) => setQty(parseInt(e.target.value))} 
+  className="custom-slider"
+  style={{ width: '100%', maxWidth: '600px', cursor: 'pointer', touchAction: 'pan-y' }}
+/>
+    
 
       <div className="price-checkout-zone" style={{ marginTop: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
         <div className="final-price-area">
@@ -359,7 +360,7 @@ const handlePurchase = async (quantity) => {
         // 🔑 1. Récupération du token Firebase de l'utilisateur
         const token = await user.getIdToken();
 
-        const response = await fetch('http://localhost:5000/create-checkout-session', {
+        const response = await fetch('${import.meta.env.VITE_API_URL}/create-checkout-session', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -397,7 +398,7 @@ const handleSubscribe = async (planName) => {
         // 🔑 C'est cette ligne qu'il te manquait !
         const token = await user.getIdToken();
 
-        const response = await fetch('http://localhost:5000/create-subscription-session', {
+        const response = await fetch('${import.meta.env.VITE_API_URL}/create-subscription-session', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

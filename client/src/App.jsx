@@ -2,13 +2,13 @@ import Navbar from './Navbar';
 import { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import './App.css';
-import logoEclipse from './assets/logo-eclipse.jpg';
+import logoEclipse from './assets/logo-eclipse.webp';
 import LandingPage from './LandingPage';
 import TermsPage from './TermsPage'; 
 import PrivacyPage from './PrivacyPage'; 
 import AuthModal from './AuthModal'; 
 import TokenManager from './TokenManager';
-import logoEclair from './assets/logo-token.jpg';
+import logoEclair from './assets/logo-token.webp';
 import Pricing from './Pricing'; 
 import { PRICING_DATA, PLAN_TO_PRICE, packs, ALLOWED_ENGINES } from "./pricingConfig";
 import { auth, db, createUserProfile, syncCreditsToDB } from "./firebase";
@@ -31,184 +31,184 @@ const SUGGESTIONS = [
     id: 1, 
     title: "Ville Cyberpunk", 
     prompt: "Une vue de central park cyberpunk futuriste avec des néons, un éclairage cinématographique, 8k, ultra détaillé", 
-  img: "/videos/Ville-Cyberpunk.jpg", 
-  url: "/videos/Ville-Cyberpunk.jpg"},   
+  img: "/videos/Ville-Cyberpunk.webp", 
+  url: "/videos/Ville-Cyberpunk.webp"},   
   
   { 
     id: 2, 
     title: "Sniper", 
     prompt: "Un sniper en tenue de camouflage neige, allongé dans la neige profonde, haute montagne, réalisme extrême, angle de vue au ras du sol, focus net sur le fusil, ambiance hivernale hostile, lumière crue de haute altitude", 
-  img: "/videos/Sniper.jpg", 
-  url: "/videos/Sniper.jpg"}, 
+  img: "/videos/Sniper.webp", 
+  url: "/videos/Sniper.webp"}, 
   { 
     id: 3, 
     title: "Coucher de soleil", 
     prompt: "Un crabe sur un rocher observe le coucher de soleil sur une plage. La mise au point de la plage est légèrement floutée.",
-    img: "/videos/Coucher-de-soleil.jpg", 
-    url: "/videos/Coucher-de-soleil.jpg"},
+    img: "/videos/Coucher-de-soleil.webp", 
+    url: "/videos/Coucher-de-soleil.webp"},
   { 
     id: 4, 
     title: "Combat dans les ruines urbaines", 
     prompt: "Scène ultra réaliste, Une femme tactique aux cheveux bleus atterrit sur le sol dans un environnement d'immeuble en ruine, le regard perçant et concentré. Sa veste flotte dans les airs alors qu'elle vise le spectateur.", 
-     img: "/videos/Combat.jpg", 
-     url: "/videos/Combat.jpg"},
+     img: "/videos/Combat.webp", 
+     url: "/videos/Combat.webp"},
   { 
     id: 5, 
     title: "Femme dans un penthouse nocturne", 
     prompt: "Illustration anime cinématographique, personnage féminin antagoniste en pied, debout dans un luxueux bureau de penthouse moderne de nuit, braquant un pistolet directement vers la caméra, posture dominante et menaçante, contre-plongée marquée, veste de costume noire élégante, chemise noire ajustée légèrement ouverte au col, pantalon noir cintré, chaîne métallique discrète à la ceinture, une main dans la poche, coupe de cheveux courte dégradée noire, yeux rouges lumineux, peau pâle, expression froide et déterminée, éclairage dramatique, détails ultra-réalistes du visage et des cheveux, sol en marbre noir brillant, grand bureau de direction à l’arrière-plan, fauteuil en cuir, immenses baies vitrées donnant sur une ville illuminée la nuit, reflets réalistes sur les surfaces, ambiance sombre et sophistiquée, style néo-noir, ombres cinématographiques, style anime réaliste, qualité chef-d’œuvre, netteté extrême, éclairage volumétrique, profondeur de champ, contraste élevé, illustration conceptuelle professionnelle, qualité 8K, atmosphère de thriller d’action.", 
-     img: "/videos/penthouse-nocturne.jpg", 
-     url: "/videos/penthouse-nocturne.jpg"},
+     img: "/videos/penthouse-nocturne.webp", 
+     url: "/videos/penthouse-nocturne.webp"},
   { 
     id: 6, 
     title: "Anime", 
     prompt: "Style anime, une jeune femme aux longs cheveux blonds ondulés et aux yeux jaune d'or, assise au centre d'un banc de parc en bois vert. Elle a un bandage elle porte une veste verte ouverte sur un uniforme sombre orné de boutons dorés et d'une écharpe rouge et noire. Un badge rouge est visible sur sa manche. Ses mains sont posées sur ses genoux sur une jupe plissée blanche. Elle se trouve dans un parc. Elle regarde directement l'observateur avec une expression sérieuse.", 
-     img: "/videos/Anime1.jpg", 
-     url: "/videos/Anime1.jpg"},
+     img: "/videos/Anime1.webp", 
+     url: "/videos/Anime1.webp"},
   { 
     id: 7, 
     title: "L'Île sous la Pleine Lune", 
     prompt: "Magnifique temple asiatique traditionnel composé de plusieurs pagodes illuminées, situé au bord d'un lac parfaitement calme reflétant l'ensemble de la scène. Immense pleine lune dorée dominant le ciel, reflet complet de la lune dans l'eau. Vallée montagneuse spectaculaire avec falaises verticales majestueuses enveloppées de brume. Forêt d'automne aux couleurs chaudes orange, rouge et or entourant le temple. Lanternes lumineuses créant une ambiance mystique et chaleureuse. Brouillard cinématographique flottant entre les montagnes. Architecture asiatique richement détaillée avec toitures courbées, bois sculpté et éclairages traditionnels. Atmosphère paisible, féerique et spirituelle. Éclairage volumétrique, rayons lumineux subtils, reflets ultra réalistes sur l'eau, composition symétrique parfaite, profondeur de champ naturelle, couleurs riches et contrastées, photoréalisme extrême, ultra detailed, masterpiece, cinematic fantasy landscape, HDR, global illumination, ray tracing, Unreal Engine quality, 8K, ultra sharp focus, highly detailed textures, professional landscape photography, breathtaking scenery, panoramic composition, golden moonlight, realistic mist, award-winning photography.", 
-    img: "/videos/Lune.jpg",
-     url: "/videos/Lune.jpg"},
+    img: "/videos/Lune.webp",
+     url: "/videos/Lune.webp"},
   { 
     id: 8, 
     title: "3D", 
     prompt: "Un immense trône royal recouvert de velours rouge et d'ornements dorés richement sculptés, décoré de motifs héraldiques et de statues de lions. Un rat majestueux dort paisiblement sur le trône comme un roi, portant une couronne incrustée de pierres précieuses bleues et dorées. Il tient un sceptre royal délicatement entre ses pattes. L'environnement est une ancienne cathédrale gothique en ruine, avec de gigantesques arches en pierre, des colonnes monumentales et des débris dispersés au sol. De puissants rayons de lumière traversent les hautes fenêtres, illuminant le rat et le trône dans une ambiance sacrée et dramatique. Particules de poussière flottant dans les faisceaux lumineux. Textures ultra détaillées du velours, du bois sculpté, de la pierre ancienne et de la fourrure du rat. Atmosphère cinématographique, fantasy médiévale réaliste, photoréalisme extrême, profondeur de champ naturelle, éclairage volumétrique, ray tracing, HDR, global illumination, Unreal Engine 5 quality, ultra realistic, masterpiece, highly detailed, 8K, cinematic fantasy, dramatic lighting, award-winning photography.", 
-    img: "/videos/3D.jpg",
-     url: "/videos/3D.jpg"},
+    img: "/videos/3D.webp",
+     url: "/videos/3D.webp"},
   { 
     id: 9, 
     title: "Submersion aquatique", 
     prompt: "Guerrier samouraï japonais vu de profil sur le côté droit de l'image, regard déterminé dirigé vers l'horizon. Cheveux noirs attachés en chignon traditionnel, barbe légère, kimono sombre richement texturé, katana visible à la ceinture. Derrière lui apparaît son double spirituel entièrement composé d'eau cristalline et de fluides translucides. Le personnage aquatique est inversé et regarde dans la direction opposée, créant un contraste visuel fort. Silhouette d'eau formée de vagues, éclaboussures, filaments liquides et gouttelettes suspendues. Fond abstrait composé d'encres bleues, bleu nuit, gris et blanc, avec effets aquarelle et projections de peinture. Atmosphère mystique, spirituelle et contemplative. Éclairage cinématographique dramatique, détails extrêmes sur le visage, les cheveux, le tissu et l'eau. Reflets réalistes, transparence parfaite, textures ultra détaillées, composition artistique haut de gamme, concept art photoréaliste, masterpiece, ultra realistic, cinematic lighting, volumetric lighting, fantasy realism, hyper detailed, 8K, HDR, sharp focus, award-winning digital art.", 
-     img: "/videos/Submersion.jpg",
-     url: "/videos/Submersion.jpg"},
+     img: "/videos/Submersion.webp",
+     url: "/videos/Submersion.webp"},
   { 
     id: 10, 
     title: "forêt sombre", 
     prompt: "Femme terrifiée courant dans une forêt sombre et dense, brouillard épais enveloppant les arbres morts et les branches cassées, ambiance de thriller ou d’horreur. Elle tient une lampe torche qui projette un faisceau de lumière perçant la brume, mettant en valeur son visage paniqué et son corps couvert de boue et de traces de lutte. Vêtements déchirés et salis par la course et les obstacles naturels. Lumière dramatique, atmosphère oppressante, humidité et texture réaliste du sol forestier, feuilles et branches détaillées. Arbres hauts et fins, profondeur de champ naturelle, textures ultra détaillées sur le visage, les vêtements et le sol. Photographie cinématographique en style thriller d’horreur, ultra réaliste, HDR, 8K, contraste élevé, réalisme extrême, maîtrise de la lumière et des ombres.", 
-     img: "/videos/Foret-sombre.jpg",
-     url: "/videos/Foret-sombre.jpg"},
+     img: "/videos/Foret-sombre.webp",
+     url: "/videos/Foret-sombre.webp"},
   { 
     id: 11, 
     title: "Magazine", 
     prompt: "Femme blonde assise avec assurance sur le capot d'une voiture ancienne couleur crème des années 1960, vue en contre-plongée dramatique. Elle porte une combinaison verte élégante et des bottes militaires beiges à lacets. Une jambe est tendue vers l'objectif, mettant en valeur la semelle de la chaussure au premier plan. Expression sérieuse et regard direct vers la caméra. Route bordée de quelques palmiers espacés, lumière dorée du coucher de soleil, ambiance californienne. Reflets réalistes sur la carrosserie chromée de la voiture vintage. Profondeur de champ cinématographique, détails ultra nets sur le visage, les vêtements et le véhicule. Éclairage naturel golden hour, ombres douces, couleurs réalistes, photographie de mode haut de gamme, composition professionnelle, ultra-réaliste, 8K, HDR, photoréalisme extrême, texture de peau détaillée, objectif grand-angle 24 mm, qualité magazine de luxe.", 
-     img: "/videos/Magazine.jpg", 
-    url: "/videos/Magazine.jpg"},
+     img: "/videos/Magazine.webp", 
+    url: "/videos/Magazine.webp"},
   { 
     id: 12, 
     title: "Intégration décors", 
     prompt: "Modifie la photo en rajoutant, un manteau gris foncé et d'une longue jupe plissée vert forêt. Pose : Elle se tient debout sur un chemin pavé, une main dans la poche de son manteau, adoptant une pose élégante et légèrement tournée vers l'objectif. Décor : La scène se déroule à Central Park en automne, avec des arbres aux feuillages orangés et dorés encadrant la vue, et la silhouette des gratte-ciel new-yorkais visible en arrière-plan. Détails d'ambiance : Le sol est parsemé de feuilles mortes et de quelques pages de livres, créant une atmosphère poétique et mélancolique. Élément supplémentaire : Dans le coin supérieur gauche, une petite vignette encadrée montre un gros plan portrait de la même femme sous un angle différent.", 
-     img: "/videos/Intégration-décor.jpg", 
-    url: "/videos/Intégration-décor.jpg"},
+     img: "/videos/Intégration-décor.webp", 
+    url: "/videos/Intégration-décor.webp"},
   { 
     id: 13, 
     title: "Marketing", 
     prompt: "Portrait beauté ultra-réaliste d'une femme blonde aux yeux verts, regard intense face caméra, taches de rousseur naturelles, lèvres brillantes bordeaux, maquillage professionnel haut de gamme, tenant un rouge à lèvres rose près de son visage, ongles rouges élégants, boucles d'oreilles dorées, éclairage rouge dramatique, ambiance luxe et glamour, peau lumineuse avec texture réaliste, photographie cosmétique premium, publicité de marque de maquillage, profondeur de champ cinématographique, détails extrêmes, photoréalisme, qualité magazine de mode, studio professionnel, 8K, ultra détaillé.", 
-   img: "/videos/Marketing.jpg", 
-    url: "/videos/Marketing.jpg"},
+   img: "/videos/Marketing.webp", 
+    url: "/videos/Marketing.webp"},
   { 
     id: 14, 
     title: "Portrait Aquarelle", 
     prompt: "Logo de haute qualité, style logo, aquarelle, puissant logo représentant une tête de renard colorée vue de face, arrière-plan monochrome, par Yukisakura, magnifiques couleurs vives et complètes, format carré.", 
-   img: "/videos/Aquarelle.jpg", 
-    url: "/videos/Aquarelle.jpg"}, 
+   img: "/videos/Aquarelle.webp", 
+    url: "/videos/Aquarelle.webp"}, 
   { 
     id: 15, 
     title: "Femme Cyberpunk", 
     prompt: "Dans un futur cyberpunk dystopique, une jeune Coréenne de petite taille, à l’apparence fragile et vulnérable, marche dans une rue d’une petite ville cyberpunk. Elle a des cheveux courts violets ébouriffés, agrémentés de touches néon lumineuses. Elle porte des vêtements très usés : un pantalon cargo, un crop top court déchiré et un long manteau. Un cyberdeck est fixé sur le haut de sa cuisse gauche à l’aide de sangles. Son visage exprime la fatigue, l’épuisement et un profond sentiment d’impuissance.", 
-   img: "/videos/Cyberpunk.jpg", 
-    url: "/videos/Cyberpunk.jpg"}
+   img: "/videos/Cyberpunk.webp", 
+    url: "/videos/Cyberpunk.webp"}
 ];
 
 const VIDEO_SUGGESTIONS = [
   { 
     id: 1, title: "crépuscule", typeStyle: "MANGA", 
     prompt: "Samouraï solitaire en armure détaillée debout sur une colline d’herbes hautes, face à un coucher de soleil rouge intense sur une ville japonaise lointaine. Le vent souffle fort, faisant bouger ses vêtements et les herbes. Atmosphère épique et mélancolique, ciel dramatique avec nuages très lumineux. Caméra : départ en plan moyen derrière le samouraï, puis travelling arrière rapide et fluide révélant la vallée et la ville, suivi d’une légère rotation orbitale de 180° autour du personnage pour un effet cinématique final. Lumière golden hour très contrastée, lens flare réaliste, profondeur de champ cinématographique, rendu ultra réaliste, style film japonais blockbuster.", 
-   img: "/videos/crépuscule.jpg", 
+   img: "/videos/crépuscule.webp", 
     url: "/videos/crépuscule.mp4" 
   },
   { 
     id: 2, title: "Futuriste", typeStyle: "Cyberpunk", 
     prompt: "Jeune femme cyberpunk aux cheveux violets marchant dans une ruelle coréenne humide et animée. Début en très gros plan sur ses bottes qui avancent lentement sur l'asphalte mouillé, reflets des néons colorés visibles dans les flaques d'eau. Caméra en travelling arrière fluide suivant ses pas. Après une seconde, la caméra remonte progressivement le long de ses jambes, de son équipement tactique et de son manteau usé. Elle continue de marcher avec assurance, mains dans les poches. La caméra poursuit son mouvement vertical jusqu'à son visage, révélant en arrière plan toute la ruelle, les enseignes coréennes lumineuses, la vapeur sortant des bouches d'égout et les passants en arrière-plan. Ambiance cyberpunk réaliste, mouvements naturels, lumière cinématographique, profondeur de champ réaliste, reflets sur le sol mouillé, ultra réaliste, 8K, qualité film, détails extrêmes.", 
-    img: "/videos/Cyberpunk.jpg", 
+    img: "/videos/Cyberpunk.webp", 
     url: "/videos/Cyberpunk.mp4" 
   },
   { 
     id: 3, title: "Forêt sinistre", typeStyle: "Réaliste", 
     prompt: "Au cœur d'une forêt sombre et brumeuse en pleine nuit, une femme terrifiée court à pleine vitesse sur un étroit sentier boueux serpentant entre des arbres morts et des branches enchevêtrées. Ses vêtements sont sales et déchirés, son visage couvert de sueur, de boue et marqué par la peur. Elle serre fermement une lampe torche dont le faisceau perce l'épais brouillard. Mouvement de course naturel et réaliste, placement précis des pieds, transfert du poids du corps fidèle à la réalité, respiration subtile, cheveux et vêtements réagissant naturellement à chacun de ses mouvements. Aucun ralenti. La caméra débute par un travelling en contre-plongée dramatique, au ras du sol, suivant la femme alors qu'elle court vers l'objectif. Racines humides, éclaboussures de boue et branches cassées défilent rapidement au premier plan. Le faisceau de la lampe torche balaie les arbres, créant des ombres mouvantes et un éclairage volumétrique spectaculaire à travers la brume. Alors qu'elle poursuit sa fuite, la caméra s'élève progressivement et recule en douceur, passant d'une poursuite en contre-plongée à une vue aérienne de plus en plus haute. La forêt se dévoile sous elle, révélant l'immensité sauvage et isolée qui l'entoure. La femme devient une petite silhouette perdue dans l'obscurité, fuyant désespérément à travers ce paysage inquiétant. Grand plan aérien cinématographique, échelle épique, épais brouillard dérivant entre les arbres, profondeur atmosphérique réaliste, lumière lunaire filtrant naturellement à travers la canopée. Ambiance de thriller horrifique ultra réaliste, éclairage cinématographique, brouillard volumétrique, éclairage réaliste de la lampe torche, mouvements de caméra naturels, environnement forestier richement détaillé, reflets sur le sol humide, textures photoréalistes, large plage dynamique (HDR), tension dramatique permanente, qualité visuelle digne d'une superproduction hollywoodienne, rendu 8K, niveau de détail extrême, mise en scène immersive d'horreur cinématographique.", 
-      img: "/videos/Foret-sombre.jpg", 
+      img: "/videos/Foret-sombre.webp", 
     url: "/videos/Foret-sombre.mp4" 
   },
   { 
     id: 4, title: "Cours", typeStyle: "3D", 
     prompt: "Plan cinématographique ultra dynamique dans une forêt dense transformée en parcours de compétition. Deux lapins anthropomorphes très détaillés s’affrontent en course sprint sur un sentier de terre étroit. Le lapin blanc en t-shirt bleu et sac à dos est en tête, poursuivi de près par le lapin gris en t-shirt rouge, expression de détermination intense. Caméra basse au sol en travelling avant très rapide, légèrement tremblée comme une caméra de course professionnelle. Accent fort sur la vitesse, motion blur sur les jambes et les bras, poussière et particules de terre qui explosent à chaque foulée. Végétation luxuriante sur les côtés, spectateurs animaux flous en arrière-plan (effet profondeur de champ). Style sport extrême, ambiance de finale de course, lumière dorée dramatique filtrant à travers les arbres, rendu 3D ultra réaliste type film d’animation haut budget, tension et énergie maximale.", 
-    img: "/videos/Cours.jpg", 
+    img: "/videos/Cours.webp", 
     url: "/videos/Cours.mp4" 
   },
   { 
     id: 5, title: "Astronaute", typeStyle: "ESPACE", 
     prompt: "Un astronaute solitaire flotte dans l'espace profond au-dessus de la Terre. La caméra démarre en plan extrêmement large, montrant l'immensité du cosmos, la courbure de la Terre et l'astronaute minuscule au centre du cadre. La caméra avance progressivement vers l'astronaute avec un travelling avant fluide et rapide. À mesure qu'elle se rapproche, les détails de la combinaison deviennent visibles, les reflets du Soleil apparaissent sur la visière. Arrivée à distance moyenne, la caméra effectue une rotation orbitale de 180 degrés autour de l'astronaute, révélant successivement la Terre en arrière-plan puis le vide spatial étoilé. Mouvement parfaitement stable, sensation de gravité zéro, éclairage réaliste de l'espace, reflets physiques, qualité IMAX, photoréalisme extrême, profondeur de champ cinématographique, rendu 8K, style documentaire spatial à gros budget, motion blur naturel, détails ultra-réalistes, atmosphère épique et contemplative.", 
- img: "/videos/Astronaute.jpg", 
+ img: "/videos/Astronaute.webp", 
     url: "/videos/Astronaute.mp4"
   },
   { 
     id: 6, title: "Parc", typeStyle: "ANIME", 
     prompt: "Style animé : une femme assise sur un banc dans un parc, un chat monte sur ses genoux et elle le caresse.", 
-    img: "/videos/Anime1.jpg",
+    img: "/videos/Anime1.webp",
     url: "/videos/Anime1.mp4"
   },
   { 
     id: 7, title: "Traveling", typeStyle: "Réaliste", 
     prompt: "Scene ultra réaliste : Dans une chambre d’hôtel luxueuse, légèrement désordonnée. Une femme blonde est assise sur le lit, le maquillage noir recouvrant une grande partie de ses yeux. Travelling avant jusqu’au gros plan de son visage, qui semble exténué.", 
-     img: "/videos/encore-une.jpg",
+     img: "/videos/encore-une.webp",
     url: "/videos/encore-une.mp4"
   },
   { 
     id: 8, title: "Lac montagneuse", typeStyle: "Film", 
     prompt: "Fluide doré en mouvement, ondes magnétiques, luxe, abstrait 3D", 
-     img: "/videos/lac-montagneuse.jpg",
+     img: "/videos/lac-montagneuse.webp",
     url: "/videos/lac-montagneuse.mp4"
   },
   { 
     id: 9, title: "Femme dans un penthouse nocturne", typeStyle: "Anime", 
     prompt: "Illustration anime cinématographique, personnage féminin antagoniste en pied, debout dans un luxueux bureau de penthouse moderne de nuit, braquant un pistolet directement vers la caméra, posture dominante et menaçante, contre-plongée au fera mesure qu'elle avance la camera recule au rythme que la personne avance, veste de costume noire élégante, chemise noire ajustée légèrement ouverte au col, pantalon noir cintré, chaîne métallique discrète à la ceinture, une main dans la poche, coupe de cheveux courte dégradée noire, yeux rouges lumineux, peau pâle, expression froide et déterminée, éclairage dramatique, détails ultra-réalistes du visage et des cheveux, sol en marbre noir brillant, grand bureau de direction à l’arrière-plan, fauteuil en cuir, immenses baies vitrées donnant sur une ville illuminée la nuit, reflets réalistes sur les surfaces puis la camera fait un zoom sur le visage, ambiance sombre et sophistiquée, style néo-noir, ombres cinématographiques, style anime réaliste, qualité chef-d’œuvre, netteté extrême, éclairage volumétrique, profondeur de champ, contraste élevé, illustration conceptuelle professionnelle, qualité 8K, atmosphère de thriller d’action.", 
-    img: "/videos/penthouse-nocturne.jpg",
+    img: "/videos/penthouse-nocturne.webp",
     url: "/videos/tiktok-5.mp4"
   },
   { 
     id: 10, title: "La poupée maudite", typeStyle: "Horreur", 
     prompt: "Vieille maison abandonnée victorienne, pièce sombre et délabrée, papier peint déchiré, poussière flottant dans l'air, toiles d'araignée, éclairage cinématographique. Une poupée terrifiante en porcelaine fissurée est assise immobile dans un vieux fauteuil en velours au centre de la pièce. La caméra effectue un lent travelling avant depuis un plan large vers un plan rapproché. Une faible lumière lunaire traverse la fenêtre tandis qu'une bougie vacillante projette des ombres mouvantes sur les murs. Les cheveux emmêlés de la poupée bougent légèrement sous un courant d'air. Dans les deux dernières secondes, sa tête pivote lentement vers la caméra avec un mouvement anormal et inquiétant, ses yeux semblant suivre l'objectif. Ambiance oppressante, horreur psychologique, ultra réaliste, qualité cinéma hollywoodien, éclairage volumétrique, profondeur de champ cinématographique, détails extrêmes, 4K, format 16:9.", 
-     img: "/videos/poupee.jpg",
+     img: "/videos/poupee.webp",
     url: "/videos/poupee.mp4"
   },
   { 
     id: 11, title: "Caméra de surveillance", typeStyle: "Réaliste", 
     prompt: "Vidéo de télésurveillance ultra réaliste filmée de nuit dans un jardin entièrement recouvert de neige fraîche. La scène est capturée par une caméra de sécurité fixe en vision infrarouge noir et blanc, avec un léger bruit numérique, des artefacts de compression et un horodatage visible dans le coin de l'écran. Au centre du jardin se trouve un grand bonhomme de neige immobile. Un homme avance dans la neige en direction du bonhomme de neige, laissant des traces de pas derrière lui. Alors qu'il s'approche à moins d'un mètre, un chat surgit soudainement de l'intérieur du bonhomme de neige à une vitesse fulgurante. Le chat bondit directement vers le visage de l'homme, qui recule brutalement en criant de surprise. La caméra enregistre la scène avec des mouvements saccadés, une qualité de surveillance authentique et une ambiance inquiétante. Éclairage nocturne réaliste, ombres naturelles, détails photoréalistes, rendu cinématographique 4K, style vidéo virale de phénomène inexpliqué capturée par caméra de sécurité réelle.", 
-    img: "/videos/caméra.jpg",
+    img: "/videos/caméra.webp",
     url: "/videos/caméra.mp4"
   },
   { 
     id: 12, title: "coucher de soleil", typeStyle: "3D", 
     prompt: "Un crabe sur un rocher observe le coucher de soleil sur une plage. La mise au point de la plage est légèrement floutée.",
-   img: "/videos/Coucher-de-soleil.jpg",
+   img: "/videos/Coucher-de-soleil.webp",
     url: "/videos/ocean.mp4"
   },
   { 
     id: 13, title: "Attaque de zombies", typeStyle: "Réaliste", 
     prompt: "Scène ultra-réaliste et cinématographique. Une immense horde de zombies envahit Times Square en pleine nuit. Des centaines de civils paniqués tentent de fuir dans toutes les directions tandis que les zombies les poursuivent à travers les rues illuminées. Véhicules abandonnés, collisions, explosions, cris et chaos total plongent la ville dans l'apocalypse. Caméra dynamique, mouvements nerveux, ambiance de film catastrophe à gros budget, éclairages urbains réalistes, détails photoréalistes, qualité 4K. Plan final spectaculaire : vue aérienne de New York. La ville entière est en flammes, d'immenses colonnes de fumée noire s'élèvent dans le ciel et recouvrent l'horizon. Plusieurs quartiers sont ravagés par les incendies. Atmosphère apocalyptique, lumière rougeoyante des flammes, destruction massive, rendu ultra-réaliste. Dernière séquence : vue depuis les berges de New York. est dévastée, enveloppée par la fumée et les incendies. Des hélicoptères survolent la ville en détresse tandis que des explosions illuminent l'horizon. Ambiance de fin du monde, cinématographie épique, détails extrêmes, qualité 4K, style blockbuster hollywoodien.", 
-    img: "/videos/attaque.jpg",
+    img: "/videos/attaque.webp",
     url: "/videos/attaque.mp4"
   },
   { 
     id: 14, title: "Volcan", typeStyle: "Animation", 
     prompt: "Plan cinématique ultra réaliste d’un monde préhistorique luxuriant au moment d’une éruption volcanique massive. La caméra débute en plan large aérien au-dessus d’une jungle extrêmement dense et détaillée. Les dinosaures au sol (T-Rex, tricératops, sauropodes) lèvent tous la tête et regardent vers le volcan en éruption au loin. Explosion volcanique spectaculaire avec projection de lave et nuage de cendres gigantesque. Pterodactyles en vol dans un ciel dramatique. Végétation très abondante, jungle humide, brouillard volumétrique et lumière dorée de fin de journée. Mouvement caméra fluide avec léger travelling avant + légère rotation vers le volcan. Style film blockbuster, hyperréaliste, profondeur de champ cinématographique, 4K.", 
-    img: "/videos/volcan.jpg",
+    img: "/videos/volcan.webp",
     url: "/videos/volcan.mp4"
   },
   { 
     id: 15, title: "Couloir sombre", typeStyle: "Réaliste", 
     prompt: "Caméra fixe dans un couloir sombre et abandonné d’une vieille maison délabrée, éclairage naturel faible venant d’une fenêtre au fond avec rideaux qui bougent légèrement. Une femme d’environ 40 ans, en pyjama sale et déchiré, rampe lentement sur un sol en bois humide vers la caméra. Elle est en état de panique extrême, respiration lourde, tremblante. Elle s’arrête soudainement, tourne lentement la tête vers l’arrière avec un regard terrifié, comme si quelque chose la poursuivait hors champ. L’ambiance est oppressante, silencieuse, tension progressive. La caméra reste stable, légère vibration réaliste type caméra tenue à la main. Style film d’horreur ultra réaliste, lumière froide, grain cinéma, 4K, profondeur de champ faible, atmosphère lourde et glauque. Durée 10 secondes, mouvement lent et continu, tension qui monte jusqu’au regard final vers l’arrière.", 
-  img: "/videos/Couloir-sombre.jpg",
+  img: "/videos/Couloir-sombre.webp",
     url: "/videos/Couloir-sombre.mp4"
   }
 ];
@@ -274,7 +274,7 @@ const [statusMsg, setStatusMsg] = useState("");
 const [user, setUser] = useState(null);
 const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 const [errorMsg, setErrorMsg] = useState(null);
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "${import.meta.env.VITE_API_URL}";
 const [itemToDelete, setItemToDelete] = useState(null);
 const [remixStrength, setRemixStrength] = useState(0.5); // 0.5 = équilibre parfait
 const [uploadedImage, setUploadedImage] = useState(null);
@@ -746,8 +746,7 @@ function getPriceDisplay(engine, duration, resolution, userPlan) {
         return `${diamondPrice} 💎`;
     }
 }
-const styles = ["Réaliste", "Cyberpunk", "Anime", "3D Render", "Studio", "Cinématique"];
-
+const styles = ["Réaliste", "Cyberpunk", "Anime", "Aquarelle",  "Animation 3D"]; 
 // 🔄 Détection de génération en cours si la page a été rafraîchie/réouverte
 useEffect(() => {
     if (!user) return;
@@ -757,7 +756,7 @@ useEffect(() => {
             // 🔑 Récupération du token Firebase de l'utilisateur
             const token = await user.getIdToken();
 
-            const res = await fetch(`http://localhost:5000/api/check-active-generation?userId=${user.uid}`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/check-active-generation?userId=${user.uid}`, {
                 headers: {
                     'Authorization': `Bearer ${token}` 
                 }
@@ -871,7 +870,7 @@ const handleFileToUrl = async (e, previewOrImageSetter, maybeImageSetter) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-const response = await fetch('http://localhost:5000/api/upload', { method: 'POST', body: formData });      if (response.ok) {
+const response = await fetch('${import.meta.env.VITE_API_URL}/api/upload', { method: 'POST', body: formData });      if (response.ok) {
         const data = await response.json();
         const publicUrl = data.url || data.filePath;
         if (publicUrl && typeof previewOrImageSetter === 'function') {
@@ -1286,24 +1285,24 @@ setActiveItem(item);
   let styleSuffix = "";
 
   // Définition des suffixes selon le style
-  switch (styleKey) {
+switch (styleKey) {
     case "cyberpunk":
-      styleSuffix = "style cyberpunk, futuriste, éclairage néon, ville de nuit, détails 8k, cinématique";
+      styleSuffix = "Cyberpunk style, futuristic, neon lighting, night city, 8k details, cinematic";
       break;
     case "anime":
     case "manga":
-      styleSuffix = "style anime japonais, illustration manga moderne, lignes nettes, couleurs vibrantes, qualité chef-d'œuvre";
+      styleSuffix = "Japanese anime style, modern manga illustration, clean lines, vibrant colors, masterpiece quality";
       break;
     case "réaliste":
     case "real":
     case "film":
-      styleSuffix = "photoréaliste, réalisme extrême, qualité cinéma hollywoodien, 8k, textures de peau détaillées, éclairage volumétrique, HDR";
+      styleSuffix = "photorealistic, extreme realism, Hollywood cinema quality, 8k, detailed skin textures, volumetric lighting, HDR";
       break;
-    case "horreur":
-      styleSuffix = "style film d'horreur, ambiance sombre et oppressante, thriller psychologique, ombres dramatiques, textures glauques, brume";
+    case "animation 3d":
+      styleSuffix = "3D animation style, Pixar aesthetic, a cute little robot holding a glowing neon crystal in a magical enchanted forest at night, volumetric lighting, bioluminescent glowing plants, highly detailed textures, expressive character design, cinematic depth of field, 8k resolution, smooth motion.";
       break;
-    case "3d":
-      styleSuffix = "rendu 3D cinématique, style Unreal Engine 5, textures ultra détaillées, global illumination, ray tracing, masterpiece";
+    case "art":
+      styleSuffix = "oil painting style, textured brushstrokes, classical fine art aesthetic, rich color palette, masterpiece canvas texture";
       break;
     case "espace":
       styleSuffix = "espace profond, ambiance cosmique, étoiles précises, qualité IMAX, éclairage spatial réaliste";
@@ -1323,7 +1322,6 @@ setActiveItem(item);
     default:
       styleSuffix = "qualité supérieure, ultra détaillé";
   }
-
   // 🛡️ Anti-doublon : On vérifie si la première expression du style est déjà dans le prompt
   const firstKeyword = styleSuffix.split(',')[0].trim().toLowerCase();
   
@@ -1674,7 +1672,7 @@ console.log("🔍 [DEBUG] Payload nettoyé envoyé au serveur :", JSON.stringify
 const currentUser = auth.currentUser;
 const token = currentUser ? await currentUser.getIdToken() : '';
 
-const res = await fetch(`http://localhost:5000/${targetRoute}`, {
+const res = await fetch(`${import.meta.env.VITE_API_URL}/${targetRoute}`, {
     method: 'POST',
     headers: { 
         'Content-Type': 'application/json',
@@ -1825,7 +1823,7 @@ if (!finalUrl && falRequestId) {
                 return;
             }
 
-            const statusRes = await fetch(`http://localhost:5000/api/status/${falRequestId}`);
+            const statusRes = await fetch(`${import.meta.env.VITE_API_URL}/api/status/${falRequestId}`);
             if (!statusRes.ok) return;
 
             const statusData = await statusRes.json();
@@ -1906,7 +1904,7 @@ const intervalId = setInterval(async () => {
             throw new Error("Le ticket d'opération renvoyé par le serveur est manquant.");
         }
 
-const statusRes = await fetch("http://localhost:5000/check-veo-status", {
+const statusRes = await fetch("${import.meta.env.VITE_API_URL}/check-veo-status", {
               method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2175,7 +2173,7 @@ console.log("🔐 Token Firebase récupéré :", !!token);
       // 🔑 ÉTAPE CLÉ AJOUTÉE : Récupération du token d'authentification Firebase
       const token = await currentUser.getIdToken();
 
-      const url = `http://localhost:5000/api/generations/${realUserId}/${targetId}`;
+      const url = `${import.meta.env.VITE_API_URL}/api/generations/${realUserId}/${targetId}`;
       
       // 🔑 ÉTAPE CLÉ AJOUTÉE : Ajout des headers avec 'Authorization'
       const response = await fetch(url, { 
@@ -2255,7 +2253,7 @@ const importLocalVideos = async () => {
         const token = user ? await user.getIdToken() : '';
 
         // On ajoute l'en-tête d'authentification pour éviter le 401
-        const response = await fetch('http://localhost:5000/api/list-videos', {
+        const response = await fetch('${import.meta.env.VITE_API_URL}/api/list-videos', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -2268,7 +2266,7 @@ const importLocalVideos = async () => {
 
         const localItems = fileNames.map(fileName => ({
             id: `local-${fileName}`, 
-            url: `http://localhost:5000/videos/${fileName}`,
+            url: `${import.meta.env.VITE_API_URL}/videos/${fileName}`,
             prompt: `Fichier local : ${fileName}`,
             type: "VIDEO",
             model: "Local",

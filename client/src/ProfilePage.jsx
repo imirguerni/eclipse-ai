@@ -3,7 +3,7 @@ import { auth, db } from './firebase'; // Vérifie que le chemin est correct
 import { deleteUser } from 'firebase/auth';
 import { doc, deleteDoc, addDoc, collection } from 'firebase/firestore'; // ✅ Ajout addDoc et collection
 import emailjs from '@emailjs/browser'; // ✅ Ajout de la bibliothèque d'envoi
-import profileBg from './assets/profile-bg.png';
+import profileBg from './assets/profile-bg.webp';
 const img = new Image();
 img.src = profileBg;
 const ProfilePage = ({ user, userPlan, tokens, packTokens, resetDate, expiryDate, onBack, onShowPricing }) => {
@@ -107,7 +107,7 @@ const confirmCancelSubscription = async () => {
         const token = await currentUser.getIdToken();
 
         // 3. On fait le fetch en envoyant le token dans les headers
-        const response = await fetch('http://localhost:5000/cancel-subscription', {
+        const response = await fetch('${import.meta.env.VITE_API_URL}/cancel-subscription', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

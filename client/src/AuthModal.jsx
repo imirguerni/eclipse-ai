@@ -131,7 +131,7 @@ const handleEmailAuth = async (e) => {
       const firebaseUser = userCredential.user;
 
       // 🚀 ON ENVOIE LE EMAIL ET LE USERID AU BACKEND
-      const response = await fetch('http://localhost:5000/api/send-otp', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -173,7 +173,7 @@ const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      const response = await fetch('http://localhost:5000/api/verify-otp', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/api/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, code: otpCode.trim() })

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import femmeBg from './assets/Femme.png'; 
+import femmeBg from './assets/Femme.webp'; 
 import * as ort from 'onnxruntime-web'; 
 
 // Configuration globale d'ONNX Runtime pour optimiser agressivement le WebGPU

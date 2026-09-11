@@ -33,7 +33,7 @@ const Success = ({ onBack }) => {
 
                 console.log("Validation en cours pour la session:", sessionId);
                 
-                const response = await fetch(`http://localhost:5000/verify-payment?session_id=${sessionId}`, {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/verify-payment?session_id=${sessionId}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

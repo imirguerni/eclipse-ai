@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './LandingPage.css';
-import logoEclipse from './assets/logo-eclipse.jpg';
-import logoEclair from './assets/logo-token.jpg';
+import logoEclipse from './assets/logo-eclipse.webp';
+import logoEclair from './assets/logo-token.webp';
 
 import Navbar from './Navbar';
 
@@ -57,24 +57,24 @@ const replaceLibrary = [
     title: "La liberté créative absolue",
     desc: "Remplacer n’importe quel objet devient un jeu d'enfant. Importez votre photo, décrivez votre vision, et l'IA génère un rendu réaliste en quelques secondes. Plus besoin d'outils complexes : votre imagination est la seule limite.",
     prompt: "Retire le chat en arriere plan",
-    source: "/videos/12.jpg",
-    result: "/videos/11.jpg"
+    source: "/videos/12.webp",
+    result: "/videos/11.webp"
   },
   {
     id: 2,
     title: "Design d'intérieur : Mobilier IA",
     desc: "Réinventez votre espace sans effort. Remplacez un vieux meuble par une pièce moderne en gardant l'éclairage naturel.",
     prompt: "Retire la paille et le citron.",
-    source: "/videos/13.jpg", // Change par tes noms de fichiers
-    result: "/videos/14.jpg"
+    source: "/videos/13.webp", // Change par tes noms de fichiers
+    result: "/videos/14.webp"
   },
   {
     id: 3,
     title: "Automobile : Personnalisation",
     desc: "Visualisez n'importe quelle modification sur un véhicule. Changez la couleur ou les jantes avec une précision chirurgicale.",
     prompt: "Retire la pelle",
-    source: "/videos/15.jpg", // Change par tes noms de fichiers
-    result: "/videos/16.jpg"
+    source: "/videos/15.webp", // Change par tes noms de fichiers
+    result: "/videos/16.webp"
   }
 ];
   {/* ======================================================== */}
@@ -87,7 +87,7 @@ const captureControlLibrary = [
     title: "Contrôle précis des mouvements de caméra",
     desc: "Définissez des trajectoires de caméra fluides (zoom, panoramique, travelling) pour donner une dimension professionnelle à vos scènes.",
     prompt: "Anime entre 2 images.",
-    source: "/videos/model.png", // Remplace par tes chemins d'images/sources
+    source: "/videos/model.webp", // Remplace par tes chemins d'images/sources
     motionVid: "/videos/mouvement2.mp4",
     result: "/videos/mouvement1.mp4"
 
@@ -104,8 +104,8 @@ const startEndLibrary = [
     title: "Cohérence totale du début à la fin",
     desc: "Définissez une image de départ et une image de fin. L'IA génère toute la transition fluide entre les deux cadres pour un contrôle artistique absolu.",
     prompt: "Transition fluide entre 2 images. Camera en mouvement, elle avance jusqu'a sa victime.",
-    startImg: "/videos/tueuse1.png", // Remplace par tes chemins d'images
-    endImg: "/videos/tueuse2.png",     // Remplace par tes chemins d'images
+    startImg: "/videos/tueuse1.webp", 
+    endImg: "/videos/tueuse2.webp",    
     resultVid: "/videos/tueuse3.mp4"
   },
   {
@@ -113,8 +113,8 @@ const startEndLibrary = [
     title: "Métamorphose fluide",
     desc: "Guidez l'évolution d'un personnage ou d'un décor d'un état A à un état B sans rupture visuelle.",
     prompt: "Transition entre deux images : elle discute complètement bourrée, et puis elle fait une grimasse et vomit.",
-    startImg: "/videos/femme1.png",
-    endImg: "/videos/femme2.png",
+    startImg: "/videos/femme1.webp",
+    endImg: "/videos/femme2.webp",
     resultVid: "/videos/femme3.mp4"
       },
   {
@@ -122,8 +122,8 @@ const startEndLibrary = [
     title: "Métamorphose fluide",
     desc: "Guidez l'évolution d'un personnage ou d'un décor d'un état A à un état B sans rupture visuelle.",
     prompt: "Transition entre deux images : elle se met en position de combat",
-    startImg: "/videos/combat1.png",
-    endImg: "/videos/combat2.png",
+    startImg: "/videos/combat1.webp",
+    endImg: "/videos/combat2.webp",
     resultVid: "/videos/combat3.mp4"
   }
 ];
@@ -134,25 +134,25 @@ const startEndLibrary = [
 const imageToVideoLibrary = [
   { 
     id: 1, 
-    img: "/videos/videoimage.jpg", 
+    img: "/videos/videoimage.webp", 
     vid: "/videos/videoimage.mp4",
     prompt: "Le crabe qui dance." 
   },
   { 
     id: 2, 
-    img: "/videos/autre-video.jpg", 
+    img: "/videos/autre-video.webp", 
     vid: "/videos/autre-video.mp4",
     prompt: "Une femme désorientée, au regard égaré, semblant perdue." 
   },
   { 
     id: 3, 
-    img: "/videos/encore-une.jpg", 
+    img: "/videos/encore-une.webp", 
     vid: "/videos/encore-une.mp4",
     prompt: "Travelling avant jusqu’au gros plan du visage de la femme, qui semble exténuée." 
      },
   { 
     id: 4, 
-    img: "/videos/punk1.png", 
+    img: "/videos/punk1.webp", 
     vid: "/videos/punk2.mp4",
     prompt: "anime cette image : elle fume et regarde la camera" 
   },
@@ -350,7 +350,22 @@ const motionVideoRef = React.useRef(null);
 
         <div className="video-showcase-container">
           <div className="hero-mockup-modern">
-            <video src={backgroundVideoUrl} autoPlay muted playsInline loop className="main-video" />
+            <video 
+  src={backgroundVideoUrl} 
+  autoPlay 
+  muted 
+  playsInline 
+  preload="auto"
+  style={{ willChange: 'transform' }}
+  className="main-video" 
+  onTimeUpdate={(e) => {
+    const v = e.target;
+    if (v.duration && v.currentTime >= v.duration - 0.3) {
+      v.currentTime = 0;
+      v.play().catch(() => {});
+    }
+  }}
+/>
           </div>
 
           <div className="video-reflection"></div>
@@ -402,6 +417,7 @@ const motionVideoRef = React.useRef(null);
           </div>
         </div>
       </header>
+      
 {/* SÉPARATEUR EN V - EFFET LASER DYNAMIQUE */}
 <div className="section-divider-v">
   <svg viewBox="0 0 1440 100" preserveAspectRatio="none">
@@ -445,6 +461,7 @@ const motionVideoRef = React.useRef(null);
           </div>
         </div>
       </section>
+
    {/* PREMIER TRAIT LASER - ÉCLAT RENFORCÉ */}
 <div className="section-line-divider">
   <svg viewBox="0 0 1440 20" preserveAspectRatio="none" style={{ display: 'block' }}>
@@ -478,8 +495,9 @@ const motionVideoRef = React.useRef(null);
  {/* --- SECTION IMAGE TO VIDEO --- */}
     <section className="image-to-video-section">
       <div className="img-vid-container">
+
         {/* TITRE HARMONISÉ (Même taille que les autres) */}
-        <div className="social-footer-text section-spacing">
+<div className="social-footer-text section-spacing" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginBottom: '40px' }}>  
           <h2 className="social-main-title fade-in-up">
             De l'image à la <span className="purple-glow-text">vidéo cinématique</span>
           </h2>
@@ -535,12 +553,81 @@ const motionVideoRef = React.useRef(null);
       </svg><div className="laser-glow-dot"></div>
     </div>
 
+
+{/* --- SECTION IMAGE DE DÉBUT ET DE FIN  --- */}
+      <section className="image-to-video-section" style={{ marginTop: '-30px' }}>
+        <div className="img-vid-container">
+<div className="social-footer-text section-spacing" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginBottom: '40px' }}>    
+          <h2 className="social-main-title fade-in-up">
+              {startEndLibrary[startEndIndex].title}
+            </h2>
+            <p className="social-subtitle fade-in-up-delay">
+              {startEndLibrary[startEndIndex].desc}
+            </p>
+          </div>
+
+          <div className="library-slider-wrapper">
+            {startEndLibrary.length > 1 && <button className="lib-nav-btn" onClick={prevStartEnd}>‹</button>}
+            <div className="deevid-style-wrapper">
+              <div className="media-comparison-row" style={{ display: 'flex', gap: '15px', justifyContent: 'center', alignItems: 'center' }}>
+                
+                {/* 1. Image Début */}
+                <div className="comparison-column">
+                  <div className="compare-box">
+                    <div className="box-label">IMAGE DÉBUT</div>
+                    <img key={`se-start-${startEndIndex}`} src={startEndLibrary[startEndIndex].startImg} alt="Début" className="compare-media animated-media" />
+                  </div>
+                </div>
+
+                <div className="compare-separator"><div className="sep-icon">+</div></div>
+
+                {/* 2. Image Fin */}
+                <div className="comparison-column">
+                  <div className="compare-box">
+                    <div className="box-label">IMAGE FIN</div>
+                    <img key={`se-end-${startEndIndex}`} src={startEndLibrary[startEndIndex].endImg} alt="Fin" className="compare-media animated-media" />
+                  </div>
+                </div>
+
+                <div className="compare-separator"><div className="sep-icon">»</div></div>
+
+                {/* 3. Résultat Vidéo */}
+                <div className="comparison-column">
+                  <div className="compare-box">
+                    <div className="box-label">RÉSULTAT TRANSITION</div>
+                    <video key={`se-res-${startEndIndex}`} src={startEndLibrary[startEndIndex].resultVid} autoPlay muted loop playsInline className="compare-media animated-media" />
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="prompt-instruction-container" style={{ marginTop: '20px' }}>
+                <div className="prompt-pill-display">
+                  <span className="prompt-badge">PROMPT</span>
+                  <p key={`se-txt-${startEndIndex}`} className="instruction-text-styled fade-in-text">
+                    "{startEndLibrary[startEndIndex].prompt}"
+                  </p>
+                </div>
+              </div>
+            </div>
+            {startEndLibrary.length > 1 && <button className="lib-nav-btn" onClick={nextStartEnd}>›</button>}
+          </div>
+
+          {startEndLibrary.length > 1 && (
+            <div className="lib-counter" style={{ margin: '15px auto 0', width: 'fit-content', padding: '6px 16px', borderRadius: '20px', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#a855f7', fontWeight: 'bold' }}>
+              Exemple {startEndIndex + 1} / {startEndLibrary.length}
+            </div>
+          )}
+        </div>
+      </section>
+
+
 {/* --- SECTION CAPTURE CONTROL --- */}
-<section className="image-to-video-section" style={{ marginTop: '60px' }}>
+<section className="image-to-video-section" style={{ marginTop: '-30px' }}>
   <div className="img-vid-container">
     
-    <div className="social-footer-text section-spacing" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-      <h2 className="social-main-title fade-in-up">
+<div className="social-footer-text section-spacing" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginBottom: '40px' }}> 
+       <h2 className="social-main-title fade-in-up">
         {captureControlLibrary[captureIndex].title}
       </h2>
       <p className="social-subtitle fade-in-up-delay">
@@ -566,8 +653,7 @@ const motionVideoRef = React.useRef(null);
           </div>
 
           <div className="compare-separator"><div className="sep-icon">+</div></div>
-
-          {/* 2. Modèle de mouvement (Synchro avec ref) */}
+{/* 2. Modèle de mouvement (Synchro avec ref) */}
           <div className="comparison-column">
             <div className="compare-box">
               <div className="box-label">MODÈLE DE MOUVEMENT</div>
@@ -576,7 +662,9 @@ const motionVideoRef = React.useRef(null);
                 key={`cap-motion-${captureIndex}`} 
                 src={captureControlLibrary[captureIndex].motionVid} 
                 autoPlay muted loop playsInline 
+                preload="auto"
                 className="compare-media animated-media" 
+                style={{ willChange: 'transform' }}
               />
             </div>
           </div>
@@ -592,7 +680,9 @@ const motionVideoRef = React.useRef(null);
                 key={`cap-res-${captureIndex}`} 
                 src={captureControlLibrary[captureIndex].result} 
                 autoPlay muted loop playsInline 
+                preload="auto"
                 className="compare-media animated-media" 
+                style={{ willChange: 'transform' }}
               />
             </div>
           </div>
@@ -621,7 +711,7 @@ const motionVideoRef = React.useRef(null);
 </section>
 
 {/* --- SECTION SOCIAL MEDIA & REMPLACEMENT IA --- */}
-    <section className="social-media-section" style={{ marginTop: '80px' }}>
+    <section className="social-media-section" style={{ marginTop: '60px' }}>
       <div className="social-content">
         
         {/* TITRE PRINCIPAL DE LA SECTION */}
@@ -699,13 +789,14 @@ const motionVideoRef = React.useRef(null);
         </div>
 
        {/* TITRE DE FIN DE SECTION */}
-        <div className="social-footer-text" style={{ marginTop: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-          <h2 className="social-main-title fade-in-up">
-            Dominez l'attention sur les <span className="purple-glow-text">réseaux sociaux</span>
-          </h2>
-          <p className="social-subtitle fade-in-up-delay">
-            Transformez vos idées en contenus viraux optimisés pour TikTok et Instagram.
-          </p>
+<div className="social-footer-text" style={{ marginTop: '140px', marginBottom: '30px' }}>
+      <h2 className="social-main-title">
+        Dominez l'attention sur les <span className="purple-glow-text">réseaux sociaux</span>
+      </h2>
+      <p className="social-subtitle">
+        Transformez vos idées en contenus viraux optimisés pour TikTok et Instagram.
+      </p>
+    
 
           {/* --- BLOC DES MINIATURES --- */}
           <div className="tiktok-scroll-container">
@@ -726,8 +817,9 @@ const motionVideoRef = React.useRef(null);
             </div>
           </div>
 
-          <button className="neon-download-btn" onClick={onStart} style={{ marginTop: '40px' }}>
+          <button className="neon-download-btn" onClick={onStart} style={{ marginTop: '50px' }}>
             Générer ✨
+            
           </button>
         </div>
       </div>
