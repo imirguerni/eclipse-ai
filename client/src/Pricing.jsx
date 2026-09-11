@@ -85,13 +85,7 @@ const [qty, setQty] = useState(1000);
         </div>
       </div>
 
-  <input 
-  type="range" min="100" max="10000" step="100" 
-  value={qty} 
-  onInput={(e) => setQty(parseInt(e.target.value))} 
-  className="custom-slider"
-  style={{ width: '100%', maxWidth: '600px', cursor: 'pointer', touchAction: 'pan-y' }}
-/>
+<input type="range" min="100" max="10000" step="100" value={qty} onChange={(e) => setQty(parseInt(e.target.value))} className="custom-slider" style={{ width: '100%', maxWidth: '600px', cursor: 'pointer', touchAction: 'pan-y' }} />
     
 
       <div className="price-checkout-zone" style={{ marginTop: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
@@ -450,11 +444,15 @@ const plans = {
     }
   };
 
-  return (
-    <div className="pricing-page">
-      <button className="back-button-pricing" onClick={onBack}>← Retour au Studio</button>
 
-      <div className="pricing-header">
+ return (
+    <div className="pricing-page" style={{ paddingTop: '20px' }}>
+      <div style={{ paddingLeft: '20px', marginBottom: '-10px' }}>
+        <button className="back-button-pricing" onClick={onBack}>← Retour</button>
+      </div>
+
+
+      <div className="pricing-header" style={{ marginTop: '60px' }}>
         <h1>Choisissez votre puissance</h1>
         <p>Propulsez votre créativité avec les meilleurs moteurs d'IA mondiaux.</p>
         <div className="billing-toggle">
