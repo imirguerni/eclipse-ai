@@ -754,3 +754,16 @@
     max-width: 320px;
   }
 }
+/* --- OPTIMISATION FLUIDITÉ SLIDER --- */
+.custom-slider {
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+.custom-slider::-webkit-slider-thumb {
+  transition: transform 0.1s ease;
+}
+
+.custom-slider::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+}

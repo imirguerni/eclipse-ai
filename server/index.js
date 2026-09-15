@@ -145,11 +145,35 @@ app.use(helmet({
     contentSecurityPolicy: false
 }));
 
-app.use(cors({ 
-    origin: FRONTEND_URL,
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://www.ovortex.com',
+    'https://ovortex.com'
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+
+        // Autorise les requêtes sans Origin
+        // (certains outils, tests serveur, etc.)
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        console.warn('🚫 CORS bloqué pour :', origin);
+        return callback(new Error('Origin non autorisée par CORS'));
+    },
+
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
+
+
 
 // 2. RATE LIMITER (Protection contre le spam et les attaques par force brute)
 const limiter = rateLimit({
@@ -1593,7 +1617,7 @@ let finalInput = { prompt, aspect_ratio: aspect_ratio || "16:9", resolution: req
 // 🛠️ CORRECTION NGROK : Remplacement de localhost par l'URL publique ngrok pour Fal.ai
 const localVideoUrl = req.body.video_url || req.body.videoSource || req.body.videoUrl;
 if (localVideoUrl && localVideoUrl.includes('localhost:5000')) {
-    const ngrokBaseUrl = 'https://monoxide-viewless-placate.ngrok-free.dev';
+const ngrokBaseUrl = process.env.PUBLIC_API_URL || 'https://eclipse-ai.onrender.com';
     finalInput.video_url = localVideoUrl.replace('http://localhost:5000', ngrokBaseUrl);
 }
 
@@ -1655,7 +1679,7 @@ if (
         if (url.includes("localhost:5000")) {
             return url.replace(
                 "http://localhost:5000",
-                "https://monoxide-viewless-placate.ngrok-free.dev"
+                "https://eclipse-ai.onrender.com"
             );
         }
 
@@ -2828,7 +2852,7 @@ else if (
         if (url.includes("localhost:5000")) {
             return url.replace(
                 "http://localhost:5000",
-                "https://monoxide-viewless-placate.ngrok-free.dev"
+                "https://eclipse-ai.onrender.com"
             );
         }
         return url;
@@ -3171,7 +3195,7 @@ else if (engineId.includes("pixverse6")) {
 
     // 🛠️ 2. CONVERSION NGROK AUTOMATIQUE : On transforme localhost en URL publique sécurisée
     if (sourceVideo && sourceVideo.includes('localhost:5000')) {
-        sourceVideo = sourceVideo.replace('http://localhost:5000', 'https://monoxide-viewless-placate.ngrok-free.dev');
+        sourceVideo = sourceVideo.replace('http://localhost:5000', 'https://eclipse-ai.onrender.com');
     }
 
     // 3. On affiche les logs mis à jour
@@ -3767,7 +3791,7 @@ else if (
     );
 
     console.log("==============================================");
-const PUBLIC_URL = process.env.PUBLIC_API_URL || "https://monoxide-viewless-placate.ngrok-free.dev";
+const PUBLIC_URL = process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com";
 
     const toPublicUrl = (url) => {
         if (!url) return null;

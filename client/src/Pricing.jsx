@@ -79,9 +79,12 @@ const [qty, setQty] = useState(1000);
         )}
       </div>
       
-      <div className="slider-value-display" style={{ margin: '30px 0' }}>
-        <div style={{ fontSize: '3.5rem', fontWeight: '800', color: '#fff', textShadow: '0 0 25px rgba(168, 85, 247, 0.5)' }}>
-          {qty.toLocaleString()} <span style={{ fontSize: '1.1rem', color: '#a855f7', verticalAlign: 'middle', letterSpacing: '2px' }}>DIAMANTS</span>
+   <div className="slider-value-display" style={{ margin: '30px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: '3.5rem', fontWeight: '800', color: '#fff', textShadow: '0 0 25px rgba(168, 85, 247, 0.5)', lineHeight: '1.1' }}>
+          {qty.toLocaleString()}
+        </div>
+        <div style={{ fontSize: '1.1rem', color: '#a855f7', letterSpacing: '2px', marginTop: '5px', fontWeight: '700' }}>
+          DIAMANTS
         </div>
       </div>
 

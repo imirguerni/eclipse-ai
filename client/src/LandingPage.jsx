@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './LandingPage.css';
 import logoEclipse from './assets/logo-eclipse.webp';
 import logoEclair from './assets/logo-token.webp';
@@ -14,6 +14,43 @@ import seedanceLogo from './assets/seedance.png';
 import fluxLogo from './assets/flux.png';
 import geminiLogo from './assets/gemini.png';
 import { Link } from 'react-router-dom';
+
+const LazyTikTokVideo = ({ src, className }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (videoRef.current) {
+      observer.observe(videoRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={videoRef} className={className}>
+      <video 
+        src={isVisible ? src : undefined} 
+        autoPlay={isVisible}
+        muted 
+        loop 
+        playsInline 
+        preload="none"
+        className="tiktok-video-element"
+      />
+    </div>
+  );
+};
 
 
 const LandingPage = ({ user, tokens, packTokens, logoEclair, onStart, onLogout, onShowTerms, onShowPrivacy, onShowCgv, onShowLegal, onShowPricing, onPurchase }) => {
@@ -42,12 +79,12 @@ const LandingPage = ({ user, tokens, packTokens, logoEclair, onStart, onLogout, 
   };
 
 // NE RAJOUTE PAS D'AUTRES "import React" EN DESSOUS !
-const backgroundVideoUrl = "/videos/extrait1.mp4"; 
+const backgroundVideoUrl = "/videos/extrait1.webm"; 
 
 const heroVideos = [
-  { id: 1, videoUrl: "/videos/caméra.mp4", prompt: "Scène ultra-réaliste : un homme s'approche d'un bonhomme de neige et, soudain, un chat surgit et l'attaque au visage...", model: "IA", time: "4.2s" },
-  { id: 2, videoUrl: "/videos/zombies.mp4", prompt: "Scène ultra-réaliste de zombies dans les rues de New York...", model: "IA", time: "3.8s" },
-  { id: 3, videoUrl: "/videos/anime2.mp4", prompt: "Un anime style, fille aux cheveux roses courts assise à table avec un verre de jus d'orange et une part de gâteau aux fraises.", model: "IA", time: "4s" },
+  { id: 1, videoUrl: "/videos/caméra.webm", prompt: "Scène ultra-réaliste : un homme s'approche d'un bonhomme de neige et, soudain, un chat surgit et l'attaque au visage...", model: "IA", time: "4.2s" },
+  { id: 2, videoUrl: "/videos/zombies.webm", prompt: "Scène ultra-réaliste de zombies dans les rues de New York...", model: "IA", time: "3.8s" },
+  { id: 3, videoUrl: "/videos/anime2.webm", prompt: "Un anime style, fille aux cheveux roses courts assise à table avec un verre de jus d'orange et une part de gâteau aux fraises.", model: "IA", time: "4s" },
 
 ];
 
@@ -88,8 +125,8 @@ const captureControlLibrary = [
     desc: "Définissez des trajectoires de caméra fluides (zoom, panoramique, travelling) pour donner une dimension professionnelle à vos scènes.",
     prompt: "Anime entre 2 images.",
     source: "/videos/model.webp", // Remplace par tes chemins d'images/sources
-    motionVid: "/videos/mouvement2.mp4",
-    result: "/videos/mouvement1.mp4"
+    motionVid: "/videos/mouvement2.webm",
+    result: "/videos/mouvement1.webm"
 
   }
 ];
@@ -106,7 +143,7 @@ const startEndLibrary = [
     prompt: "Transition fluide entre 2 images. Camera en mouvement, elle avance jusqu'a sa victime.",
     startImg: "/videos/tueuse1.webp", 
     endImg: "/videos/tueuse2.webp",    
-    resultVid: "/videos/tueuse3.mp4"
+    resultVid: "/videos/tueuse3.webm"
   },
   {
     id: 2,
@@ -115,7 +152,7 @@ const startEndLibrary = [
     prompt: "Transition entre deux images : elle discute complètement bourrée, et puis elle fait une grimasse et vomit.",
     startImg: "/videos/femme1.webp",
     endImg: "/videos/femme2.webp",
-    resultVid: "/videos/femme3.mp4"
+    resultVid: "/videos/femme3.webm"
       },
   {
     id: 3,
@@ -124,7 +161,7 @@ const startEndLibrary = [
     prompt: "Transition entre deux images : elle se met en position de combat",
     startImg: "/videos/combat1.webp",
     endImg: "/videos/combat2.webp",
-    resultVid: "/videos/combat3.mp4"
+    resultVid: "/videos/combat3.webm"
   }
 ];
    {/* ======================================================== */}
@@ -135,25 +172,25 @@ const imageToVideoLibrary = [
   { 
     id: 1, 
     img: "/videos/videoimage.webp", 
-    vid: "/videos/videoimage.mp4",
+    vid: "/videos/videoimage.webm",
     prompt: "Le crabe qui dance." 
   },
   { 
     id: 2, 
     img: "/videos/autre-video.webp", 
-    vid: "/videos/autre-video.mp4",
+    vid: "/videos/autre-video.webm",
     prompt: "Une femme désorientée, au regard égaré, semblant perdue." 
   },
   { 
     id: 3, 
     img: "/videos/encore-une.webp", 
-    vid: "/videos/encore-une.mp4",
+    vid: "/videos/encore-une.webm",
     prompt: "Travelling avant jusqu’au gros plan du visage de la femme, qui semble exténuée." 
      },
   { 
     id: 4, 
     img: "/videos/punk1.webp", 
-    vid: "/videos/punk2.mp4",
+    vid: "/videos/punk2.webm",
     prompt: "anime cette image : elle fume et regarde la camera" 
   },
 ];
@@ -210,11 +247,11 @@ const faqData = [
   };
 
   const showcaseVideos = [
-  { id: 101, videoUrl: "/videos/3d.mp4", prompt: "Cyberpunk street market..." },
-  { id: 102, videoUrl: "/videos/anime.mp4", prompt: "Anime landscape..." },
-  { id: 103, videoUrl: "/videos/musée.mp4", prompt: "Macro nature shot..." },
-  { id: 104, videoUrl: "/videos/Astronaute.mp4", prompt: "Astronaut floating in nebula..." },
-  { id: 105, videoUrl: "/videos/ocean.mp4", prompt: "Deep sea glowing jellyfish..." }
+  { id: 101, videoUrl: "/videos/3d.webm", prompt: "Cyberpunk street market..." },
+  { id: 102, videoUrl: "/videos/anime.webm", prompt: "Anime landscape..." },
+  { id: 103, videoUrl: "/videos/musée.webm", prompt: "Macro nature shot..." },
+  { id: 104, videoUrl: "/videos/Astronaute.webm", prompt: "Astronaut floating in nebula..." },
+  { id: 105, videoUrl: "/videos/ocean.webm", prompt: "Deep sea glowing jellyfish..." }
 ];
 const motionVideoRef = React.useRef(null);
   const resultVideoRef = React.useRef(null);
@@ -797,25 +834,18 @@ const motionVideoRef = React.useRef(null);
         Transformez vos idées en contenus viraux optimisés pour TikTok et Instagram.
       </p>
     
-
-          {/* --- BLOC DES MINIATURES --- */}
-          <div className="tiktok-scroll-container">
-            <div className="tiktok-track">
-              {[1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7].map((id, index) => (
-                <div key={index} className="tiktok-miniature">
-                  <video 
-                    src={`/videos/tiktok-${id}.mp4`} 
-                    autoPlay 
-                    muted 
-                    loop 
-                    playsInline 
-                    preload="metadata"
-                    className="tiktok-video-element"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+{/* --- BLOC DES MINIATURES --- */}
+<div className="tiktok-scroll-container">
+  <div className="tiktok-track">
+    {[1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7].map((id, index) => (
+      <LazyTikTokVideo 
+        key={index}
+        src={`/videos/tiktok-${id}.webm`}
+        className="tiktok-miniature"
+      />
+    ))}
+  </div>
+</div>
 
           <button className="neon-download-btn" onClick={onStart} style={{ marginTop: '50px' }}>
             Générer ✨
@@ -1024,13 +1054,13 @@ const motionVideoRef = React.useRef(null);
         </div>
         <div className="footer-col">
           <h4>Communauté</h4>
-          <a href="https://www.instagram.com/eclipse.studio.ia?igsi=cWlqZHM0cmFhdnN0" target="_blank" rel="noopener noreferrer">Instagram</a>
+          <a href="https://www.instagram.com/ovortex_ai?stkn=cWlqZHM0cmFhdnN0" target="_blank" rel="noopener noreferrer">Instagram</a>
         </div>
       </div>
     </div>
     
     <div className="footer-bottom">
-      <p>© 2026 Eclipse AI. Tous droits réservés.</p>
+      <p>© 2026 Ovortex. Tous droits réservés.</p>
       <span className="api-mention">Propulsé par les moteurs de génération leaders du marché.</span>
     </div>
   </div>

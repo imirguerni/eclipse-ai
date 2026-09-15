@@ -125,91 +125,91 @@ const VIDEO_SUGGESTIONS = [
     id: 1, title: "crépuscule", typeStyle: "MANGA", 
     prompt: "Samouraï solitaire en armure détaillée debout sur une colline d’herbes hautes, face à un coucher de soleil rouge intense sur une ville japonaise lointaine. Le vent souffle fort, faisant bouger ses vêtements et les herbes. Atmosphère épique et mélancolique, ciel dramatique avec nuages très lumineux. Caméra : départ en plan moyen derrière le samouraï, puis travelling arrière rapide et fluide révélant la vallée et la ville, suivi d’une légère rotation orbitale de 180° autour du personnage pour un effet cinématique final. Lumière golden hour très contrastée, lens flare réaliste, profondeur de champ cinématographique, rendu ultra réaliste, style film japonais blockbuster.", 
    img: "/videos/crépuscule.webp", 
-    url: "/videos/crépuscule.mp4" 
+    url: "/videos/crépuscule.webm" 
   },
   { 
     id: 2, title: "Futuriste", typeStyle: "Cyberpunk", 
     prompt: "Jeune femme cyberpunk aux cheveux violets marchant dans une ruelle coréenne humide et animée. Début en très gros plan sur ses bottes qui avancent lentement sur l'asphalte mouillé, reflets des néons colorés visibles dans les flaques d'eau. Caméra en travelling arrière fluide suivant ses pas. Après une seconde, la caméra remonte progressivement le long de ses jambes, de son équipement tactique et de son manteau usé. Elle continue de marcher avec assurance, mains dans les poches. La caméra poursuit son mouvement vertical jusqu'à son visage, révélant en arrière plan toute la ruelle, les enseignes coréennes lumineuses, la vapeur sortant des bouches d'égout et les passants en arrière-plan. Ambiance cyberpunk réaliste, mouvements naturels, lumière cinématographique, profondeur de champ réaliste, reflets sur le sol mouillé, ultra réaliste, 8K, qualité film, détails extrêmes.", 
     img: "/videos/Cyberpunk.webp", 
-    url: "/videos/Cyberpunk.mp4" 
+    url: "/videos/Cyberpunk.webm" 
   },
   { 
     id: 3, title: "Forêt sinistre", typeStyle: "Réaliste", 
     prompt: "Au cœur d'une forêt sombre et brumeuse en pleine nuit, une femme terrifiée court à pleine vitesse sur un étroit sentier boueux serpentant entre des arbres morts et des branches enchevêtrées. Ses vêtements sont sales et déchirés, son visage couvert de sueur, de boue et marqué par la peur. Elle serre fermement une lampe torche dont le faisceau perce l'épais brouillard. Mouvement de course naturel et réaliste, placement précis des pieds, transfert du poids du corps fidèle à la réalité, respiration subtile, cheveux et vêtements réagissant naturellement à chacun de ses mouvements. Aucun ralenti. La caméra débute par un travelling en contre-plongée dramatique, au ras du sol, suivant la femme alors qu'elle court vers l'objectif. Racines humides, éclaboussures de boue et branches cassées défilent rapidement au premier plan. Le faisceau de la lampe torche balaie les arbres, créant des ombres mouvantes et un éclairage volumétrique spectaculaire à travers la brume. Alors qu'elle poursuit sa fuite, la caméra s'élève progressivement et recule en douceur, passant d'une poursuite en contre-plongée à une vue aérienne de plus en plus haute. La forêt se dévoile sous elle, révélant l'immensité sauvage et isolée qui l'entoure. La femme devient une petite silhouette perdue dans l'obscurité, fuyant désespérément à travers ce paysage inquiétant. Grand plan aérien cinématographique, échelle épique, épais brouillard dérivant entre les arbres, profondeur atmosphérique réaliste, lumière lunaire filtrant naturellement à travers la canopée. Ambiance de thriller horrifique ultra réaliste, éclairage cinématographique, brouillard volumétrique, éclairage réaliste de la lampe torche, mouvements de caméra naturels, environnement forestier richement détaillé, reflets sur le sol humide, textures photoréalistes, large plage dynamique (HDR), tension dramatique permanente, qualité visuelle digne d'une superproduction hollywoodienne, rendu 8K, niveau de détail extrême, mise en scène immersive d'horreur cinématographique.", 
       img: "/videos/Foret-sombre.webp", 
-    url: "/videos/Foret-sombre.mp4" 
+    url: "/videos/Foret-sombre.webm" 
   },
   { 
     id: 4, title: "Cours", typeStyle: "3D", 
     prompt: "Plan cinématographique ultra dynamique dans une forêt dense transformée en parcours de compétition. Deux lapins anthropomorphes très détaillés s’affrontent en course sprint sur un sentier de terre étroit. Le lapin blanc en t-shirt bleu et sac à dos est en tête, poursuivi de près par le lapin gris en t-shirt rouge, expression de détermination intense. Caméra basse au sol en travelling avant très rapide, légèrement tremblée comme une caméra de course professionnelle. Accent fort sur la vitesse, motion blur sur les jambes et les bras, poussière et particules de terre qui explosent à chaque foulée. Végétation luxuriante sur les côtés, spectateurs animaux flous en arrière-plan (effet profondeur de champ). Style sport extrême, ambiance de finale de course, lumière dorée dramatique filtrant à travers les arbres, rendu 3D ultra réaliste type film d’animation haut budget, tension et énergie maximale.", 
     img: "/videos/Cours.webp", 
-    url: "/videos/Cours.mp4" 
+    url: "/videos/Cours.webm" 
   },
   { 
     id: 5, title: "Astronaute", typeStyle: "ESPACE", 
     prompt: "Un astronaute solitaire flotte dans l'espace profond au-dessus de la Terre. La caméra démarre en plan extrêmement large, montrant l'immensité du cosmos, la courbure de la Terre et l'astronaute minuscule au centre du cadre. La caméra avance progressivement vers l'astronaute avec un travelling avant fluide et rapide. À mesure qu'elle se rapproche, les détails de la combinaison deviennent visibles, les reflets du Soleil apparaissent sur la visière. Arrivée à distance moyenne, la caméra effectue une rotation orbitale de 180 degrés autour de l'astronaute, révélant successivement la Terre en arrière-plan puis le vide spatial étoilé. Mouvement parfaitement stable, sensation de gravité zéro, éclairage réaliste de l'espace, reflets physiques, qualité IMAX, photoréalisme extrême, profondeur de champ cinématographique, rendu 8K, style documentaire spatial à gros budget, motion blur naturel, détails ultra-réalistes, atmosphère épique et contemplative.", 
  img: "/videos/Astronaute.webp", 
-    url: "/videos/Astronaute.mp4"
+    url: "/videos/Astronaute.webm"
   },
   { 
     id: 6, title: "Parc", typeStyle: "ANIME", 
     prompt: "Style animé : une femme assise sur un banc dans un parc, un chat monte sur ses genoux et elle le caresse.", 
     img: "/videos/Anime1.webp",
-    url: "/videos/Anime1.mp4"
+    url: "/videos/Anime1.webm"
   },
   { 
     id: 7, title: "Traveling", typeStyle: "Réaliste", 
     prompt: "Scene ultra réaliste : Dans une chambre d’hôtel luxueuse, légèrement désordonnée. Une femme blonde est assise sur le lit, le maquillage noir recouvrant une grande partie de ses yeux. Travelling avant jusqu’au gros plan de son visage, qui semble exténué.", 
      img: "/videos/encore-une.webp",
-    url: "/videos/encore-une.mp4"
+    url: "/videos/encore-une.webm"
   },
   { 
     id: 8, title: "Lac montagneuse", typeStyle: "Film", 
     prompt: "Fluide doré en mouvement, ondes magnétiques, luxe, abstrait 3D", 
      img: "/videos/lac-montagneuse.webp",
-    url: "/videos/lac-montagneuse.mp4"
+    url: "/videos/lac-montagneuse.webm"
   },
   { 
     id: 9, title: "Femme dans un penthouse nocturne", typeStyle: "Anime", 
     prompt: "Illustration anime cinématographique, personnage féminin antagoniste en pied, debout dans un luxueux bureau de penthouse moderne de nuit, braquant un pistolet directement vers la caméra, posture dominante et menaçante, contre-plongée au fera mesure qu'elle avance la camera recule au rythme que la personne avance, veste de costume noire élégante, chemise noire ajustée légèrement ouverte au col, pantalon noir cintré, chaîne métallique discrète à la ceinture, une main dans la poche, coupe de cheveux courte dégradée noire, yeux rouges lumineux, peau pâle, expression froide et déterminée, éclairage dramatique, détails ultra-réalistes du visage et des cheveux, sol en marbre noir brillant, grand bureau de direction à l’arrière-plan, fauteuil en cuir, immenses baies vitrées donnant sur une ville illuminée la nuit, reflets réalistes sur les surfaces puis la camera fait un zoom sur le visage, ambiance sombre et sophistiquée, style néo-noir, ombres cinématographiques, style anime réaliste, qualité chef-d’œuvre, netteté extrême, éclairage volumétrique, profondeur de champ, contraste élevé, illustration conceptuelle professionnelle, qualité 8K, atmosphère de thriller d’action.", 
     img: "/videos/penthouse-nocturne.webp",
-    url: "/videos/tiktok-5.mp4"
+    url: "/videos/tiktok-5.webm"
   },
   { 
     id: 10, title: "La poupée maudite", typeStyle: "Horreur", 
     prompt: "Vieille maison abandonnée victorienne, pièce sombre et délabrée, papier peint déchiré, poussière flottant dans l'air, toiles d'araignée, éclairage cinématographique. Une poupée terrifiante en porcelaine fissurée est assise immobile dans un vieux fauteuil en velours au centre de la pièce. La caméra effectue un lent travelling avant depuis un plan large vers un plan rapproché. Une faible lumière lunaire traverse la fenêtre tandis qu'une bougie vacillante projette des ombres mouvantes sur les murs. Les cheveux emmêlés de la poupée bougent légèrement sous un courant d'air. Dans les deux dernières secondes, sa tête pivote lentement vers la caméra avec un mouvement anormal et inquiétant, ses yeux semblant suivre l'objectif. Ambiance oppressante, horreur psychologique, ultra réaliste, qualité cinéma hollywoodien, éclairage volumétrique, profondeur de champ cinématographique, détails extrêmes, 4K, format 16:9.", 
      img: "/videos/poupee.webp",
-    url: "/videos/poupee.mp4"
+    url: "/videos/poupee.webm"
   },
   { 
     id: 11, title: "Caméra de surveillance", typeStyle: "Réaliste", 
     prompt: "Vidéo de télésurveillance ultra réaliste filmée de nuit dans un jardin entièrement recouvert de neige fraîche. La scène est capturée par une caméra de sécurité fixe en vision infrarouge noir et blanc, avec un léger bruit numérique, des artefacts de compression et un horodatage visible dans le coin de l'écran. Au centre du jardin se trouve un grand bonhomme de neige immobile. Un homme avance dans la neige en direction du bonhomme de neige, laissant des traces de pas derrière lui. Alors qu'il s'approche à moins d'un mètre, un chat surgit soudainement de l'intérieur du bonhomme de neige à une vitesse fulgurante. Le chat bondit directement vers le visage de l'homme, qui recule brutalement en criant de surprise. La caméra enregistre la scène avec des mouvements saccadés, une qualité de surveillance authentique et une ambiance inquiétante. Éclairage nocturne réaliste, ombres naturelles, détails photoréalistes, rendu cinématographique 4K, style vidéo virale de phénomène inexpliqué capturée par caméra de sécurité réelle.", 
     img: "/videos/caméra.webp",
-    url: "/videos/caméra.mp4"
+    url: "/videos/caméra.webm"
   },
   { 
     id: 12, title: "coucher de soleil", typeStyle: "3D", 
     prompt: "Un crabe sur un rocher observe le coucher de soleil sur une plage. La mise au point de la plage est légèrement floutée.",
    img: "/videos/Coucher-de-soleil.webp",
-    url: "/videos/ocean.mp4"
+    url: "/videos/ocean.webm"
   },
   { 
     id: 13, title: "Attaque de zombies", typeStyle: "Réaliste", 
     prompt: "Scène ultra-réaliste et cinématographique. Une immense horde de zombies envahit Times Square en pleine nuit. Des centaines de civils paniqués tentent de fuir dans toutes les directions tandis que les zombies les poursuivent à travers les rues illuminées. Véhicules abandonnés, collisions, explosions, cris et chaos total plongent la ville dans l'apocalypse. Caméra dynamique, mouvements nerveux, ambiance de film catastrophe à gros budget, éclairages urbains réalistes, détails photoréalistes, qualité 4K. Plan final spectaculaire : vue aérienne de New York. La ville entière est en flammes, d'immenses colonnes de fumée noire s'élèvent dans le ciel et recouvrent l'horizon. Plusieurs quartiers sont ravagés par les incendies. Atmosphère apocalyptique, lumière rougeoyante des flammes, destruction massive, rendu ultra-réaliste. Dernière séquence : vue depuis les berges de New York. est dévastée, enveloppée par la fumée et les incendies. Des hélicoptères survolent la ville en détresse tandis que des explosions illuminent l'horizon. Ambiance de fin du monde, cinématographie épique, détails extrêmes, qualité 4K, style blockbuster hollywoodien.", 
     img: "/videos/attaque.webp",
-    url: "/videos/attaque.mp4"
+    url: "/videos/attaque.webm"
   },
   { 
     id: 14, title: "Volcan", typeStyle: "Animation", 
     prompt: "Plan cinématique ultra réaliste d’un monde préhistorique luxuriant au moment d’une éruption volcanique massive. La caméra débute en plan large aérien au-dessus d’une jungle extrêmement dense et détaillée. Les dinosaures au sol (T-Rex, tricératops, sauropodes) lèvent tous la tête et regardent vers le volcan en éruption au loin. Explosion volcanique spectaculaire avec projection de lave et nuage de cendres gigantesque. Pterodactyles en vol dans un ciel dramatique. Végétation très abondante, jungle humide, brouillard volumétrique et lumière dorée de fin de journée. Mouvement caméra fluide avec léger travelling avant + légère rotation vers le volcan. Style film blockbuster, hyperréaliste, profondeur de champ cinématographique, 4K.", 
     img: "/videos/volcan.webp",
-    url: "/videos/volcan.mp4"
+    url: "/videos/volcan.webm"
   },
   { 
     id: 15, title: "Couloir sombre", typeStyle: "Réaliste", 
     prompt: "Caméra fixe dans un couloir sombre et abandonné d’une vieille maison délabrée, éclairage naturel faible venant d’une fenêtre au fond avec rideaux qui bougent légèrement. Une femme d’environ 40 ans, en pyjama sale et déchiré, rampe lentement sur un sol en bois humide vers la caméra. Elle est en état de panique extrême, respiration lourde, tremblante. Elle s’arrête soudainement, tourne lentement la tête vers l’arrière avec un regard terrifié, comme si quelque chose la poursuivait hors champ. L’ambiance est oppressante, silencieuse, tension progressive. La caméra reste stable, légère vibration réaliste type caméra tenue à la main. Style film d’horreur ultra réaliste, lumière froide, grain cinéma, 4K, profondeur de champ faible, atmosphère lourde et glauque. Durée 10 secondes, mouvement lent et continu, tension qui monte jusqu’au regard final vers l’arrière.", 
   img: "/videos/Couloir-sombre.webp",
-    url: "/videos/Couloir-sombre.mp4"
+    url: "/videos/Couloir-sombre.webm"
   }
 ];
 
@@ -750,9 +750,11 @@ const styles = ["Réaliste", "Cyberpunk", "Anime", "Aquarelle",  "Animation 3D"]
 // 🔄 Détection de génération en cours si la page a été rafraîchie/réouverte
 useEffect(() => {
     if (!user) return;
-
-    const checkPendingGeneration = async () => {
+const checkPendingGeneration = async () => {
         try {
+            // 🔍 Ajoute cette ligne pour voir l'URL exacte :
+            console.log("URL de l'API ciblée :", import.meta.env.VITE_API_URL);
+
             // 🔑 Récupération du token Firebase de l'utilisateur
             const token = await user.getIdToken();
 
@@ -870,7 +872,7 @@ const handleFileToUrl = async (e, previewOrImageSetter, maybeImageSetter) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-const response = await fetch('${import.meta.env.VITE_API_URL}/api/upload', { method: 'POST', body: formData });      if (response.ok) {
+const response = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, { method: 'POST', body: formData });      if (response.ok) {
         const data = await response.json();
         const publicUrl = data.url || data.filePath;
         if (publicUrl && typeof previewOrImageSetter === 'function') {
@@ -907,8 +909,7 @@ const handleFileChange = async (e) => {
     setIsLoading(true);
     setStatusMsg("Chargement du fichier...");
 
-      const res = await fetch('http://localhost:5173/upload', { method: 'POST', body: formData });
-      const data = await res.json();
+const res = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, { method: 'POST', body: formData });      const data = await res.json();
       if (data.url) {
         const newItem = { id: Date.now(), url: data.url, prompt: "Fichier importé", type: "IMAGE" };
         setActiveItem(newItem);
@@ -2766,7 +2767,7 @@ if (isAuthLoading || isInitializing) {
 {history.map(item => {
   // 1. Récupération de l'URL brute du média
   let mediaUrl = item.url || item.videoUrl || item.imageUrl || (item.video && item.video.url);          
-  const isVideo = item.type === "VIDEO" || (mediaUrl && (mediaUrl.includes(".mp4") || mediaUrl.includes(".webm")));
+  const isVideo = item.type === "VIDEO" || (mediaUrl && (mediaUrl.includes(".mp4") || mediaUrl.includes(".mp4")));
 
   return (
     <div 
