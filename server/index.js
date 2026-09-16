@@ -4009,7 +4009,7 @@ app.post('/api/send-otp', limiter, async (req, res) => {
                 'content-type': 'application/json'
             },
             body: JSON.stringify({
-                sender: { name: "Ovortex", email: "imir.guerni@mail.com" },
+                sender: { name: "Ovortex", email: "imir.guerni@gmail.com" },
                 to: [{ email: trimmedEmail }],
                 subject: 'Votre code de vérification Ovortex',
                 htmlContent: `<p>Votre code de sécurité à usage unique est : <strong>${otpCode}</strong>. Il est valable 5 minutes.</p>`
