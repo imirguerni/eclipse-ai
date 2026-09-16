@@ -426,23 +426,24 @@ return (
               Valider le code
             </button>
             
-         <button 
-              type="button" 
-              className="back-btn" 
-              onClick={async () => { 
-                try {
-                  await signOut(auth); // 👈 Déconnecte l'utilisateur de Firebase
-                } catch (err) {
-                  console.error("Erreur déconnexion :", err);
-                }
-                setView('auth-form'); 
-                setError(""); 
-                setSuccessMessage(""); 
-              }} 
-              style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: '100%', marginTop: '10px' }}
-            >
-              ← Retour
-            </button>
+    <button 
+  type="button" 
+  className="back-btn" 
+  onClick={async () => { 
+    try {
+      await signOut(auth); // 👈 Nettoie la session Firebase
+    } catch (err) {
+      console.error("Erreur déconnexion :", err);
+    }
+    setView('auth-form'); 
+    setError(""); 
+    setSuccessMessage(""); 
+    setOtpCode(""); // 👈 Ajouté pour vider le code OTP résiduel
+  }} 
+  style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: '100%', marginTop: '10px' }}
+>
+  ← Retour
+</button>
           </form>
         )}
 
