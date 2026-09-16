@@ -3,7 +3,7 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   setPersistence, 
-  browserSessionPersistence 
+  inMemoryPersistence 
 } from "firebase/auth";
 import {
   getFirestore,
@@ -32,9 +32,9 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 
-// 🔒 SÉCURITÉ 2FA : Restreint la session au contexte de l'onglet 
-// pour éviter qu'un rafraîchissement ne contourne la saisie du code OTP
-setPersistence(auth, browserSessionPersistence).catch((error) => {
+// 🔒 SÉCURITÉ 2FA : Stocke la session uniquement en mémoire vive.
+// Disparaît instantanément au moindre F5 (rafraîchissement) ou fermeture d'onglet.
+setPersistence(auth, inMemoryPersistence).catch((error) => {
   console.error("Erreur de configuration de la persistance :", error);
 });
 
