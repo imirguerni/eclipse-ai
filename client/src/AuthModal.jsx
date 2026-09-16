@@ -196,9 +196,12 @@ const response = await fetch(`${import.meta.env.VITE_API_URL}/api/verify-otp`, {
 return (
     <div className="auth-overlay">
       <div className="auth-card">
-        <button className="auth-close-btn" onClick={onClose}>✕</button>
+        {/* On cache la croix de fermeture pendant la vérification OTP pour bloquer l'accès non vérifié */}
+        {view !== 'otp-verify' && (
+          <button className="auth-close-btn" onClick={onClose}>✕</button>
+        )}
 
-        <h2 className="auth-title">Eclipse IA</h2>
+        <h2 className="auth-title">Ovortex</h2>
 
         {/* --- VUE 1 : MÉTHODES --- */}
         {view === 'methods' && (
@@ -422,10 +425,19 @@ return (
               Valider le code
             </button>
             
-            <button 
+         <button 
               type="button" 
               className="back-btn" 
-              onClick={() => { setView('auth-form'); setError(""); setSuccessMessage(""); }} 
+              onClick={async () => { 
+                try {
+                  await signOut(auth); // 👈 Déconnecte l'utilisateur de Firebase
+                } catch (err) {
+                  console.error("Erreur déconnexion :", err);
+                }
+                setView('auth-form'); 
+                setError(""); 
+                setSuccessMessage(""); 
+              }} 
               style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: '100%', marginTop: '10px' }}
             >
               ← Retour
