@@ -4045,9 +4045,8 @@ app.post('/api/send-otp', limiter, async (req, res) => {
         res.status(500).json({ error: "Erreur lors de l'envoi du code." });
     }
 });
-
 app.post('/api/verify-otp', limiter, async (req, res) => {
-    const { userId, code } = req.body;
+    const { userId, code, rememberDevice } = req.body; // 👈 1. On récupère rememberDevice
     if (!userId || !code) return res.status(400).json({ error: "Données manquantes" });
 
     try {
@@ -4064,17 +4063,40 @@ app.post('/api/verify-otp', limiter, async (req, res) => {
             return res.status(400).json({ error: "Code invalide ou expiré." });
         }
 
-        await userRef.update({
+        // Nettoyage de l'OTP
+        const updateData = {
             otpCode: null,
             otpExpires: null
-        });
+        };
 
-        res.json({ success: true, message: "Code validé avec succès." });
+        let trustedToken = null;
+
+        // 🚀 2. Si l'utilisateur a coché "Se souvenir de moi"
+        if (rememberDevice) {
+            const crypto = require('crypto');
+            trustedToken = crypto.randomBytes(32).toString('hex');
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 30); // 30 jours
+
+            // On stocke le jeton de confiance dans le document de l'utilisateur (ou une collection dédiée)
+            updateData.trustedDeviceToken = trustedToken;
+            updateData.trustedDeviceExpires = expiresAt;
+        }
+
+        await userRef.update(updateData);
+
+        // 3. On renvoie le token au client s'il existe
+        res.json({ 
+            success: true, 
+            message: "Code validé avec succès.",
+            trustedToken // 👈 Transmis au frontend
+        });
     } catch (error) {
         console.error("❌ Erreur validation OTP :", error);
         res.status(500).json({ error: "Erreur serveur lors de la validation." });
     }
 });
+
 // --- ROUTE DE RÉSILIATION D'ABONNEMENT ---
 app.post('/cancel-subscription', limiter, authenticateUser, async (req, res) => {
     const userId = req.user.uid;

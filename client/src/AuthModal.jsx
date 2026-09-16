@@ -170,20 +170,32 @@ const handleGoogleLogin = async () => {
     }
   };
   
-const handleVerifyOtp = async (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError("");
     try {
+      // 1. On récupère l'état de la case à cocher "Se souvenir de ce navigateur"
+      const rememberDevice = document.getElementById('rememberDevice')?.checked || false;
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, code: otpCode.trim() })
+        body: JSON.stringify({ 
+          userId, 
+          code: otpCode.trim(), 
+          rememberDevice // 👈 On transmet l'info au backend
+        })
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || "Code invalide");
+      }
+
+      // 2. Si le backend renvoie un jeton de confiance, on le stocke dans le navigateur pour 30 jours
+      if (data.trustedToken) {
+        localStorage.setItem('ovortex_trusted_device', data.trustedToken);
       }
 
       // ✅ Le code OTP est valide : on reconnecte l'utilisateur officiellement sur Firebase
@@ -197,7 +209,6 @@ const handleVerifyOtp = async (e) => {
       console.error(err);
       setError(err.message || "Erreur lors de la validation du code");
     }
-  
   };
   
 return (
@@ -384,8 +395,7 @@ return (
             </button>
           </form>
         )}
-
-        {/* --- VUE 4 : SAISIE DU CODE OTP --- */}
+{/* --- VUE 4 : SAISIE DU CODE OTP --- */}
         {view === 'otp-verify' && (
           <form onSubmit={handleVerifyOtp} className="email-form">
             <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '10px', textAlign: 'center' }}>
@@ -406,6 +416,16 @@ return (
               required 
               style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '18px' }}
             />
+
+            {/* CASE À COCHER : SE SOUVENIR DE CE NAVIGATEUR (30 JOURS) */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#ccc', margin: '15px 0 5px 0', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+              <input 
+                type="checkbox" 
+                id="rememberDevice" 
+                style={{ accentColor: '#a855f7', width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              Se souvenir de ce navigateur pendant 30 jours
+            </label>
 
             {error && (
               <p style={{ color: '#ff4d4d', fontSize: '13px', marginBottom: '10px', textAlign: 'center' }}>
@@ -432,32 +452,32 @@ return (
               Valider le code
             </button>
             
-    <button 
-  type="button" 
-  className="back-btn" 
-  onClick={async () => { 
-    try {
-      await signOut(auth); // 👈 Nettoie la session Firebase
-    } catch (err) {
-      console.error("Erreur déconnexion :", err);
-    }
-    setView('auth-form'); 
-    setError(""); 
-    setSuccessMessage(""); 
-    setOtpCode(""); // 👈 Ajouté pour vider le code OTP résiduel
-  }} 
-  style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: '100%', marginTop: '10px' }}
->
-  ← Retour
-</button>
+            <button 
+              type="button" 
+              className="back-btn" 
+              onClick={async () => { 
+                try {
+                  await signOut(auth); 
+                } catch (err) {
+                  console.error("Erreur déconnexion :", err);
+                }
+                setView('auth-form'); 
+                setError(""); 
+                setSuccessMessage(""); 
+                setOtpCode(""); 
+              }} 
+              style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: '100%', marginTop: '10px' }}
+            >
+              ← Retour
+            </button>
           </form>
         )}
 
         <p className="auth-legal">
-         En continuant, vous acceptez les 
-          <span className="terms-link" onClick={onShowTerms} style={{ cursor: 'pointer', color: '#a855f7' }}> Conditions d'utilisation</span>
-          {' et la '}
-          <span className="privacy-link" onClick={onShowPrivacy} style={{ cursor: 'pointer', color: '#a855f7' }}> Politique de Confidentialité</span>
+           En continuant, vous acceptez les 
+           <span className="terms-link" onClick={onShowTerms} style={{ cursor: 'pointer', color: '#a855f7' }}> Conditions d'utilisation</span>
+           {' et la '}
+           <span className="privacy-link" onClick={onShowPrivacy} style={{ cursor: 'pointer', color: '#a855f7' }}> Politique de Confidentialité</span>
         </p>
       </div>
     </div>
@@ -465,5 +485,3 @@ return (
 };
 
 export default AuthModal;
-
-
