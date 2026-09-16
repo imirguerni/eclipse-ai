@@ -3981,7 +3981,7 @@ app.post('/api/send-otp', limiter, async (req, res) => {
                 email: trimmedEmail,
                 userPlan: 'débutant',
                 tokens: 0,
-                createdAt: new Date() // 👈 Remplacé pour éviter l'erreur "admin is not defined"
+                createdAt: new Date()
             });
             userDocRef = newUserRef;
             userId = newUserRef.id;
@@ -3999,12 +3999,27 @@ app.post('/api/send-otp', limiter, async (req, res) => {
             otpExpires: expiresAt
         });
 
-        await transporter.sendMail({
-            from: '"Eclipse IA" <' + process.env.EMAIL_USER + '>',
-            to: trimmedEmail,
-            subject: 'Votre code de vérification Eclipse IA',
-            text: `Votre code de sécurité à usage unique est : ${otpCode}. Il est valable 5 minutes.`
+        // 🚀 Envoi de l'e-mail via l'API HTTP de Brevo (Contourne le blocage Render)
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': process.env.BREVO_API_KEY,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { name: "Eclipse IA", email: "noreply@ovortex.com" },
+                to: [{ email: trimmedEmail }],
+                subject: 'Votre code de vérification Eclipse IA',
+                htmlContent: `<p>Votre code de sécurité à usage unique est : <strong>${otpCode}</strong>. Il est valable 5 minutes.</p>`
+            })
         });
+
+        const brevoData = await brevoResponse.json();
+
+        if (!brevoResponse.ok) {
+            throw new Error(brevoData.message || "Erreur lors de l'envoi de l'e-mail via Brevo");
+        }
 
         res.json({ success: true, message: "Code envoyé par e-mail.", userId });
     } catch (error) {
@@ -4042,7 +4057,6 @@ app.post('/api/verify-otp', limiter, async (req, res) => {
         res.status(500).json({ error: "Erreur serveur lors de la validation." });
     }
 });
-
 // --- ROUTE DE RÉSILIATION D'ABONNEMENT ---
 app.post('/cancel-subscription', limiter, authenticateUser, async (req, res) => {
     const userId = req.user.uid;
