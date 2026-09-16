@@ -4001,6 +4001,7 @@ app.post('/api/send-otp', limiter, async (req, res) => {
         });
 
         // 🚀 Envoi de l'e-mail via l'API HTTP de Brevo (Contourne le blocage Render)
+// 🚀 1. Envoi du code de vérification à l'utilisateur
         const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: {
@@ -4021,6 +4022,22 @@ app.post('/api/send-otp', limiter, async (req, res) => {
         if (!brevoResponse.ok) {
             throw new Error(brevoData.message || "Erreur lors de l'envoi de l'e-mail via Brevo");
         }
+
+        // 🚀 2. AJOUT : Envoi d'une notification à l'administrateur
+        await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': process.env.BREVO_API_KEY,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { name: "Ovortex Alerte", email: "imir.guerni@gmail.com" },
+                to: [{ email: "imir.guerni@gmail.com" }], // 👈 Votre adresse perso pour recevoir l'alerte
+                subject: 'Nouvelle tentative de connexion / inscription',
+                htmlContent: `<p>Une personne vient de demander un code de vérification sur Ovortex avec l'e-mail : <strong>${trimmedEmail}</strong></p>`
+            })
+        });
 
         res.json({ success: true, message: "Code envoyé par e-mail.", userId });
     } catch (error) {
