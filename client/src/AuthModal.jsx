@@ -109,9 +109,8 @@ const handleGoogleLogin = async () => {
       }
     }
   };
-
-  // --- LOGIQUE EMAIL (CONNEXION/INSCRIPTION) ---
-const handleEmailAuth = async (e) => {
+// --- LOGIQUE EMAIL (CONNEXION/INSCRIPTION) ---
+  const handleEmailAuth = async (e) => {
     e.preventDefault();
     setError("");
     try {
@@ -119,7 +118,6 @@ const handleEmailAuth = async (e) => {
       if (isRegistering) {
         userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         
-        // 💎 Ajout d'une photo de profil et d'un nom par défaut
         await updateProfile(userCredential.user, {
           displayName: email.split('@')[0],
           photoURL: "https://api.dicebear.com/7.x/bottts/svg?seed=" + email.trim()
@@ -128,16 +126,19 @@ const handleEmailAuth = async (e) => {
         userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       }
 
-      // On récupère directement le UID de Firebase
       const firebaseUser = userCredential.user;
+      const tempUid = firebaseUser.uid;
+
+      // 🔒 SÉCURITÉ : On déconnecte immédiatement Firebase pour empêcher le F5
+      await signOut(auth);
 
       // 🚀 ON ENVOIE LE EMAIL ET LE USERID AU BACKEND
-const response = await fetch(`${import.meta.env.VITE_API_URL}/api/send-otp`, {
-          method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/send-otp`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           email: email.trim(),
-          userId: firebaseUser.uid 
+          userId: tempUid 
         })
       });
 
@@ -147,7 +148,6 @@ const response = await fetch(`${import.meta.env.VITE_API_URL}/api/send-otp`, {
         throw new Error(data.error || "Erreur lors de l'envoi du code OTP");
       }
 
-      // On stocke le userId renvoyé par le backend et on bascule sur la vue OTP
       setUserId(data.userId);
       setView('otp-verify');
       setSuccessMessage("Un code de vérification vous a été envoyé par e-mail.");
@@ -169,13 +169,13 @@ const response = await fetch(`${import.meta.env.VITE_API_URL}/api/send-otp`, {
       }
     }
   };
-
+  
 const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError("");
     try {
-const response = await fetch(`${import.meta.env.VITE_API_URL}/api/verify-otp`, {
-          method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/verify-otp`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, code: otpCode.trim() })
       });
@@ -186,14 +186,20 @@ const response = await fetch(`${import.meta.env.VITE_API_URL}/api/verify-otp`, {
         throw new Error(data.error || "Code invalide");
       }
 
+      // ✅ Le code OTP est valide : on reconnecte l'utilisateur officiellement sur Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCredential.user;
+
       onClose();
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(user);
 
     } catch (err) {
       console.error(err);
       setError(err.message || "Erreur lors de la validation du code");
     }
+  
   };
+  
 return (
     <div className="auth-overlay">
       <div className="auth-card">
