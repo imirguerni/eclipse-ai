@@ -1,6 +1,10 @@
-
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  setPersistence, 
+  browserSessionPersistence 
+} from "firebase/auth";
 import {
   getFirestore,
   doc,
@@ -8,7 +12,7 @@ import {
   setDoc,
   getDoc,
   Timestamp,
-  onSnapshot // <--- AJOUTÉ
+  onSnapshot
 } from "firebase/firestore";
 
 // ===============================
@@ -27,6 +31,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+
+// 🔒 SÉCURITÉ 2FA : Restreint la session au contexte de l'onglet 
+// pour éviter qu'un rafraîchissement ne contourne la saisie du code OTP
+setPersistence(auth, browserSessionPersistence).catch((error) => {
+  console.error("Erreur de configuration de la persistance :", error);
+});
 
 window.auth = auth;
 
