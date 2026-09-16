@@ -135,6 +135,7 @@ console.log("🛠️ Configuration FFMPEG terminée.");
 // --- CONFIGURATION EXPRESS & MIDDLEWARES ---
 const SECURITY_TEST_MODE = process.env.SECURITY_TEST_MODE === 'true';
 const app = express();
+app.set('trust proxy', 1);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // 1. HELMET ET CORS (S'appliquent à tout)

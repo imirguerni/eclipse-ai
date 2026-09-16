@@ -11,7 +11,8 @@ import {
   OAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  signOut
 } from 'firebase/auth';
 
 const AuthModal = ({ isOpen, onClose, onSuccess, onShowTerms, onShowPrivacy }) => {  const [successMessage, setSuccessMessage] = useState('');
