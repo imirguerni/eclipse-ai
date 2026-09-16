@@ -212,14 +212,14 @@ const handleGoogleLogin = async () => {
   };
   
 return (
-    <div className="auth-overlay">
-      <div className="auth-card">
-        {/* On cache la croix de fermeture pendant la vérification OTP pour bloquer l'accès non vérifié */}
-        {view !== 'otp-verify' && (
-          <button className="auth-close-btn" onClick={onClose}>✕</button>
-        )}
+  <div className="auth-overlay notranslate" translate="no">
+    <div className="auth-card">
+      {/* On cache la croix de fermeture pendant la vérification OTP pour bloquer l'accès non vérifié */}
+      {view !== 'otp-verify' && (
+        <button className="auth-close-btn" onClick={onClose}>✕</button>
+      )}
 
-        <h2 className="auth-title">Ovortex</h2>
+      <h2 className="auth-title">Ovortex</h2>
 
         {/* --- VUE 1 : MÉTHODES --- */}
         {view === 'methods' && (
