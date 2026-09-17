@@ -860,44 +860,89 @@ const handleFileToUrl = async (e, previewOrImageSetter, maybeImageSetter) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
-  // CAS 1 : On n'a passé qu'un seul setter (ex: juste setEndImage ou setVideoSource)
-  if (typeof maybeImageSetter !== 'function') {
-    const previewUrl = URL.createObjectURL(file);
-    if (typeof previewOrImageSetter === 'function') {
-      previewOrImageSetter(previewUrl);
-    }
-    console.log("Valeur de startImage / fichier sélectionné :", file);
-    console.log("Aperçu généré :", previewUrl);
+  console.log("📁 FICHIER SÉLECTIONNÉ :", file);
+  console.log("📦 Taille :", file.size, "octets");
+  console.log("🖼️ Type :", file.type);
 
-    // 🚀 Upload asynchrone pour remplacer le blob par une vraie URL publique (évite le 422 Pixverse/Luma)
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-const response = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, { method: 'POST', body: formData });      if (response.ok) {
-        const data = await response.json();
-        const publicUrl = data.url || data.filePath;
-        if (publicUrl && typeof previewOrImageSetter === 'function') {
-          previewOrImageSetter(publicUrl);
-        }
-      }
-    } catch (err) {
-      console.error("Erreur upload serveur, conservation du blob local :", err);
-    }
-    return;
-  }
-
-  // CAS 2 : On a bien passé un previewSetter ET un imageSetter
+  // ============================================================
+  // APERÇU LOCAL
+  // ============================================================
   const previewUrl = URL.createObjectURL(file);
+
   if (typeof previewOrImageSetter === 'function') {
     previewOrImageSetter(previewUrl);
   }
 
+  console.log("👁️ APERÇU LOCAL :", previewUrl);
+
+  // ============================================================
+  // CAS 1 : UN SEUL SETTER
+  // ============================================================
+  if (typeof maybeImageSetter !== 'function') {
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      console.log("☁️ Upload de l'image vers le serveur...");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/upload`,
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+
+      console.log("📡 Réponse /api/upload :", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Erreur upload :", errorText);
+        return;
+      }
+
+      const data = await response.json();
+
+      console.log("☁️ RÉPONSE COMPLÈTE UPLOAD :", data);
+
+      const publicUrl = data.url || data.filePath;
+
+      console.log("🌐 URL IMAGE PUBLIQUE :", publicUrl);
+
+      if (!publicUrl) {
+        console.error("❌ /api/upload n'a retourné aucune URL.");
+        return;
+      }
+
+      // Remplace le blob local par l'URL serveur
+      if (typeof previewOrImageSetter === 'function') {
+        previewOrImageSetter(publicUrl);
+      }
+
+      console.log("✅ IMAGE PRÊTE POUR LE SERVEUR :", publicUrl);
+
+    } catch (err) {
+      console.error("❌ ERREUR UPLOAD SERVEUR :", err);
+    }
+
+    return;
+  }
+
+  // ============================================================
+  // CAS 2 : PREVIEW + IMAGE
+  // ============================================================
+
   const reader = new FileReader();
+
   reader.onloadend = () => {
     if (typeof maybeImageSetter === 'function') {
       maybeImageSetter(reader.result);
     }
+
+    console.log("✅ IMAGE CONVERTIE EN BASE64");
   };
+
   reader.readAsDataURL(file);
 };
 
@@ -1608,7 +1653,21 @@ if (finalModelId.includes("seedance")) {
 })();
 
 // Détection explicite de l'image disponible
-const currentStartImg = startImage || uploadedImage || null;
+const currentStartImg =
+    (typeof startImage === "string" && startImage.trim())
+        ? startImage
+        : (typeof uploadedImage === "string" && uploadedImage.trim()
+            ? uploadedImage
+            : null);
+
+console.log(
+    "🖼️ IMAGE DE DÉPART ENVOYÉE :",
+    currentStartImg
+        ? (currentStartImg.startsWith("data:")
+            ? "DATA URL / BASE64"
+            : currentStartImg)
+        : "AUCUNE IMAGE"
+);
 
 let recaptchaToken = "";
 try {
