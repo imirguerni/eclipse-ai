@@ -1668,14 +1668,49 @@ console.log(
             : currentStartImg)
         : "AUCUNE IMAGE"
 );
-
 let recaptchaToken = "";
+
 try {
-    if (window.grecaptcha?.enterprise?.execute) {
-        recaptchaToken = await window.grecaptcha.enterprise.execute("6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq", { action: "generate_video" });
+    console.log("🛡️ Attente de reCAPTCHA Enterprise...");
+
+    if (!window.grecaptcha?.enterprise) {
+        throw new Error("reCAPTCHA Enterprise n'est pas chargé.");
     }
+
+    // Attendre que Google ait terminé son initialisation
+    await new Promise((resolve) => {
+        window.grecaptcha.enterprise.ready(resolve);
+    });
+
+    console.log("✅ reCAPTCHA Enterprise prêt.");
+
+    recaptchaToken = await window.grecaptcha.enterprise.execute(
+        "6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq",
+        {
+            action: "generate_video"
+        }
+    );
+
+    if (!recaptchaToken) {
+        throw new Error("Google n'a retourné aucun token reCAPTCHA.");
+    }
+
+    console.log("✅ Token reCAPTCHA généré : OUI");
+
 } catch (e) {
-    console.warn("reCAPTCHA n'a pas pu s'exécuter :", e);
+    console.error("❌ Erreur reCAPTCHA :", e);
+
+    setIsLoading(false);
+    setProgress(0);
+    setStatusMsg("");
+
+    if (typeof setErrorMsg === "function") {
+        setErrorMsg(
+            "La vérification de sécurité n'est pas disponible. Veuillez actualiser la page puis réessayer."
+        );
+    }
+
+    return;
 }
 console.log("🔍 Valeur actuelle de videoSource :", videoSource);
 const payload = { 
