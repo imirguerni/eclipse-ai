@@ -1586,14 +1586,25 @@ res.write(`data: ${JSON.stringify({ percent: 50, message: progressMessage })}\n\
         throw err; // On stoppe tout si l'API Google renvoie une erreur critique
     }
 
-    // Sécurité : Timeout global après 20 tentatives (soit 5 minutes)
-    if (attempts >= 20) {
-        clearInterval(heartbeat);
-        throw new Error("Le délai de génération a été dépassé (Timeout).");
-    }
+
+// ============================================================
+// 🛡️ TIMEOUT GOOGLE VEO
+// 40 tentatives × 15 secondes = 10 minutes maximum
+// ============================================================
+if (attempts >= 40) {
+    clearInterval(heartbeat);
+
+    console.error(
+        "⏰ TIMEOUT GOOGLE VEO : génération supérieure à 10 minutes."
+    );
+
+    throw new Error(
+        "La génération vidéo Google a dépassé le délai maximum de 10 minutes."
+    );
 }
 
-// Nettoyage final
+} // ← ferme le while (!operation.done)
+
 clearInterval(heartbeat);
 console.log("✅ GOOGLE A TERMINÉ LA GÉNÉRATION !");
 // Si Google a renvoyé une erreur dans l'opération terminée
