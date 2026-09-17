@@ -128,9 +128,16 @@ async function recoverInterruptedGenerations() {
 }
 
 // --- CONFIGURATION FFMPEG ---
-const ffmpegPath = "D:/internet/internet/ffmpeg/bin/ffmpeg.exe";
+
+const ffmpegPath = process.platform === "win32"
+    ? "D:/internet/internet/ffmpeg/bin/ffmpeg.exe"
+    : "/usr/bin/ffmpeg";
+
 ffmpeg.setFfmpegPath(ffmpegPath);
+
 console.log("🛠️ Configuration FFMPEG terminée.");
+console.log("🖥️ Système :", process.platform);
+console.log("🎬 Chemin FFMPEG utilisé :", ffmpegPath);
 
 // --- CONFIGURATION EXPRESS & MIDDLEWARES ---
 const SECURITY_TEST_MODE = process.env.SECURITY_TEST_MODE === 'true';
