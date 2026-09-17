@@ -28,37 +28,103 @@ const { PRICING_DATA, PLAN_TO_PRICE, packs, ALLOWED_ENGINES } = require('./prici
 // --- INITIALISATION RECAPTCHA ---
 const recaptchaClient = new RecaptchaEnterpriseServiceClient();
 const admin = require('firebase-admin');
-
 async function verifyRecaptcha(token) {
-    if (!token) return false;
+    // Aucun token = on refuse proprement
+    if (!token || typeof token !== "string") {
+        console.warn("⚠️ Aucun token reCAPTCHA reçu.");
+        return false;
+    }
+
     try {
-        const projectPath = recaptchaClient.projectPath('eclipse-ai-96f30'); 
+        const projectPath = recaptchaClient.projectPath('eclipse-ai-96f30');
+
         const request = {
             parent: projectPath,
             assessment: {
                 event: {
                     token: token,
-                    siteKey: '6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq', 
+                    siteKey: '6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq',
                 },
             },
         };
 
         const [response] = await recaptchaClient.createAssessment(request);
-        
-        if (!response.tokenProperties.valid) {
-            console.error("❌ Jeton reCAPTCHA invalide :", response.tokenProperties.invalidReason);
+
+        // ---------------------------------------------------------
+        // 1️⃣ Vérification de validité du token
+        // ---------------------------------------------------------
+        if (!response.tokenProperties?.valid) {
+            console.warn(
+                "⚠️ Token reCAPTCHA invalide :",
+                response.tokenProperties?.invalidReason || "raison inconnue"
+            );
+
             return false;
         }
 
-        const score = response.riskAnalysis.score;
+        // ---------------------------------------------------------
+        // 2️⃣ Récupération du score
+        // ---------------------------------------------------------
+        const score = Number(response.riskAnalysis?.score ?? 0);
+
         console.log(`🛡️ Score reCAPTCHA reçu : ${score}`);
-        
-        return score >= 0.5;
+
+        // ---------------------------------------------------------
+        // 3️⃣ Raisons fournies par Google
+        // ---------------------------------------------------------
+        const reasons = response.riskAnalysis?.reasons || [];
+
+        if (reasons.length > 0) {
+            console.log(
+                "🛡️ Raisons reCAPTCHA :",
+                reasons.join(", ")
+            );
+        }
+
+        // ---------------------------------------------------------
+        // 4️⃣ Vérification de l'action si Google en fournit une
+        // ---------------------------------------------------------
+        const action = response.tokenProperties?.action;
+
+        if (action) {
+            console.log(`🛡️ Action reCAPTCHA : ${action}`);
+        }
+
+        // ---------------------------------------------------------
+        // 5️⃣ Seuil volontairement plus souple
+        //
+        // 0.1 = comportement très suspect
+        // 0.3 = on laisse passer les utilisateurs légitimes
+        // 0.5 = seuil précédent, beaucoup plus strict
+        // ---------------------------------------------------------
+        if (score < 0.3) {
+            console.warn(
+                `🛑 Score reCAPTCHA très faible : ${score}`
+            );
+
+            return false;
+        }
+
+        console.log(
+            `✅ Vérification reCAPTCHA acceptée. Score : ${score}`
+        );
+
+        return true;
+
     } catch (error) {
-        console.error("❌ Erreur technique reCAPTCHA (contournée pour éviter les faux positifs) :", error.message);
-        // 💡 En cas de panne ou d'erreur technique de l'API Google, 
-        // on retourne true pour ne pas bloquer les utilisateurs légitimes.
-        return true; 
+
+        console.error(
+            "❌ Erreur technique reCAPTCHA :",
+            error.message
+        );
+
+        // En cas de problème temporaire avec Google,
+        // on ne bloque pas inutilement un utilisateur légitime.
+        console.warn(
+            "⚠️ reCAPTCHA indisponible : requête autorisée temporairement."
+        );
+
+        return true;
     }
 }
 
@@ -786,7 +852,7 @@ console.log(
     // 🛡️ 2. VÉRIFICATION RECAPTCHA (Bloque les robots avant toute utilisation de crédits)
     const isHuman = await verifyRecaptcha(recaptchaToken);
     if (!isHuman) {
-        return res.status(403).json({ error: "Échec de la vérification de sécurité (bot détecté)." });
+        return res.status(403).json({ error: "Vérification de sécurité impossible. Veuillez patienter quelques secondes puis réessayer." });
     }
 if (!prompt || !engineId) {
         return res.status(400).json({ 
