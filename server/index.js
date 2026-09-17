@@ -1633,11 +1633,38 @@ await new Promise((resolve, reject) => {
     });
 })
 
-.on("error", (err) => {
+.on("error", (err, stdout, stderr) => {
+    console.error("❌❌❌ ERREUR FFMPEG ❌❌❌");
+    console.error("Message :", err?.message);
+    console.error("Code :", err?.code);
+    console.error("STDOUT :", stdout);
+    console.error("STDERR :", stderr);
+    console.error("Fichier source :", filePath);
+    console.error("Fichier sortie :", outputPath);
+
+    try {
+        if (fs.existsSync(filePath)) {
+            const stats = fs.statSync(filePath);
+            console.error("Taille fichier source :", stats.size, "octets");
+        }
+
+        if (fs.existsSync(outputPath)) {
+            const stats = fs.statSync(outputPath);
+            console.error("Taille fichier sortie :", stats.size, "octets");
+        }
+    } catch (debugError) {
+        console.error("Erreur diagnostic fichiers :", debugError.message);
+    }
+
     safeFinish(() => {
-        // CORRECTION : On envoie l'erreur via le flux SSE
-        res.write(`data: ${JSON.stringify({ error: "Erreur traitement vidéo final." })}\n\n`);
-        res.end();
+        if (!res.writableEnded) {
+            res.write(`data: ${JSON.stringify({
+                error: "Erreur traitement vidéo final.",
+                details: err?.message || "Erreur FFmpeg"
+            })}\n\n`);
+            res.end();
+        }
+
         reject(err);
     });
 })
