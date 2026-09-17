@@ -1171,7 +1171,9 @@ app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
     // TON CODE ACTUEL CONTINUE ICI
     //     // 🛡️ 1. Récupération de l'IP et vérification de la blacklist Firestore en premier
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-
+console.log("🌐 IP BRUTE x-forwarded-for :", req.headers['x-forwarded-for']);
+console.log("🌐 IP socket :", req.socket.remoteAddress);
+console.log("🌐 IP UTILISÉE POUR BLACKLIST :", clientIp);
     const isBlocked = await isIpBlacklisted(clientIp);
     if (isBlocked) {
         console.warn(`🛑 Tentative de requête bloquée provenant d'une IP blacklistée : ${clientIp}`);
@@ -1276,28 +1278,30 @@ if (enginePricing) {
         return res.status(403).json({ error: "Erreur de validation du coût de la génération." });
     }
 }
+
 // =============================================================
-// 🛡️ VÉRIFICATION RECAPTCHA (Unique et complète)
+// 🛡️ VÉRIFICATION RECAPTCHA
 // =============================================================
 const isHuman = await verifyRecaptcha(recaptchaToken);
 
-// Détection de l'environnement local pour éviter les faux positifs de ban IP
-const isLocalhost = clientIp === '::1' || clientIp === '127.0.0.1' || clientIp === '::ffff:127.0.0.1';
+if (isHuman === false) {
+    console.warn(
+        `⚠️ Vérification reCAPTCHA échouée pour ${clientIp}.`
+    );
 
-// Si reCAPTCHA retourne explicitement false et qu'on n'est pas en local
-if (isHuman === false && !isLocalhost) {
-    // Bannit l'IP pour 24h en cas de bot avéré
-    await blacklistIp(clientIp, "Échec reCAPTCHA / Bot détecté", 24);
-
-    // Remplacement sécurisé sans appel à sendSecurityAlert
-    console.warn(`🚨 [ALERTE SÉCURITÉ] Échec reCAPTCHA / Bot détecté pour l'IP ${clientIp}`);
-
-    return res.status(403).json({ error: "Échec de la vérification de sécurité (bot détecté)." });
+    // IMPORTANT :
+    // Un échec reCAPTCHA ne signifie PAS automatiquement
+    // que l'utilisateur est un bot.
+    //
+    // On ne blacklist donc PAS son IP ici.
+    return res.status(403).json({
+        error: "La vérification de sécurité n'a pas pu être effectuée. Veuillez actualiser la page puis réessayer."
+    });
 }
 
-if (isHuman === false && isLocalhost) {
-    console.warn("⚠️ [DEV LOCAL] Échec reCAPTCHA ignoré pour localhost.");
-}
+console.log("✅ Vérification reCAPTCHA réussie.");
+
+
 // Si isHuman vaut 'bypass' ou 'true' suite à une erreur technique de l'API Google, 
 // la requête continue normalement sans bannir l'utilisateur.
     // -------------------------------------------------------------
