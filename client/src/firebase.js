@@ -3,7 +3,7 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   setPersistence, 
-  inMemoryPersistence 
+  browserLocalPersistence // 👈 Bien importé ici
 } from "firebase/auth";
 import {
   getFirestore,
@@ -14,7 +14,6 @@ import {
   Timestamp,
   onSnapshot
 } from "firebase/firestore";
-
 // ===============================
 // CONFIGURATION FIREBASE
 // ===============================
@@ -32,9 +31,8 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 
-// 🔒 SÉCURITÉ 2FA : Stocke la session uniquement en mémoire vive.
-// Disparaît instantanément au moindre F5 (rafraîchissement) ou fermeture d'onglet.
-setPersistence(auth, inMemoryPersistence).catch((error) => {
+// 💾 Applique la persistance locale pour éviter la déconnexion au F5
+setPersistence(auth, browserLocalPersistence).catch((error) => {
   console.error("Erreur de configuration de la persistance :", error);
 });
 

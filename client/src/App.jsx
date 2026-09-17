@@ -25,6 +25,7 @@ import VideoPreview from "./VideoPreview";
 import DevelopersPage from './DevelopersPage';
 import ContactModal from './ContactModal';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, where, orderBy, deleteDoc } from "firebase/firestore";
+import './i18n';
 
 const SUGGESTIONS = [
   { 
@@ -1762,7 +1763,8 @@ const falRequestId = data.requestId || data.request_id;
 
 console.log("✅ DATA FINALE :", data);
 console.log("URL IMMÉDIATE :", finalUrl || "Aucune (Attente Polling/Async)");
-
+setStatusMsg(""); 
+setIsLoading(false);
 // ==========================================================
 // 1. CAS SUCCÈS IMMÉDIAT (Simulation / Direct)
 // ==========================================================
@@ -1961,7 +1963,7 @@ const statusRes = await fetch("${import.meta.env.VITE_API_URL}/check-veo-status"
                 setWantsAudio(false);
                 setDuration("5");
                 setIsLoading(false);
-
+                setStatusMsg("");
                 if (successAudio.current) successAudio.current.play().catch(() => {});
             } 
             else {
@@ -2021,7 +2023,8 @@ if (mode === "IMAGE" && finalUrl && finalUrl.includes("pollinations.ai")) {
           setEndImage(null);
           setWantsAudio(false); 
           setDuration("5");          
-          setProgress(100);           
+          setProgress(100);  
+                   setStatusMsg("");
           if(successAudio.current) successAudio.current.play().catch(() => {});          
           console.log(`✅ ${mode} enregistrée dans l'historique avec succès.`);        
         }

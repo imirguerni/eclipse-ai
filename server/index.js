@@ -420,9 +420,10 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 // --- SDK IA ---
 const ai = new GoogleGenAI({
     vertexai: true,
-    project: 'eclipse-ai-96f30',
+    project: process.env.GCP_PROJECT_ID || 'eclipse-ai-96f30',
     location: 'us-central1'
 });
+
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 fal.config({ apiKey: process.env.FAL_KEY });
@@ -741,15 +742,35 @@ app.post('/intelligence', limiter, authenticateUser, async (req, res) => {
 // --- GENERATION IMAGE ---
 app.post('/generate-image', limiter, authenticateUser, async (req, res) => {
     
-    const { 
-        prompt, 
-        height,
-        engineId, 
-        cost, 
-        costType, 
-        aspect_ratio,
-        recaptchaToken // <--- 1. Récupération du jeton reCAPTCHA envoyé par le front
-    } = req.body;
+const { 
+    prompt, 
+    height,
+    engineId, 
+    cost, 
+    costType, 
+    aspect_ratio,
+    recaptchaToken,
+
+    // 🖼️ Image de référence envoyée par le frontend
+    startImage,
+    start_image_url,
+    image_url,
+    uploadedImage
+} = req.body;
+
+// 🖼️ On accepte les différents noms utilisés par le frontend
+const referenceImage =
+    startImage ||
+    start_image_url ||
+    image_url ||
+    uploadedImage ||
+    null;
+
+console.log(
+    referenceImage
+        ? "🖼️ Image de référence reçue par le serveur"
+        : "ℹ️ Aucune image de référence"
+);
 // 🔒 Source de vérité absolue (impossible à falsifier depuis le front)
 
 
@@ -935,11 +956,89 @@ const cleanedPrompt = prompt
     .trim();
 
 // 2. Utilisez "cleanedPrompt" dans l'objet envoyé à Fal
-const result = await fal.subscribe(engineId, {
-    input: {
-        prompt: cleanedPrompt,  // <--- Utiliser la variable nettoyée ici !
+// ============================================================
+// 🖼️ GESTION IMAGE DE RÉFÉRENCE / FLUX
+// ============================================================
+
+
+let falEngineId = engineId;
+let falInput = {
+    prompt: cleanedPrompt,
+    image_size: falImageSize
+};
+
+// ------------------------------------------------------------
+// FLUX DEV + IMAGE
+// ------------------------------------------------------------
+if (
+    referenceImage &&
+    engineId.includes("flux/dev")
+) {
+    falEngineId = "fal-ai/flux/dev/image-to-image";
+
+    falInput = {
+        prompt: cleanedPrompt,
+        image_url: referenceImage,
+        image_size: falImageSize,
+        strength: 0.65
+    };
+
+    console.log("🖼️ Flux Dev → IMAGE-TO-IMAGE avec Prompt");
+}
+
+// ------------------------------------------------------------
+// FLUX SCHNELL + IMAGE
+// ------------------------------------------------------------
+else if (
+    referenceImage &&
+    engineId.includes("flux/schnell")
+) {
+    falEngineId = "fal-ai/flux/schnell/image-to-image";
+
+    falInput = {
+        prompt: cleanedPrompt,
+        image_url: referenceImage,
+        image_size: falImageSize,
+        strength: 0.65
+    };
+
+    console.log("🖼️ Flux Schnell → IMAGE-TO-IMAGE avec Prompt");
+}
+
+// ------------------------------------------------------------
+// FLUX PRO + IMAGE
+// ------------------------------------------------------------
+else if (
+    referenceImage &&
+    engineId.includes("flux-pro")
+) {
+    // ✅ Pour Flux Pro v1.1, on utilise l'endpoint principal avec l'image et le prompt combinés
+    falEngineId = "fal-ai/flux-pro/v1.1";
+
+    falInput = {
+        prompt: cleanedPrompt,
+        image_url: referenceImage,
         image_size: falImageSize
-    },
+    };
+
+    console.log("🖼️ Flux Pro v1.1 → PROMPT + IMAGE");
+}
+
+// ------------------------------------------------------------
+// GÉNÉRATION NORMALE SANS IMAGE
+// ------------------------------------------------------------
+else {
+    console.log("📝 Flux → TEXT-TO-IMAGE");
+}
+
+console.log("🚀 Modèle Fal utilisé :", falEngineId);
+console.log("📦 Input Fal :", JSON.stringify({
+    ...falInput,
+    image_url: referenceImage ? "[IMAGE]" : undefined
+}, null, 2));
+
+const result = await fal.subscribe(falEngineId, {
+    input: falInput,
     logs: true
 });
 

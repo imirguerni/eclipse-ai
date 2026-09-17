@@ -1,5 +1,9 @@
 import React, { useState } from 'react'; // Rajout de useState
 import './Navbar.css';
+import { useTranslation } from 'react-i18next'; 
+import LanguageSelector from './LanguageSelector'; 
+
+
 const Navbar = ({ 
   user, 
   tokens, 
@@ -21,6 +25,7 @@ const Navbar = ({
   
 }) => {
 
+const { t } = useTranslation();
   // --- RAJOUT : ÉTAT POUR LE MENU MOBILE ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -191,7 +196,8 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
         </a>
       </div>
 
-        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+  {!user && <LanguageSelector />}
           
           {user && (
             <div className="tokens-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginRight: '5px' }}>
@@ -250,11 +256,29 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
   style={{ cursor: 'pointer' }}
 >
   💎 Tarification</div>
-
+  
+{/* langue */}
 
 <div className="dropdown-item" onClick={() => { setShowDropdown(false); onOpenProfile(); }}>
   👤 Mon Compte
-</div>               
+</div> 
+
+<div style={{ 
+  padding: '10px 16px', 
+  display: 'flex', 
+  flexDirection: 'column', // Empile le texte et le sélecteur verticalement
+  gap: '6px',
+  borderTop: '1px solid rgba(255,255,255,0.05)', 
+  borderBottom: '1px solid rgba(255,255,255,0.05)', 
+  margin: '6px 0',
+  background: 'rgba(255, 255, 255, 0.02)'
+}}>
+  <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>🌐 Langue / Language</span>
+  <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+    <LanguageSelector />
+  </div>
+</div>
+           
 
 {/* --- NOUVEAU BLOC AMÉLIORÉ --- */}
 <div style={{
