@@ -1286,7 +1286,10 @@ console.log("🌐 IP CLIENT RETENUE :", clientIp);
     qualityKey
 } = req.body;
 
-    console.log("RECAPTCHA TOKEN:", recaptchaToken);
+    console.log(
+    "🛡️ Token reCAPTCHA reçu :",
+    recaptchaToken ? "OUI" : "NON"
+);
 
     // On vérifie maintenant engineId et cost (userId est garanti puisqu'il vient de req.user.uid)
     if (!engineId || cost === undefined) {
