@@ -1543,7 +1543,39 @@ if (operation.error) {
 const response = operation.response;
 console.log("STRUCTURE FINALE ACCESSIBLE :", JSON.stringify(response, null, 2));
 let generatedVideoUrl = null;
+// ============================================================
+// 🛡️ VIDÉO FILTRÉE PAR LES RÈGLES DE SÉCURITÉ GOOGLE
+// ============================================================
+if (
+    response?.raiMediaFilteredCount > 0 ||
+    response?.raiMediaFilteredReasons?.length > 0
+) {
+    const reasons = response.raiMediaFilteredReasons || [];
 
+    console.warn(
+        "🛡️ Google a filtré la vidéo pour des raisons de sécurité."
+    );
+
+    console.warn(
+        "🛡️ Raisons du filtrage :",
+        reasons
+    );
+
+    const errorMsg =
+        "Google a bloqué cette génération pour des raisons de sécurité. Veuillez modifier le prompt puis réessayer.";
+
+    res.write(
+        `data: ${JSON.stringify({
+            error: errorMsg,
+            status: "filtered",
+            reason: reasons[0] || "Contenu filtré par Google"
+        })}\n\n`
+    );
+
+    res.end();
+
+    throw new Error(errorMsg);
+}
 // Extraction et conversion immédiate en fichier local
 if (response?.generatedVideos?.[0]?.video?.videoBytes) {
     const videoBytes = response.generatedVideos[0].video.videoBytes;
