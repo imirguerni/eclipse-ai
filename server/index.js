@@ -1746,10 +1746,30 @@ const targetSize =
         ? "1920x1080"
         : "1280x720";
 
+// 🧪 LOGS DEBUG// 📐 Récupération dynamique du format et de la résolution choisis sur l'interface
+const aspectRatio = req.body.aspect_ratio || "9:16";
+const isHD = req.body.resolution === "1080p";
+
+let targetWidth = 1080;
+let targetHeight = 1920;
+
+if (aspectRatio === "1:1") {
+    targetWidth = isHD ? 1080 : 720;
+    targetHeight = isHD ? 1080 : 720;
+} else if (aspectRatio === "16:9") {
+    targetWidth = isHD ? 1920 : 1280;
+    targetHeight = isHD ? 1080 : 720;
+} else {
+    // 9:16 par défaut
+    targetWidth = isHD ? 1080 : 720;
+    targetHeight = isHD ? 1920 : 1280;
+}
+
 // 🧪 LOGS DEBUG
 console.log(`🔍 Diagnostic FFMPEG :`);
 console.log(`   - Dossier cible : ${dir}`);
 console.log(`   - Fichier écrit : ${filePath}`);
+console.log(`   - Format demandé : ${aspectRatio} (${targetWidth}x${targetHeight})`);
 console.log(
     `   - Vérification accès disque : ${
         fs.existsSync(filePath) ? "OUI ✅" : "NON ❌"
@@ -1767,35 +1787,33 @@ await new Promise((resolve, reject) => {
         });
     }, 120000);
 
-  
+    console.log("🎬 Préparation du lancement FFMPEG...");
+    console.log("📥 Fichier source :", filePath);
+    console.log("📤 Fichier destination :", outputPath);
+    console.log("⏱️ Durée demandée :", duration);
+    console.log("📐 Résolution cible :", `${targetWidth}x${targetHeight}`);
 
-  console.log("🎬 Préparation du lancement FFMPEG...");
-console.log("📥 Fichier source :", filePath);
-console.log("📤 Fichier destination :", outputPath);
-console.log("⏱️ Durée demandée :", duration);
-console.log("📐 Résolution cible :", targetSize);
+    console.log("🔎 Chemin FFmpeg configuré :", ffmpegPath);
+    console.log("🔎 FFmpeg existe :", fs.existsSync(ffmpegPath));
 
-console.log("🔎 Chemin FFmpeg configuré :", ffmpegPath);
-console.log("🔎 FFmpeg existe :", fs.existsSync(ffmpegPath));
+    if (!fs.existsSync(ffmpegPath)) {
+        throw new Error(`FFmpeg introuvable sur Render : ${ffmpegPath}`);
+    }
 
-if (!fs.existsSync(ffmpegPath)) {
-    throw new Error(`FFmpeg introuvable sur Render : ${ffmpegPath}`);
-}
+    ffmpeg.setFfmpegPath(ffmpegPath);
 
-ffmpeg.setFfmpegPath(ffmpegPath);
+    console.log("✅ Chemin FFmpeg appliqué à fluent-ffmpeg.");
 
-console.log("✅ Chemin FFmpeg appliqué à fluent-ffmpeg.");
-
-const ffmpegProcess = ffmpeg(filePath)
+    const ffmpegProcess = ffmpeg(filePath)
+        .videoFilters([
+            // ✅ Filtre dynamique avec bandes noires (padding) sans déformation
+            `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,setsar=1`
+        ])
         .outputOptions([
             '-t ' + duration,
-            '-vf scale=' + (
-                targetSize === "1920x1080"
-                    ? "1920:1080"
-                    : "1280:720"
-            ),
             '-c:v libx264',
             '-preset fast',
+            '-pix_fmt yuv420p',
             '-movflags +faststart'
         ])
         .output(outputPath)
@@ -1815,7 +1833,7 @@ const ffmpegProcess = ffmpeg(filePath)
             safeFinish(async () => {
 
                 console.log(
-                    `✂️ Vidéo traitée : ${duration}s, Résolution : ${targetSize}`
+                    `✂️ Vidéo traitée : ${duration}s, Résolution : ${targetWidth}x${targetHeight}`
                 );
 
                 fs.unlink(filePath, (err) => {
