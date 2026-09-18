@@ -1434,8 +1434,8 @@ let tokensToDeducedFromDiamonds = remainingCost > 0 ? remainingCost : 0;
 
 // Tu effectues la mise à jour en base de données avant de lancer le traitement (Veo / image)
 await db.collection('users').doc(userId).update({
-    tokens: admin.firestore.FieldValue.increment(-tokensToDeducedFromSub),
-    packTokens: admin.firestore.FieldValue.increment(-tokensToDeducedFromDiamonds)
+   tokens: FieldValue.increment(-tokensToDeducedFromSub),
+packTokens: FieldValue.increment(-tokensToDeducedFromDiamonds)
 });
 
 // Ensuite, tu peux lancer ta génération Veo ou ton code normal...
