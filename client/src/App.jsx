@@ -522,7 +522,7 @@ id: "veo3",
         "1080p": p.veo3?.fhd8 || 192 
       }
     },
-endpoint: "veo-3.1-generate-preview",
+endpoint: 'veo-3.1-generate-001',
 extendEndpoint: "fal-ai/veo3.1/extend-video", 
 annotation: "Moteur Google - Fidélité Extrême"
   },
