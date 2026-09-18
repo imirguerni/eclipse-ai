@@ -28,103 +28,37 @@ const { PRICING_DATA, PLAN_TO_PRICE, packs, ALLOWED_ENGINES } = require('./prici
 // --- INITIALISATION RECAPTCHA ---
 const recaptchaClient = new RecaptchaEnterpriseServiceClient();
 const admin = require('firebase-admin');
+
 async function verifyRecaptcha(token) {
-    // Aucun token = on refuse proprement
-    if (!token || typeof token !== "string") {
-        console.warn("⚠️ Aucun token reCAPTCHA reçu.");
-        return false;
-    }
-
+    if (!token) return false;
     try {
-        const projectPath = recaptchaClient.projectPath('eclipse-ai-96f30');
-
+        const projectPath = recaptchaClient.projectPath('eclipse-ai-96f30'); 
         const request = {
             parent: projectPath,
             assessment: {
                 event: {
                     token: token,
-                    siteKey: '6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq',
+                    siteKey: '6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq', 
                 },
             },
         };
 
         const [response] = await recaptchaClient.createAssessment(request);
-
-        // ---------------------------------------------------------
-        // 1️⃣ Vérification de validité du token
-        // ---------------------------------------------------------
-        if (!response.tokenProperties?.valid) {
-            console.warn(
-                "⚠️ Token reCAPTCHA invalide :",
-                response.tokenProperties?.invalidReason || "raison inconnue"
-            );
-
+        
+        if (!response.tokenProperties.valid) {
+            console.error("❌ Jeton reCAPTCHA invalide :", response.tokenProperties.invalidReason);
             return false;
         }
 
-        // ---------------------------------------------------------
-        // 2️⃣ Récupération du score
-        // ---------------------------------------------------------
-        const score = Number(response.riskAnalysis?.score ?? 0);
-
+        const score = response.riskAnalysis.score;
         console.log(`🛡️ Score reCAPTCHA reçu : ${score}`);
-
-        // ---------------------------------------------------------
-        // 3️⃣ Raisons fournies par Google
-        // ---------------------------------------------------------
-        const reasons = response.riskAnalysis?.reasons || [];
-
-        if (reasons.length > 0) {
-            console.log(
-                "🛡️ Raisons reCAPTCHA :",
-                reasons.join(", ")
-            );
-        }
-
-        // ---------------------------------------------------------
-        // 4️⃣ Vérification de l'action si Google en fournit une
-        // ---------------------------------------------------------
-        const action = response.tokenProperties?.action;
-
-        if (action) {
-            console.log(`🛡️ Action reCAPTCHA : ${action}`);
-        }
-
-        // ---------------------------------------------------------
-        // 5️⃣ Seuil volontairement plus souple
-        //
-        // 0.1 = comportement très suspect
-        // 0.3 = on laisse passer les utilisateurs légitimes
-        // 0.5 = seuil précédent, beaucoup plus strict
-        // ---------------------------------------------------------
-        if (score < 0.3) {
-            console.warn(
-                `🛑 Score reCAPTCHA très faible : ${score}`
-            );
-
-            return false;
-        }
-
-        console.log(
-            `✅ Vérification reCAPTCHA acceptée. Score : ${score}`
-        );
-
-        return true;
-
+        
+        return score >= 0.5;
     } catch (error) {
-
-        console.error(
-            "❌ Erreur technique reCAPTCHA :",
-            error.message
-        );
-
-        // En cas de problème temporaire avec Google,
-        // on ne bloque pas inutilement un utilisateur légitime.
-        console.warn(
-            "⚠️ reCAPTCHA indisponible : requête autorisée temporairement."
-        );
-
-        return true;
+        console.error("❌ Erreur technique reCAPTCHA (contournée pour éviter les faux positifs) :", error.message);
+        // 💡 En cas de panne ou d'erreur technique de l'API Google, 
+        // on retourne true pour ne pas bloquer les utilisateurs légitimes.
+        return true; 
     }
 }
 
@@ -194,16 +128,9 @@ async function recoverInterruptedGenerations() {
 }
 
 // --- CONFIGURATION FFMPEG ---
-
-const ffmpegPath = process.platform === "win32"
-    ? "D:/internet/internet/ffmpeg/bin/ffmpeg.exe"
-    : "/usr/bin/ffmpeg";
-
+const ffmpegPath = "D:/internet/internet/ffmpeg/bin/ffmpeg.exe";
 ffmpeg.setFfmpegPath(ffmpegPath);
-
 console.log("🛠️ Configuration FFMPEG terminée.");
-console.log("🖥️ Système :", process.platform);
-console.log("🎬 Chemin FFMPEG utilisé :", ffmpegPath);
 
 // --- CONFIGURATION EXPRESS & MIDDLEWARES ---
 const SECURITY_TEST_MODE = process.env.SECURITY_TEST_MODE === 'true';
@@ -850,10 +777,23 @@ console.log(
    const userId = req.user.uid;
 
     // 🛡️ 2. VÉRIFICATION RECAPTCHA (Bloque les robots avant toute utilisation de crédits)
-    const isHuman = await verifyRecaptcha(recaptchaToken);
-    if (!isHuman) {
-        return res.status(403).json({ error: "Vérification de sécurité impossible. Veuillez patienter quelques secondes puis réessayer." });
-    }
+ // 🛡️ 2. VÉRIFICATION RECAPTCHA
+const isHuman = await verifyRecaptcha(recaptchaToken);
+
+// BROWSER_ERROR = problème temporaire côté navigateur/réseau.
+// On ne considère pas cela comme un bot.
+if (isHuman === "retry") {
+    return res.status(403).json({
+        error: "La vérification de sécurité a échoué temporairement. Veuillez actualiser la page puis réessayer."
+    });
+}
+
+// Token réellement invalide ou score insuffisant
+if (isHuman === false) {
+    return res.status(403).json({
+        error: "Échec de la vérification de sécurité (bot détecté)."
+    });
+}
 if (!prompt || !engineId) {
         return res.status(400).json({ 
             error: "Paramètres manquants." 
@@ -1164,16 +1104,9 @@ if (creditsDebited && !generationFinished) {
 // --- UNIFICATION DE LA ROUTE GENERATE VIDEO ---
 // ⚠️ Ajout de authenticateUser pour s'assurer que l'utilisateur est connecté et authentifié par Firebase
 app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
-
-    console.log("📥 Fichier image reçu :", req.file); // Si vous utilisez Multer
-    console.log("📥 Corps de la requête :", req.body);
-
-    // TON CODE ACTUEL CONTINUE ICI
-    //     // 🛡️ 1. Récupération de l'IP et vérification de la blacklist Firestore en premier
+    // 🛡️ 1. Récupération de l'IP et vérification de la blacklist Firestore en premier
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-console.log("🌐 IP BRUTE x-forwarded-for :", req.headers['x-forwarded-for']);
-console.log("🌐 IP socket :", req.socket.remoteAddress);
-console.log("🌐 IP UTILISÉE POUR BLACKLIST :", clientIp);
+
     const isBlocked = await isIpBlacklisted(clientIp);
     if (isBlocked) {
         console.warn(`🛑 Tentative de requête bloquée provenant d'une IP blacklistée : ${clientIp}`);
@@ -1216,15 +1149,15 @@ console.log("🌐 IP UTILISÉE POUR BLACKLIST :", clientIp);
     // 2. Déstructuration du body (SANS userId, puisqu'on le récupère de manière sécurisée au-dessus)
     console.log("DEBUG BODY:", JSON.stringify(req.body, null, 2));
 
- const {
-    engineId, cost, costType,
-    prompt, duration, aspect_ratio,
-    image_urls, video_urls, loop, enable_audio, videoSource,
-    startImage, start_image_url, image_url: bodyImageUrl,
-    character_orientation,
-    recaptchaToken,
-    qualityKey
-} = req.body;
+    const { 
+        engineId, cost, costType, 
+        prompt, duration, aspect_ratio, 
+        image_urls, video_urls, loop, enable_audio, videoSource,
+        startImage, start_image_url, image_url,
+        character_orientation,
+        recaptchaToken, 
+        qualityKey
+    } = req.body;
 
     console.log("RECAPTCHA TOKEN:", recaptchaToken);
 
@@ -1278,30 +1211,28 @@ if (enginePricing) {
         return res.status(403).json({ error: "Erreur de validation du coût de la génération." });
     }
 }
-
 // =============================================================
-// 🛡️ VÉRIFICATION RECAPTCHA
+// 🛡️ VÉRIFICATION RECAPTCHA (Unique et complète)
 // =============================================================
 const isHuman = await verifyRecaptcha(recaptchaToken);
 
-if (isHuman === false) {
-    console.warn(
-        `⚠️ Vérification reCAPTCHA échouée pour ${clientIp}.`
-    );
+// Détection de l'environnement local pour éviter les faux positifs de ban IP
+const isLocalhost = clientIp === '::1' || clientIp === '127.0.0.1' || clientIp === '::ffff:127.0.0.1';
 
-    // IMPORTANT :
-    // Un échec reCAPTCHA ne signifie PAS automatiquement
-    // que l'utilisateur est un bot.
-    //
-    // On ne blacklist donc PAS son IP ici.
-    return res.status(403).json({
-        error: "La vérification de sécurité n'a pas pu être effectuée. Veuillez actualiser la page puis réessayer."
-    });
+// Si reCAPTCHA retourne explicitement false et qu'on n'est pas en local
+if (isHuman === false && !isLocalhost) {
+    // Bannit l'IP pour 24h en cas de bot avéré
+    await blacklistIp(clientIp, "Échec reCAPTCHA / Bot détecté", 24);
+
+    // Remplacement sécurisé sans appel à sendSecurityAlert
+    console.warn(`🚨 [ALERTE SÉCURITÉ] Échec reCAPTCHA / Bot détecté pour l'IP ${clientIp}`);
+
+    return res.status(403).json({ error: "Échec de la vérification de sécurité (bot détecté)." });
 }
 
-console.log("✅ Vérification reCAPTCHA réussie.");
-
-
+if (isHuman === false && isLocalhost) {
+    console.warn("⚠️ [DEV LOCAL] Échec reCAPTCHA ignoré pour localhost.");
+}
 // Si isHuman vaut 'bypass' ou 'true' suite à une erreur technique de l'API Google, 
 // la requête continue normalement sans bannir l'utilisateur.
     // -------------------------------------------------------------
@@ -1477,6 +1408,11 @@ if (isGoogleVideo) {
     // 📐 SÉCURISATION ASPECT RATIO (Calculé avant utilisation)
     const safeAspect = ["16:9", "9:16", "1:1"].includes(aspect_ratio) ? aspect_ratio : "16:9";
 
+    // ⚙️ CONSTRUCTION DE L'OBJET CONFIG (Déclaré une seule fois)
+    const videoConfig = { 
+        aspectRatio: safeAspect, 
+        durationSeconds: safeDuration 
+    };
 
     console.log(`[DEBUG] Valeur finale injectée dans videoConfig : ${safeDuration}s`);
 
@@ -1485,124 +1421,41 @@ if (isGoogleVideo) {
         ? `${prompt}, silent, no background noise, no music, no sound effects, muted`
         : `${prompt}, high quality audio, immersive soundscape, cinematic sound design`;
 
-const generateOptions = {
-    model: officialGoogleModel,
-    prompt: enrichedPrompt,
+    const generateOptions = {
+        model: officialGoogleModel,
+        prompt: enrichedPrompt,
+        config: {
+            videoConfig: videoConfig,
+            outputMimeType: "video/mp4"
+        }
+    };
+const image_url = (image_urls && image_urls.length > 0) ? image_urls[0] : null;
 
-    // 🖼️ Image de départ pour le Image-to-Video
-    // generateOptions.image sera ajouté juste après
+            // On utilise la variable image_url définie plus haut dans ton code (qui prend image_urls[0])
+            if (image_url && typeof image_url === 'string') {
+                console.log("📸 Image de début détectée pour Veo, conversion et intégration au SDK...");
+                try {
+                    // Si l'image arrive au format data:image/png;base64,xxxx
+                    if (image_url.includes("base64,")) {
+                        const parts = image_url.split("base64,");
+                        const mimeType = parts[0].split(":")[1].split(";")[0] || "image/png";
+                        const base64Data = parts[1];
 
-    config: {
-        aspectRatio: safeAspect,
-        durationSeconds: safeDuration,
-        resolution: "720p",
-        generateAudio: enable_audio !== false
-    }
-};
-    const imageCandidates = [
-    Array.isArray(image_urls) ? image_urls[0] : null,
-    startImage,
-    start_image_url,
-    bodyImageUrl
-];
-
-const startingImageUrl = imageCandidates.find(
-    value => typeof value === "string" && value.trim() !== ""
-) || null;
-
-console.log(
-    "🖼️ IMAGE VEO REÇUE :",
-    startingImageUrl
-        ? (startingImageUrl.startsWith("data:")
-            ? "DATA URL / BASE64"
-            : startingImageUrl)
-        : "AUCUNE IMAGE"
-);
-if (startingImageUrl && typeof startingImageUrl === "string") {
-    try {
-        // =====================================================
-        // CAS 1 : IMAGE BASE64 / DATA URL
-        // =====================================================
-        if (startingImageUrl.startsWith("data:image/")) {
-
-            const match = startingImageUrl.match(
-                /^data:(image\/[^;]+);base64,(.+)$/
-            );
-
-            if (!match) {
-                throw new Error("Format DATA URL de l'image invalide.");
+                        generateOptions.image = {
+                            inlineData: {
+                                data: base64Data,
+                                mimeType: mimeType
+                            }
+                        };
+                    } else {
+                        // Si c'est une URL publique directe (http/https), le SDK peut la traiter directement selon les versions,
+                        // ou si tu préfères la passer brute. Ici configuré pour une URL standard :
+                        generateOptions.image = image_url;
+                    }
+                } catch (imgError) {
+                    console.error("⚠️ Impossible de formater l'image pour Veo, la génération continue en Text-to-Video :", imgError.message);
+                }
             }
-
-            const mimeType = match[1];
-            const imageBytes = match[2];
-
-            generateOptions.image = {
-                imageBytes,
-                mimeType
-            };
-
-            console.log("✅ Image Base64 injectée dans Veo :", {
-                mimeType,
-                tailleBase64: imageBytes.length
-            });
-        }
-
-        // =====================================================
-        // CAS 2 : URL HTTP / HTTPS
-        // =====================================================
-        else if (
-            startingImageUrl.startsWith("http://") ||
-            startingImageUrl.startsWith("https://")
-        ) {
-
-            console.log("🌐 Téléchargement de l'image pour Veo :", startingImageUrl);
-
-            const imageResponse = await fetch(startingImageUrl);
-
-            if (!imageResponse.ok) {
-                throw new Error(
-                    `Impossible de télécharger l'image (${imageResponse.status})`
-                );
-            }
-
-            const arrayBuffer = await imageResponse.arrayBuffer();
-            const imageBuffer = Buffer.from(arrayBuffer);
-
-            const contentType =
-                imageResponse.headers.get("content-type") || "image/png";
-
-            generateOptions.image = {
-                imageBytes: imageBuffer.toString("base64"),
-                mimeType: contentType.split(";")[0]
-            };
-
-            console.log("✅ Image URL téléchargée et injectée dans Veo :", {
-                mimeType: contentType.split(";")[0],
-                tailleOctets: imageBuffer.length
-            });
-        }
-
-        else {
-            throw new Error(
-                "Format d'image non supporté. Veo attend une image Base64 ou une URL HTTP/HTTPS."
-            );
-        }
-
-    } catch (imgError) {
-
-        console.error(
-            "❌ ERREUR IMAGE VEO :",
-            imgError.message
-        );
-
-        throw new Error(
-            `Impossible de préparer l'image de départ pour Veo : ${imgError.message}`
-        );
-    }
-}
-else {
-    console.log("⚠️ AUCUNE IMAGE DE DÉPART POUR VEO");
-}
 // 1. Flush immédiat des headers pour activer le flux SSE
 res.flushHeaders();
 
@@ -1610,29 +1463,16 @@ res.flushHeaders();
 const heartbeat = setInterval(() => {
     if (!res.writableEnded) res.write(':\n\n');
 }, 15000);
-console.log("🔍 OPTIONS VEO FINALES :", JSON.stringify({
-    model: generateOptions.model,
-    prompt: generateOptions.prompt,
-    config: generateOptions.config,
-    image: generateOptions.image
-        ? {
-            mimeType: generateOptions.image.mimeType,
-            tailleBase64: generateOptions.image.imageBytes?.length
-        }
-        : null
-}, null, 2));
 
 let operation = await ai.models.generateVideos(generateOptions);
 
 console.log("⏳ Requête acceptée par Google. ID Opération :", operation.name);
-
 console.log("🍿 Génération de la vidéo en cours sur les serveurs de Google (Attente active 1 à 3 minutes)...");
 
 // 🔄 Boucle d'attente (Polling) optimisée pour le SDK @google/genai 2.x
-
 let attempts = 0;
-
 console.log("⏳ Début de la surveillance de l'opération Google...");
+
 while (!operation.done) {
     attempts++;
     console.log(`🔄 [Tentative ${attempts}] Vérification du statut auprès de Google...`);
@@ -1656,25 +1496,14 @@ res.write(`data: ${JSON.stringify({ percent: 50, message: progressMessage })}\n\
         throw err; // On stoppe tout si l'API Google renvoie une erreur critique
     }
 
-
-// ============================================================
-// 🛡️ TIMEOUT GOOGLE VEO
-// 40 tentatives × 15 secondes = 10 minutes maximum
-// ============================================================
-if (attempts >= 40) {
-    clearInterval(heartbeat);
-
-    console.error(
-        "⏰ TIMEOUT GOOGLE VEO : génération supérieure à 10 minutes."
-    );
-
-    throw new Error(
-        "La génération vidéo Google a dépassé le délai maximum de 10 minutes."
-    );
+    // Sécurité : Timeout global après 20 tentatives (soit 5 minutes)
+    if (attempts >= 20) {
+        clearInterval(heartbeat);
+        throw new Error("Le délai de génération a été dépassé (Timeout).");
+    }
 }
 
-} // ← ferme le while (!operation.done)
-
+// Nettoyage final
 clearInterval(heartbeat);
 console.log("✅ GOOGLE A TERMINÉ LA GÉNÉRATION !");
 // Si Google a renvoyé une erreur dans l'opération terminée
@@ -1817,38 +1646,11 @@ await new Promise((resolve, reject) => {
     });
 })
 
-.on("error", (err, stdout, stderr) => {
-    console.error("❌❌❌ ERREUR FFMPEG ❌❌❌");
-    console.error("Message :", err?.message);
-    console.error("Code :", err?.code);
-    console.error("STDOUT :", stdout);
-    console.error("STDERR :", stderr);
-    console.error("Fichier source :", filePath);
-    console.error("Fichier sortie :", outputPath);
-
-    try {
-        if (fs.existsSync(filePath)) {
-            const stats = fs.statSync(filePath);
-            console.error("Taille fichier source :", stats.size, "octets");
-        }
-
-        if (fs.existsSync(outputPath)) {
-            const stats = fs.statSync(outputPath);
-            console.error("Taille fichier sortie :", stats.size, "octets");
-        }
-    } catch (debugError) {
-        console.error("Erreur diagnostic fichiers :", debugError.message);
-    }
-
+.on("error", (err) => {
     safeFinish(() => {
-        if (!res.writableEnded) {
-            res.write(`data: ${JSON.stringify({
-                error: "Erreur traitement vidéo final.",
-                details: err?.message || "Erreur FFmpeg"
-            })}\n\n`);
-            res.end();
-        }
-
+        // CORRECTION : On envoie l'erreur via le flux SSE
+        res.write(`data: ${JSON.stringify({ error: "Erreur traitement vidéo final." })}\n\n`);
+        res.end();
         reject(err);
     });
 })
