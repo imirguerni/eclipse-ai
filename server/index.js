@@ -95,7 +95,10 @@ async function verifyRecaptcha(token) {
 // 🛡️ MIDDLEWARE D'AUTHENTIFICATION :
 const authenticateUser = async (req, res, next) => {
     const authHeader = req.headers.authorization;
-    console.log("🔍 Header Authorization reçu :", authHeader);
+    console.log(
+    "🔍 Header Authorization reçu :",
+    authHeader ? "Bearer présent ✅" : "Absent ❌"
+);
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: "Accès refusé : Token manquant." });
     }
@@ -1176,7 +1179,19 @@ app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
     const userId = req.user.uid;
 
     // 2. Déstructuration du body (SANS userId, puisqu'on le récupère de manière sécurisée au-dessus)
-    console.log("DEBUG BODY:", JSON.stringify(req.body, null, 2));
+    console.log(
+    "DEBUG BODY:",
+    JSON.stringify(
+        {
+            ...req.body,
+            recaptchaToken: req.body.recaptchaToken
+                ? "[TOKEN REDACTED]"
+                : null
+        },
+        null,
+        2
+    )
+);
 
     const { 
         engineId, cost, costType, 
