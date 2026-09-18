@@ -26,7 +26,15 @@ if (!ffmpegPath) {
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 console.log("🛠️ FFMPEG configuré :", ffmpegPath);
-const { GoogleGenAI } = require('@google/genai');
+/*
+============================================================
+ANCIEN SYSTÈME GOOGLE VEO / VERTEX AI
+CONSERVÉ POUR RETOUR EN ARRIÈRE
+============================================================
+
+const isGoogleVideo = engineId.startsWith("veo3"); 
+*/
+
 const cron = require('node-cron');
 const { RecaptchaEnterpriseServiceClient } = require('@google-cloud/recaptcha-enterprise');
 const nodemailer = require('nodemailer');
@@ -453,6 +461,8 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         return res.status(500).json({ error: "Erreur serveur lors de l'upload." });
     }
 });
+
+/*
 // ==========================================
 
 // --- SDK IA ---
@@ -461,7 +471,7 @@ const ai = new GoogleGenAI({
     project: process.env.GCP_PROJECT_ID || 'eclipse-ai-96f30',
     location: 'us-central1'
 });
-
+*/
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 fal.config({ apiKey: process.env.FAL_KEY });
@@ -566,6 +576,12 @@ const STRIPE_PRICE_IDS = {
 };
 
 // --- ROUTES STRIPE & DIAGNOSTIC ---
+/*
+============================================================
+ANCIEN TEST GOOGLE VEO
+CONSERVÉ POUR RETOUR EN ARRIÈRE
+============================================================
+
 app.get('/ping-veo', async (req, res) => {
     try {
         const modelName = 'veo-3.1-generate-preview';
@@ -575,9 +591,17 @@ app.get('/ping-veo', async (req, res) => {
         });
         res.json({ status: "Connecté", operationName: operation.name });
     } catch (error) {
-        res.status(500).json({ error: "Échec de connexion au modèle", message: error.message });
+        res.status(500).json({ 
+            error: "Échec de connexion au modèle", 
+            message: error.message 
+        });
     }
 });
+
+============================================================
+FIN ANCIEN TEST GOOGLE VEO
+============================================================
+*/
 
 app.post('/create-checkout-session', limiter, authenticateUser, async (req, res) => {
     try {
@@ -1428,15 +1452,23 @@ req.on('close', () => {
 
         // Le débit est validé à 100%
         creditsDebited = true;
+    
 
-          // --- BLOC SÉCURISÉ HAILUO / FAL (À COPIER-COLLER SCRUPULEUSEMENT) ---
-// ✅ SEULE ET UNIQUE CONDITION POUR GOOGLE VEO (Gère veo3 et veo3_lite)
+/*
+============================================================
+ANCIEN CODE GOOGLE VEO / VERTEX AI
+CONSERVÉ POUR RETOUR EN ARRIÈRE
+============================================================
+
+
+
 const isGoogleVideo = Boolean(engineId && (engineId.startsWith("veo") || engineId.includes("google")));
+
 if (isGoogleVideo) {
     // 🔐 SÉCURITÉ : Validation du modèle
     let officialGoogleModel;
   if (engineId === "veo3_lite") {
-        officialGoogleModel = "veo-3.1-generate-001";
+        officialGoogleModel = "veo-3.1 lite-generate-001";
     } else {
         officialGoogleModel = "veo-3.1-generate-001";
     }
@@ -1975,7 +2007,9 @@ else {
 
 } // <--- Ferme le grand "if (isGoogleVideo)" du début
 
-else {
+
+*/
+
 
 // --- TOUS LES AUTRES MOTEURS PASSENT PAR FAL.AI ---
 
@@ -4273,7 +4307,7 @@ if (!falVideoUrl) {
         })}\n\n`);
 
         res.end();
-        }
+        
 
 } catch (error) {
         console.error("❌ Erreur dans le flux de génération :", error.message);
@@ -4371,44 +4405,44 @@ app.post('/api/send-otp', limiter, async (req, res) => {
             otpExpires: expiresAt
         });
 
-        // 🚀 Envoi de l'e-mail via l'API HTTP de Brevo (Contourne le blocage Render)
+
 // 🚀 1. Envoi du code de vérification à l'utilisateur
-        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                'accept': 'application/json',
-                'api-key': process.env.BREVO_API_KEY,
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: { name: "Ovortex", email: "imir.guerni@gmail.com" },
-                to: [{ email: trimmedEmail }],
-                subject: 'Votre code de vérification Ovortex',
-                htmlContent: `<p>Votre code de sécurité à usage unique est : <strong>${otpCode}</strong>. Il est valable 5 minutes.</p>`
-            })
-        });
+const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+        sender: { name: "Ovortex", email: process.env.SENDER_EMAIL },
+        to: [{ email: trimmedEmail }],
+        subject: 'Votre code de vérification Ovortex',
+        htmlContent: `<p>Votre code de sécurité à usage unique est : <strong>${otpCode}</strong>. Il est valable 5 minutes.</p>`
+    })
+});
 
-        const brevoData = await brevoResponse.json();
+const brevoData = await brevoResponse.json();
 
-        if (!brevoResponse.ok) {
-            throw new Error(brevoData.message || "Erreur lors de l'envoi de l'e-mail via Brevo");
-        }
+if (!brevoResponse.ok) {
+    throw new Error(brevoData.message || "Erreur lors de l'envoi de l'e-mail via Brevo");
+}
 
-        // 🚀 2. AJOUT : Envoi d'une notification à l'administrateur
-        await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                'accept': 'application/json',
-                'api-key': process.env.BREVO_API_KEY,
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: { name: "Ovortex Alerte", email: "imir.guerni@gmail.com" },
-                to: [{ email: "imir.guerni@gmail.com" }], // 👈 Votre adresse perso pour recevoir l'alerte
-                subject: 'Nouvelle tentative de connexion / inscription',
-                htmlContent: `<p>Une personne vient de demander un code de vérification sur Ovortex avec l'e-mail : <strong>${trimmedEmail}</strong></p>`
-            })
-        });
+// 🚀 2. Envoi d'une notification à l'administrateur
+await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+        sender: { name: "Ovortex Alerte", email: process.env.SENDER_EMAIL },
+        to: [{ email: process.env.ADMIN_EMAIL }], // 👈 Récupéré via les variables sécurisées
+        subject: 'Nouvelle tentative de connexion / inscription',
+        htmlContent: `<p>Une personne vient de demander un code de vérification sur Ovortex avec l'e-mail : <strong>${trimmedEmail}</strong></p>`
+    })
+});
 
         res.json({ success: true, message: "Code envoyé par e-mail.", userId });
     } catch (error) {
