@@ -1188,7 +1188,6 @@ app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
         qualityKey
     } = req.body;
 
-    console.log("RECAPTCHA TOKEN:", recaptchaToken);
 
     // On vérifie maintenant engineId et cost (userId est garanti puisqu'il vient de req.user.uid)
     if (!engineId || cost === undefined) {
