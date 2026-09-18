@@ -30,35 +30,64 @@ const recaptchaClient = new RecaptchaEnterpriseServiceClient();
 const admin = require('firebase-admin');
 
 async function verifyRecaptcha(token) {
-    if (!token) return false;
+    if (!token || typeof token !== "string") {
+        console.warn("⚠️ Aucun token reCAPTCHA reçu.");
+        return false;
+    }
+
     try {
-        const projectPath = recaptchaClient.projectPath('eclipse-ai-96f30'); 
+        const projectPath = recaptchaClient.projectPath('eclipse-ai-96f30');
+
         const request = {
             parent: projectPath,
             assessment: {
                 event: {
                     token: token,
-                    siteKey: '6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq', 
+                    siteKey: '6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq',
                 },
             },
         };
 
         const [response] = await recaptchaClient.createAssessment(request);
-        
-        if (!response.tokenProperties.valid) {
-            console.error("❌ Jeton reCAPTCHA invalide :", response.tokenProperties.invalidReason);
+
+        const tokenProperties = response.tokenProperties;
+
+        if (!tokenProperties?.valid) {
+            const invalidReason = tokenProperties?.invalidReason;
+
+            console.warn(
+                `⚠️ Jeton reCAPTCHA invalide : ${invalidReason || "RAISON_INCONNUE"}`
+            );
+
+            // BROWSER_ERROR = problème temporaire côté navigateur/réseau.
+            // Ce n'est PAS une preuve que l'utilisateur est un bot.
+            if (invalidReason === "BROWSER_ERROR") {
+                console.warn(
+                    "🔄 BROWSER_ERROR reCAPTCHA : nouveau token nécessaire côté navigateur."
+                );
+
+                return "retry";
+            }
+
+            // Les autres tokens réellement invalides restent bloqués.
             return false;
         }
 
-        const score = response.riskAnalysis.score;
+        const score = Number(response.riskAnalysis?.score ?? 0);
+
         console.log(`🛡️ Score reCAPTCHA reçu : ${score}`);
-        
+
         return score >= 0.5;
+
     } catch (error) {
-        console.error("❌ Erreur technique reCAPTCHA (contournée pour éviter les faux positifs) :", error.message);
-        // 💡 En cas de panne ou d'erreur technique de l'API Google, 
-        // on retourne true pour ne pas bloquer les utilisateurs légitimes.
-        return true; 
+        console.error(
+            "❌ Erreur technique reCAPTCHA :",
+            error.message
+        );
+
+        // On conserve ton comportement actuel en cas de panne
+        // technique de l'API Google.
+        return true;
     }
 }
 
