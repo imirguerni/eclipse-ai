@@ -1707,10 +1707,18 @@ await new Promise((resolve, reject) => {
     });
 })
 
-.on("error", (err) => {
+.on("error", (err, stdout, stderr) => {
+    console.error("❌ ERREUR FFMPEG :", err.message);
+    console.error("❌ CODE FFMPEG :", err.code);
+    console.error("❌ STDOUT FFMPEG :", stdout);
+    console.error("❌ STDERR FFMPEG :", stderr);
+
     safeFinish(() => {
-        // CORRECTION : On envoie l'erreur via le flux SSE
-        res.write(`data: ${JSON.stringify({ error: "Erreur traitement vidéo final." })}\n\n`);
+        res.write(`data: ${JSON.stringify({
+            error: "Erreur traitement vidéo final.",
+            details: err.message
+        })}\n\n`);
+
         res.end();
         reject(err);
     });
