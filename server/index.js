@@ -1657,13 +1657,26 @@ await new Promise((resolve, reject) => {
         });
     }, 120000);
 
-    console.log("🎬 Préparation du lancement FFMPEG...");
-    console.log("📥 Fichier source :", filePath);
-    console.log("📤 Fichier destination :", outputPath);
-    console.log("⏱️ Durée demandée :", duration);
-    console.log("📐 Résolution cible :", targetSize);
+  
 
-    const ffmpegProcess = ffmpeg(filePath)
+  console.log("🎬 Préparation du lancement FFMPEG...");
+console.log("📥 Fichier source :", filePath);
+console.log("📤 Fichier destination :", outputPath);
+console.log("⏱️ Durée demandée :", duration);
+console.log("📐 Résolution cible :", targetSize);
+
+console.log("🔎 Chemin FFmpeg configuré :", ffmpegPath);
+console.log("🔎 FFmpeg existe :", fs.existsSync(ffmpegPath));
+
+if (!fs.existsSync(ffmpegPath)) {
+    throw new Error(`FFmpeg introuvable sur Render : ${ffmpegPath}`);
+}
+
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+console.log("✅ Chemin FFmpeg appliqué à fluent-ffmpeg.");
+
+const ffmpegProcess = ffmpeg(filePath)
         .outputOptions([
             '-t ' + duration,
             '-vf scale=' + (
