@@ -17,6 +17,33 @@ const { isIpBlacklisted, blacklistIp } = require('./security/ipBlacklist');
 const { detectSuspicious } = require('./security/detector');
 const Groq = require("groq-sdk");
 const ffmpeg = require('fluent-ffmpeg');
+
+/**
+ * Redimensionne une vidéo au format 9:16 avec des bandes noires pour éviter toute déformation.
+ * @param {string} inputPath - Chemin du fichier vidéo d'origine
+ * @param {string} outputPath - Chemin du fichier vidéo de sortie
+ */
+function formatVideoTo916WithPadding(inputPath, outputPath) {
+    return new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+            .videoFilters([
+                // Filtre FFmpeg : redimensionne en gardant les proportions + ajoute les bandes noires (1080x1920)
+                "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"
+            ])
+            .output(outputPath)
+            .on('end', () => {
+                console.log("✅ Vidéo convertie en 9:16 avec bandes noires avec succès !");
+                resolve(outputPath);
+            })
+            .on('error', (err) => {
+                console.error("❌ Erreur FFmpeg :", err.message);
+                reject(err);
+            })
+            .run();
+    });
+}
+
+
 const { GoogleGenAI } = require('@google/genai');
 const cron = require('node-cron');
 const { RecaptchaEnterpriseServiceClient } = require('@google-cloud/recaptcha-enterprise');
@@ -157,7 +184,7 @@ const decodedToken = await auth.verifyIdToken(token);
     }
 };
 
-// 🔄 VÉRIFICATION DES GÉNÉRATIONS EN COURS
+// 🔄 VÉRIFICATION DES GÉNÉRATIONS EN COURS// 🔄 VÉRIFICATION DES GÉNÉRATIONS EN COURS
 async function recoverInterruptedGenerations() {
 
     console.log("🔎 Vérification des générations en cours...");
@@ -168,29 +195,56 @@ async function recoverInterruptedGenerations() {
 
     console.log("🔒 Nombre de locks trouvés :", locks.size);
 
+    const now = new Date();
+
     for (const doc of locks.docs) {
 
         const data = doc.data();
 
         console.log("LOCK TROUVE :", data);
 
+        // 🛡️ NETTOYAGE AUTOMATIQUE DES LOCKS EXPIRÉS
+        const expiresAt = data.expiresAt?.toDate();
+
+        if (expiresAt && now > expiresAt) {
+
+            console.log(
+                `🧹 Lock expiré détecté : ${doc.id}`
+            );
+
+            await db.collection('imageLocks')
+                .doc(doc.id)
+                .delete();
+
+            console.log(
+                `✅ Lock expiré supprimé : ${doc.id}`
+            );
+
+            continue;
+        }
+
+        // 🔵 Génération Fal encore considérée comme active
         if (data.provider === "fal") {
 
             console.log(
                 "⏳ Génération Fal toujours considérée active :",
                 data.userId
             );
-            // Pas de remboursement ici.
-            // Fal peut encore être en train de générer.
+
             continue;
         }
-        // Pour les autres fournisseurs éventuellement
-        // on ne rembourse pas automatiquement non plus.
+
+        // ⚠️ Autre fournisseur
         console.log(
             "⚠️ Lock inconnu conservé :",
             data.userId
         );
     }
+
+    console.log(
+        "✅ Vérification des générations interrompues terminée"
+    );
+
 }
 
 // --- CONFIGURATION FFMPEG ---
@@ -603,7 +657,7 @@ const STRIPE_PRICE_IDS = {
 // --- ROUTES STRIPE & DIAGNOSTIC ---
 app.get('/ping-veo', async (req, res) => {
     try {
-        const modelName = 'veo-3.1-generate-preview';
+const modelName = 'veo-3.1-generate-001';
         const operation = await ai.models.generateVideos({
             model: modelName,
             prompt: "A beautiful cinematic landscape, high quality, 8k", 
@@ -1170,10 +1224,16 @@ app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
 
     // TON CODE ACTUEL CONTINUE ICI
     //     // 🛡️ 1. Récupération de l'IP et vérification de la blacklist Firestore en premier
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-console.log("🌐 IP BRUTE x-forwarded-for :", req.headers['x-forwarded-for']);
+const forwardedFor = req.headers['x-forwarded-for'];
+
+const clientIp = forwardedFor
+    ? forwardedFor.split(',')[0].trim()
+    : req.socket.remoteAddress;
+
+console.log("🌐 IP BRUTE x-forwarded-for :", forwardedFor);
 console.log("🌐 IP socket :", req.socket.remoteAddress);
-console.log("🌐 IP UTILISÉE POUR BLACKLIST :", clientIp);
+console.log("🌐 IP CLIENT RETENUE :", clientIp);
+
     const isBlocked = await isIpBlacklisted(clientIp);
     if (isBlocked) {
         console.warn(`🛑 Tentative de requête bloquée provenant d'une IP blacklistée : ${clientIp}`);
@@ -1278,7 +1338,40 @@ if (enginePricing) {
         return res.status(403).json({ error: "Erreur de validation du coût de la génération." });
     }
 }
+// ... (ton code actuel de vérification anti-fraude se termine ici)
 
+const officialCostNumber = parseInt(officialCost, 10) || 0;
+
+// =============================================================
+// 💰 VÉRIFICATION DU SOLDE DE L'UTILISATEUR (Tokens / Diamants)
+// =============================================================
+const subscriptionTokens = userData.tokens || 0;       // Crédits de l'abonnement
+const diamondTokens = userData.packTokens || 0;          // Diamants / recharges
+
+// Total des crédits disponibles
+const totalAvailableTokens = subscriptionTokens + diamondTokens;
+
+if (totalAvailableTokens < officialCostNumber) {
+    console.warn(`🛑 Solde insuffisant pour l'utilisateur ${userId}. Requis: ${officialCostNumber}, Disponible: ${totalAvailableTokens}`);
+    return res.status(400).json({ 
+        error: "Solde insuffisant. Vous n'avez plus assez de crédits ni de diamants pour effectuer cette génération." 
+    });
+}
+
+// =============================================================
+// 🚀 DEDUCTION DES CRÉDITS (Priorité aux tokens d'abo, puis aux diamants)
+// =============================================================
+let tokensToDeducedFromSub = Math.min(subscriptionTokens, officialCostNumber);
+let remainingCost = officialCostNumber - tokensToDeducedFromSub;
+let tokensToDeducedFromDiamonds = remainingCost > 0 ? remainingCost : 0;
+
+// Tu effectues la mise à jour en base de données avant de lancer le traitement (Veo / image)
+await db.collection('users').doc(userId).update({
+    tokens: admin.firestore.FieldValue.increment(-tokensToDeducedFromSub),
+    packTokens: admin.firestore.FieldValue.increment(-tokensToDeducedFromDiamonds)
+});
+
+// Ensuite, tu peux lancer ta génération Veo ou ton code normal...
 // =============================================================
 // 🛡️ VÉRIFICATION RECAPTCHA
 // =============================================================
@@ -1423,16 +1516,21 @@ req.on('close', () => {
             });
 
             // 2. Création du verrou de sécurité
-            transaction.set(lockRef, {
-                userId,
-                requestId,
-                cost: requiredCost,
-                field: usedWallet, // "tokens", "packTokens" ou "hybrid"
-                status: "processing",
-                provider: "fal",
-                createdAt: Timestamp.now(),
-                lastCheck: Timestamp.now()
-            });
+   transaction.set(lockRef, {
+    userId,
+    requestId,
+    cost: requiredCost,
+    field: usedWallet,
+    status: "processing",
+    provider: "fal",
+    createdAt: Timestamp.now(),
+    lastCheck: Timestamp.now(),
+
+    // 🛡️ Expiration de sécurité du verrou : 15 minutes
+    expiresAt: Timestamp.fromDate(
+        new Date(Date.now() + 15 * 60 * 1000)
+    )
+});
         });
 
  // 3. 🛑 SI DÉJÀ EN COURS
@@ -1455,17 +1553,19 @@ const isGoogleVideo = Boolean(engineId && (engineId.startsWith("veo") || engineI
 if (isGoogleVideo) {
     // 🔐 SÉCURITÉ : Validation du modèle
     let officialGoogleModel;
-  if (engineId === "veo3_lite") {
-        officialGoogleModel = "veo-3.1-lite-generate-001";
-    } else {
-        officialGoogleModel = "veo-3.1-generate-preview";
-    }
+if (engineId === "veo3_lite") {
+    officialGoogleModel = "veo-3.1-lite-generate-001";
+} else {
+    officialGoogleModel = "veo-3.1-generate-001";
+}
 
     console.log(`🔒 [Sécurisé] Appel Google SDK | Modèle : ${officialGoogleModel}`);
 
     // 🕒 SÉCURISATION DURÉE (Validations strictes)
-    const allowedDurations = (engineId === "veo3_lite") ? [4, 8] : [4, 6, 8];
-    let safeDuration = parseInt(duration);
+
+const allowedDurations = [4, 6, 8];
+let safeDuration = parseInt(duration, 10);
+
 
     console.log(`[DEBUG] Durée brute reçue: ${duration}, Durée parsée: ${safeDuration}, Moteur: ${engineId}`);
 
@@ -1757,102 +1857,115 @@ console.log(
     }`
 );
 
+// 📐 1. Détermination dynamique de la résolution cible selon l'aspect_ratio
+let targetWidth = 1080;
+let targetHeight = 1920; // Par défaut 9:16
+
+if (aspect_ratio === "1:1") {
+    targetWidth = 1080;
+    targetHeight = 1080; // Carré
+} else if (aspect_ratio === "16:9") {
+    targetWidth = 1920;
+    targetHeight = 1080; // Paysage
+}
+
+console.log(`📐 Format cible appliqué : ${targetWidth}x${targetHeight} (${aspect_ratio || '9:16'})`);
+
+// 2. Ton bloc FFmpeg mis à jour
 await new Promise((resolve, reject) => {
     // ⏱️ TIMEOUT SÉCURISÉ
-  timeout = setTimeout(() => {
-    safeFinish(() => {
-        reject(new Error("Timeout FFMPEG : dépassement 120s"));
-    });
-}, 120000);
+    timeout = setTimeout(() => {
+        safeFinish(() => {
+            reject(new Error("Timeout FFMPEG : dépassement 120s"));
+        });
+    }, 120000);
 
     ffmpeg(filePath)
+        .videoFilters([
+            // ✅ Utilisation des variables dynamiques pour éviter toute déformation
+            `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,setsar=1`
+        ])
         .outputOptions([
-            '-t ' + duration,
-            '-vf scale=' + (targetSize === "1920x1080" ? "1920:1080" : "1280:720"),
+    '-t ' + safeDuration,
             '-c:v libx264',
             '-preset fast',
+            '-pix_fmt yuv420p',
             '-movflags +faststart'
         ])
-
-        
         .output(outputPath)
         .on("start", (cmd) => {
             console.log("🚀 FFMPEG commande lancée:", cmd);
         })
+        .on("end", () => {    
+            safeFinish(async () => {
+                console.log(`✂️ Vidéo traitée : ${safeDuration}s, Résolution : ${targetWidth}x${targetHeight}`);
+                fs.unlink(filePath, (err) => { if (err) console.error(err); });
 
+                const finalUrl = `${req.protocol}://${req.get("host")}/videos/${finalFileName}`;
 
-.on("end", () => {    
-    safeFinish(async () => {
-        console.log(`✂️ Vidéo traitée : ${duration}s, Résolution : ${targetSize}`);
-        fs.unlink(filePath, (err) => { if (err) console.error(err); });
+                if (lockRef) {
+                    try {
+                        await lockRef.update({
+                            status: "completed",
+                            videoUrl: finalUrl,
+                            url: finalUrl,
+                            prompt: prompt || "",
+                            description: prompt || "",
+                            engine: engineId || "google-veo",
+                            completedAt: FieldValue.serverTimestamp()
+                        });
+                        console.log("🔒 Verrou imageLocks mis à jour et finalisé avec succès pour Veo.");
+                    } catch (lockErr) {
+                        console.error("⚠️ Erreur lors de la mise à jour finale du verrou imageLocks :", lockErr.message);
+                    }
+                }
+                
+                // 3️⃣ Envoi de la vidéo au client via le flux SSE
+                res.write(`data: ${JSON.stringify({ 
+                    videoUrl: finalUrl, 
+                    percent: 100, 
+                    message: "Vidéo prête !" 
+                })}\n\n`);
+                res.end(); // Ferme le flux proprement
+                
+                resolve(); 
+            });
+        })
+        .on("error", (err, stdout, stderr) => {
+            console.error("❌❌❌ ERREUR FFMPEG ❌❌❌");
+            console.error("Message :", err?.message);
+            console.error("Code :", err?.code);
+            console.error("STDOUT :", stdout);
+            console.error("STDERR :", stderr);
+            console.error("Fichier source :", filePath);
+            console.error("Fichier sortie :", outputPath);
 
-        const finalUrl = `${req.protocol}://${req.get("host")}/videos/${finalFileName}`;
+            try {
+                if (fs.existsSync(filePath)) {
+                    const stats = fs.statSync(filePath);
+                    console.error("Taille fichier source :", stats.size, "octets");
+                }
 
-    if (lockRef) {
-    try {
-        await lockRef.update({
-            status: "completed",
-            videoUrl: finalUrl,
-            url: finalUrl,
-            prompt: prompt || "",
-            description: prompt || "",
-            engine: engineId || "google-veo",
-            completedAt: FieldValue.serverTimestamp()
-        });
-        console.log("🔒 Verrou imageLocks mis à jour et finalisé avec succès pour Veo.");
-    } catch (lockErr) {
-        console.error("⚠️ Erreur lors de la mise à jour finale du verrou imageLocks :", lockErr.message);
-    }
-}
-        
-        // 3️⃣ Envoi de la vidéo au client via le flux SSE
-        res.write(`data: ${JSON.stringify({ 
-            videoUrl: finalUrl, 
-            percent: 100, 
-            message: "Vidéo prête !" 
-        })}\n\n`);
-        res.end(); // Ferme le flux proprement
-        
-        resolve(); 
-    });
-})
+                if (fs.existsSync(outputPath)) {
+                    const stats = fs.statSync(outputPath);
+                    console.error("Taille fichier sortie :", stats.size, "octets");
+                }
+            } catch (debugError) {
+                console.error("Erreur diagnostic fichiers :", debugError.message);
+            }
 
-.on("error", (err, stdout, stderr) => {
-    console.error("❌❌❌ ERREUR FFMPEG ❌❌❌");
-    console.error("Message :", err?.message);
-    console.error("Code :", err?.code);
-    console.error("STDOUT :", stdout);
-    console.error("STDERR :", stderr);
-    console.error("Fichier source :", filePath);
-    console.error("Fichier sortie :", outputPath);
+            safeFinish(() => {
+                if (!res.writableEnded) {
+                    res.write(`data: ${JSON.stringify({
+                        error: "Erreur traitement vidéo final.",
+                        details: err?.message || "Erreur FFmpeg"
+                    })}\n\n`);
+                    res.end();
+                }
 
-    try {
-        if (fs.existsSync(filePath)) {
-            const stats = fs.statSync(filePath);
-            console.error("Taille fichier source :", stats.size, "octets");
-        }
-
-        if (fs.existsSync(outputPath)) {
-            const stats = fs.statSync(outputPath);
-            console.error("Taille fichier sortie :", stats.size, "octets");
-        }
-    } catch (debugError) {
-        console.error("Erreur diagnostic fichiers :", debugError.message);
-    }
-
-    safeFinish(() => {
-        if (!res.writableEnded) {
-            res.write(`data: ${JSON.stringify({
-                error: "Erreur traitement vidéo final.",
-                details: err?.message || "Erreur FFmpeg"
-            })}\n\n`);
-            res.end();
-        }
-
-        reject(err);
-    });
-})
-
+                reject(err);
+            });
+        })
         .run();
 });
 

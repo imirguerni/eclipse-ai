@@ -647,7 +647,7 @@ endpoint: "fal-ai/pixverse/v6/text-to-video"},
   name: "seedance 2.0", 
   type: "VIDEO",
   canDualImage: true, 
-  minPriceForLightning: "24.99",
+  minPriceForLightning: "12.99",
   prices: {
    "5": { 
        "480p": p.seedance20.sd5 || 123, 
@@ -1034,11 +1034,11 @@ useEffect(() => {
                         resolution === "1080p" || 
                         resolution?.toLowerCase().includes("fhd");
 
-    // 1. DÉTERMINATION DU PLAN (Éclairs ou Diamants)
+    // 1. DÉTERMINATION DU PLAN (Éclairs ou Diamants )(Mode Full HD : Diamants)
     const currentPlanPrice = PLAN_TO_PRICE[userPlan?.toLowerCase()] || "0.00";
     const userTierIdx = packsList.indexOf(currentPlanPrice);
     const reqTierIdx = packsList.indexOf(String(currentEngineData.minPriceForLightning));
-    const masterIdx = packsList.indexOf("34.99");
+    const masterIdx = packsList.indexOf("12.99");
 
     // FIX CHIRURGICAL : Si l'utilisateur possède des Éclairs (tokens > 0), on ne le force JAMAIS sur les diamants
     const hasTokensToSpend = tokens > 0;
@@ -1553,13 +1553,15 @@ const targetRoute = mode === "VIDEO" ? "generate-video" : "generate-image";
 // Préparation dynamique de la configuration par moteur
 const engineSpecificParams = (function() {
     // Fonction utilitaire pour valider la durée selon le modèle
-    const getValidDuration = (modelId, dur) => {
-        const d = parseInt(dur);
-        if (modelId.includes("veo")) {
-            return (d >= 8) ? 8 : 4; // Si c'est Veo, on force 4 ou 8 max
-        }
-        return d; // Pour les autres, on laisse la valeur choisie
-    };
+const getValidDuration = (modelId, dur) => {
+    const d = parseInt(dur, 10);
+
+    if (modelId.includes("veo")) {
+        return [4, 6, 8].includes(d) ? d : 4;
+    }
+
+    return d;
+};
 if (isKlingMotion) {
     return {
       image_url: startImage || uploadedImage || null,
@@ -3290,7 +3292,7 @@ const isKling26 = (currentModelLower.includes("kling26") || currentModelLower.in
               const p540Icon = hasLightningPlan ? "⚡" : "💎";
               const p768Icon = hasLightningPlan ? "⚡" : "💎";
               const hdIcon = hasLightningPlan ? "⚡" : "💎";
-              const fhdIcon = (hasLightningPlan && currentUserPrice >= 34.99) ? "⚡" : "💎";
+              const fhdIcon = (hasLightningPlan && currentUserPrice >= 12.99) ? "⚡" : "💎";
               const currentModelId = selectedModel?.toLowerCase() || "";
               const isAnySeedance = isSeedance2 || currentModelId.includes("seedance");
               return (
