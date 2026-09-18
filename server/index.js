@@ -1278,18 +1278,15 @@ console.log("🌐 IP CLIENT RETENUE :", clientIp);
 
  const {
     engineId, cost, costType,
-    prompt, duration, aspect_ratio, resolution,
-        image_urls, video_urls, loop, enable_audio, videoSource,
+    prompt, duration, aspect_ratio,
+    image_urls, video_urls, loop, enable_audio, videoSource,
     startImage, start_image_url, image_url: bodyImageUrl,
     character_orientation,
     recaptchaToken,
     qualityKey
 } = req.body;
 
-    console.log(
-    "🛡️ Token reCAPTCHA reçu :",
-    recaptchaToken ? "OUI" : "NON"
-);
+    console.log("RECAPTCHA TOKEN:", recaptchaToken);
 
     // On vérifie maintenant engineId et cost (userId est garanti puisqu'il vient de req.user.uid)
     if (!engineId || cost === undefined) {
@@ -1343,13 +1340,17 @@ if (!enginePricing) {
 
 let pricingKey = qualityKey;
 
+// Si aucune qualityKey n'est envoyée, on détermine la qualité
+// à partir de aspect_ratio.
 if (!pricingKey) {
-    const normalizedResolution = String(resolution || "").toLowerCase().trim();
+    const ratio = String(aspect_ratio || "").toLowerCase();
 
+    // 16:9 / fhd -> Full HD
+    // Tout le reste -> HD par défaut
     const qualityPrefix =
-        normalizedResolution === "1080p" ||
-        normalizedResolution === "full hd" ||
-        normalizedResolution === "fhd"
+        ratio.includes("fhd") ||
+        ratio.includes("1920") ||
+        ratio.includes("16:9")
             ? "fhd"
             : "hd";
 
@@ -1437,8 +1438,8 @@ let tokensToDeducedFromDiamonds = remainingCost > 0 ? remainingCost : 0;
 
 // Tu effectues la mise à jour en base de données avant de lancer le traitement (Veo / image)
 await db.collection('users').doc(userId).update({
-   tokens: FieldValue.increment(-tokensToDeducedFromSub),
-packTokens: FieldValue.increment(-tokensToDeducedFromDiamonds)
+    tokens: admin.firestore.FieldValue.increment(-tokensToDeducedFromSub),
+    packTokens: admin.firestore.FieldValue.increment(-tokensToDeducedFromDiamonds)
 });
 
 // Ensuite, tu peux lancer ta génération Veo ou ton code normal...
