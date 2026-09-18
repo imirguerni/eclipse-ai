@@ -1470,14 +1470,15 @@ if (isGoogleVideo) {
         ? `${prompt}, silent, no background noise, no music, no sound effects, muted`
         : `${prompt}, high quality audio, immersive soundscape, cinematic sound design`;
 
-    const generateOptions = {
-        model: officialGoogleModel,
-        prompt: enrichedPrompt,
-        config: {
-            videoConfig: videoConfig,
-            outputMimeType: "video/mp4"
-        }
-    };
+ const generateOptions = {
+    model: officialGoogleModel,
+    prompt: enrichedPrompt,
+    config: {
+        aspectRatio: safeAspect,
+        durationSeconds: safeDuration,
+        outputMimeType: "video/mp4"
+    }
+};
 // =============================================================
 // 📸 IMAGE DE RÉFÉRENCE VEO
 // =============================================================
