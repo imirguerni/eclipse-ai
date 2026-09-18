@@ -1312,67 +1312,102 @@ const userPlanPrice = PLAN_TO_PRICE[userPlanFromDb] || "0.00";
 // =============================================================
 // 🛡️ RECALCUL DES PRIX CÔTÉ SERVEUR (Anti-triche)
 // =============================================================
-// =============================================================
-// 🛡️ RECALCUL DES PRIX CÔTÉ SERVEUR (Anti-triche)
-// =============================================================
+
 const enginePricing = PRICING_DATA[userPlanPrice]?.[engineId];
 
-// IMPORTANT : officialCost doit être accessible en dehors du if
 let officialCost = 0;
 
-if (enginePricing) {
-    // 🟢 Recherche du bon prix : qualité, durée ou valeur par défaut
-    officialCost =
-        enginePricing[qualityKey] !== undefined
-            ? enginePricing[qualityKey]
-            : (
-                enginePricing[duration] !== undefined
-                    ? enginePricing[duration]
-                    : enginePricing.default
-            );
-
-    if (officialCost === undefined || officialCost === null) {
-        console.warn(
-            `⚠️ Aucun prix serveur trouvé pour le moteur ${engineId}, qualité ${qualityKey}, durée ${duration}`
-        );
-
-        return res.status(400).json({
-            error: "Impossible de déterminer le coût de cette génération."
-        });
-    }
-
-    if (parseInt(cost, 10) !== parseInt(officialCost, 10)) {
-        console.warn(
-            `🛑 Tentative de fraude sur les prix détectée ! Reçu: ${cost}, Attendu: ${officialCost}`
-        );
-
-        const userEmail = userData.email || req.body.email || "Non fourni";
-        const userIdVal = userId || "Non fourni";
-
-        await sendSecurityAlert(
-            clientIp,
-            "Modification frauduleuse du coût de génération",
-            "Requête bloquée (403)",
-            userEmail,
-            userIdVal
-        );
-
-        await detectSuspicious(
-            req,
-            "Modification frauduleuse du coût de génération"
-        );
-
-        return res.status(403).json({
-            error: "Erreur de validation du coût de la génération."
-        });
-    }
-} else {
+if (!enginePricing) {
     console.warn(
-        `⚠️ Aucun tarif trouvé pour le moteur ${engineId} et le plan ${userPlanPrice}`
+        `⚠️ Aucun tarif serveur trouvé pour le moteur ${engineId} et le plan ${userPlanPrice}`
     );
 
     return res.status(400).json({
-        error: "Tarification du moteur introuvable."
+        error: "Impossible de déterminer le coût de cette génération."
+    });
+}
+
+// =============================================================
+// 🔎 CONSTRUCTION DE LA CLÉ DE TARIFICATION
+// =============================================================
+
+// Exemple Veo :
+// HD + 8s  -> hd8
+// FHD + 8s -> fhd8
+//
+// Les autres moteurs peuvent déjà envoyer directement
+// leur qualityKey (fhd5, hd10, etc.).
+
+let pricingKey = qualityKey;
+
+// Si aucune qualityKey n'est envoyée, on détermine la qualité
+// à partir de aspect_ratio.
+if (!pricingKey) {
+    const ratio = String(aspect_ratio || "").toLowerCase();
+
+    // 16:9 / fhd -> Full HD
+    // Tout le reste -> HD par défaut
+    const qualityPrefix =
+        ratio.includes("fhd") ||
+        ratio.includes("1920") ||
+        ratio.includes("16:9")
+            ? "fhd"
+            : "hd";
+
+    pricingKey = `${qualityPrefix}${parseInt(duration, 10)}`;
+}
+
+// Si la clé existe, on l'utilise.
+if (enginePricing[pricingKey] !== undefined) {
+    officialCost = enginePricing[pricingKey];
+} else if (enginePricing[duration] !== undefined) {
+    // Compatibilité avec d'éventuelles anciennes configurations
+    officialCost = enginePricing[duration];
+} else if (enginePricing.default !== undefined) {
+    officialCost = enginePricing.default;
+}
+
+if (officialCost === undefined || officialCost === null || officialCost === 0) {
+    console.warn(
+        `⚠️ Aucun prix serveur trouvé : moteur=${engineId}, plan=${userPlanPrice}, qualité=${qualityKey}, clé=${pricingKey}, durée=${duration}`
+    );
+
+    return res.status(400).json({
+        error: "Impossible de déterminer le coût de cette génération."
+    });
+}
+
+console.log(
+    `💰 Prix serveur : moteur=${engineId}, plan=${userPlanPrice}, clé=${pricingKey}, durée=${duration}, coût=${officialCost}`
+);
+
+// =============================================================
+// 🛡️ VÉRIFICATION ANTI-TRICHE
+// =============================================================
+
+if (parseInt(cost, 10) !== parseInt(officialCost, 10)) {
+    console.warn(
+        `🛑 Tentative de fraude sur les prix détectée ! Reçu: ${cost}, Attendu: ${officialCost}`
+    );
+
+    const userEmail = userData.email || req.body.email || "Non fourni";
+    const userIdVal = userId || "Non fourni";
+
+    await sendSecurityAlert(
+        clientIp,
+        "Modification frauduleuse du coût de génération",
+        "Requête bloquée (403)",
+        userEmail,
+        userIdVal
+    );
+
+    await detectSuspicious(
+        req,
+        "Modification frauduleuse du coût de génération"
+    );
+
+    return res.status(403).json({
+        error: "Erreur de validation du coût de la génération."
     });
 }
 
