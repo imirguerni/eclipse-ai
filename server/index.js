@@ -1647,83 +1647,133 @@ console.log(
 );
 
 await new Promise((resolve, reject) => {
-    // ⏱️ TIMEOUT SÉCURISÉ
-  timeout = setTimeout(() => {
-    safeFinish(() => {
-        reject(new Error("Timeout FFMPEG : dépassement 120s"));
-    });
-}, 120000);
 
-    ffmpeg(filePath)
+    // ⏱️ TIMEOUT SÉCURISÉ
+    timeout = setTimeout(() => {
+        console.error("❌ FFMPEG : TIMEOUT après 120 secondes");
+
+        safeFinish(() => {
+            reject(new Error("Timeout FFMPEG : dépassement 120s"));
+        });
+    }, 120000);
+
+    console.log("🎬 Préparation du lancement FFMPEG...");
+    console.log("📥 Fichier source :", filePath);
+    console.log("📤 Fichier destination :", outputPath);
+    console.log("⏱️ Durée demandée :", duration);
+    console.log("📐 Résolution cible :", targetSize);
+
+    const ffmpegProcess = ffmpeg(filePath)
         .outputOptions([
             '-t ' + duration,
-            '-vf scale=' + (targetSize === "1920x1080" ? "1920:1080" : "1280:720"),
+            '-vf scale=' + (
+                targetSize === "1920x1080"
+                    ? "1920:1080"
+                    : "1280:720"
+            ),
             '-c:v libx264',
             '-preset fast',
             '-movflags +faststart'
         ])
-
-        
         .output(outputPath)
+
         .on("start", (cmd) => {
-            console.log("🚀 FFMPEG commande lancée:", cmd);
+            console.log("🚀 FFMPEG commande lancée :", cmd);
         })
 
+        .on("progress", (progress) => {
+            console.log(
+                `🎞️ FFMPEG progression : ${progress.percent || 0}%`
+            );
+        })
 
-.on("end", () => {    
-    safeFinish(async () => {
-        console.log(`✂️ Vidéo traitée : ${duration}s, Résolution : ${targetSize}`);
-        fs.unlink(filePath, (err) => { if (err) console.error(err); });
+        .on("end", () => {
 
-        const finalUrl = `${req.protocol}://${req.get("host")}/videos/${finalFileName}`;
+            safeFinish(async () => {
 
-    if (lockRef) {
-    try {
-        await lockRef.update({
-            status: "completed",
-            videoUrl: finalUrl,
-            url: finalUrl,
-            prompt: prompt || "",
-            description: prompt || "",
-            engine: engineId || "google-veo",
-            completedAt: FieldValue.serverTimestamp()
+                console.log(
+                    `✂️ Vidéo traitée : ${duration}s, Résolution : ${targetSize}`
+                );
+
+                fs.unlink(filePath, (err) => {
+                    if (err) {
+                        console.error(
+                            "⚠️ Impossible de supprimer le fichier temporaire :",
+                            err.message
+                        );
+                    }
+                });
+
+                const finalUrl =
+                    `${req.protocol}://${req.get("host")}/videos/${finalFileName}`;
+
+                if (lockRef) {
+                    try {
+
+                        await lockRef.update({
+                            status: "completed",
+                            videoUrl: finalUrl,
+                            url: finalUrl,
+                            prompt: prompt || "",
+                            description: prompt || "",
+                            engine: engineId || "google-veo",
+                            completedAt: FieldValue.serverTimestamp()
+                        });
+
+                        console.log(
+                            "🔒 Verrou imageLocks mis à jour et finalisé avec succès pour Veo."
+                        );
+
+                    } catch (lockErr) {
+
+                        console.error(
+                            "⚠️ Erreur lors de la mise à jour finale du verrou imageLocks :",
+                            lockErr.message
+                        );
+                    }
+                }
+
+                res.write(
+                    `data: ${JSON.stringify({
+                        videoUrl: finalUrl,
+                        percent: 100,
+                        message: "Vidéo prête !"
+                    })}\n\n`
+                );
+
+                res.end();
+
+                resolve();
+            });
+        })
+
+        .on("error", (err, stdout, stderr) => {
+
+            console.error("❌ ERREUR FFMPEG :", err.message);
+            console.error("❌ CODE FFMPEG :", err.code);
+            console.error("❌ STDOUT FFMPEG :", stdout);
+            console.error("❌ STDERR FFMPEG :", stderr);
+
+            safeFinish(() => {
+
+                if (!res.writableEnded) {
+                    res.write(
+                        `data: ${JSON.stringify({
+                            error: "Erreur traitement vidéo final.",
+                            details: err.message
+                        })}\n\n`
+                    );
+
+                    res.end();
+                }
+
+                reject(err);
+            });
         });
-        console.log("🔒 Verrou imageLocks mis à jour et finalisé avec succès pour Veo.");
-    } catch (lockErr) {
-        console.error("⚠️ Erreur lors de la mise à jour finale du verrou imageLocks :", lockErr.message);
-    }
-}
-        
-        // 3️⃣ Envoi de la vidéo au client via le flux SSE
-        res.write(`data: ${JSON.stringify({ 
-            videoUrl: finalUrl, 
-            percent: 100, 
-            message: "Vidéo prête !" 
-        })}\n\n`);
-        res.end(); // Ferme le flux proprement
-        
-        resolve(); 
-    });
-})
 
-.on("error", (err, stdout, stderr) => {
-    console.error("❌ ERREUR FFMPEG :", err.message);
-    console.error("❌ CODE FFMPEG :", err.code);
-    console.error("❌ STDOUT FFMPEG :", stdout);
-    console.error("❌ STDERR FFMPEG :", stderr);
+    console.log("▶️ Appel de .run() FFMPEG maintenant...");
 
-    safeFinish(() => {
-        res.write(`data: ${JSON.stringify({
-            error: "Erreur traitement vidéo final.",
-            details: err.message
-        })}\n\n`);
-
-        res.end();
-        reject(err);
-    });
-})
-
-        .run();
+    ffmpegProcess.run();
 });
 
 // Suite du code pour les autres cas...
