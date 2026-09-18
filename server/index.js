@@ -1338,6 +1338,8 @@ if (!enginePricing) {
 // Les autres moteurs peuvent déjà envoyer directement
 // leur qualityKey (fhd5, hd10, etc.).
 
+let pricingKey = qualityKey;
+
 if (!pricingKey) {
     const normalizedResolution = String(resolution || "").toLowerCase().trim();
 
