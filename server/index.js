@@ -1278,8 +1278,8 @@ console.log("🌐 IP CLIENT RETENUE :", clientIp);
 
  const {
     engineId, cost, costType,
-    prompt, duration, aspect_ratio,
-    image_urls, video_urls, loop, enable_audio, videoSource,
+    prompt, duration, aspect_ratio, resolution,
+        image_urls, video_urls, loop, enable_audio, videoSource,
     startImage, start_image_url, image_url: bodyImageUrl,
     character_orientation,
     recaptchaToken,
@@ -1338,19 +1338,13 @@ if (!enginePricing) {
 // Les autres moteurs peuvent déjà envoyer directement
 // leur qualityKey (fhd5, hd10, etc.).
 
-let pricingKey = qualityKey;
-
-// Si aucune qualityKey n'est envoyée, on détermine la qualité
-// à partir de aspect_ratio.
 if (!pricingKey) {
-    const ratio = String(aspect_ratio || "").toLowerCase();
+    const normalizedResolution = String(resolution || "").toLowerCase().trim();
 
-    // 16:9 / fhd -> Full HD
-    // Tout le reste -> HD par défaut
     const qualityPrefix =
-        ratio.includes("fhd") ||
-        ratio.includes("1920") ||
-        ratio.includes("16:9")
+        normalizedResolution === "1080p" ||
+        normalizedResolution === "full hd" ||
+        normalizedResolution === "fhd"
             ? "fhd"
             : "hd";
 
