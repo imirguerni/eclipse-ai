@@ -17,6 +17,15 @@ const { isIpBlacklisted, blacklistIp } = require('./security/ipBlacklist');
 const { detectSuspicious } = require('./security/detector');
 const Groq = require("groq-sdk");
 const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('ffmpeg-static');
+
+if (!ffmpegPath) {
+    throw new Error("FFmpeg introuvable via ffmpeg-static.");
+}
+
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+console.log("🛠️ FFMPEG configuré :", ffmpegPath);
 const { GoogleGenAI } = require('@google/genai');
 const cron = require('node-cron');
 const { RecaptchaEnterpriseServiceClient } = require('@google-cloud/recaptcha-enterprise');
@@ -159,10 +168,7 @@ async function recoverInterruptedGenerations() {
     }
 }
 
-// --- CONFIGURATION FFMPEG ---
-const ffmpegPath = "D:/internet/internet/ffmpeg/bin/ffmpeg.exe";
-ffmpeg.setFfmpegPath(ffmpegPath);
-console.log("🛠️ Configuration FFMPEG terminée.");
+
 
 // --- CONFIGURATION EXPRESS & MIDDLEWARES ---
 const SECURITY_TEST_MODE = process.env.SECURITY_TEST_MODE === 'true';
