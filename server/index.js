@@ -1478,33 +1478,121 @@ if (isGoogleVideo) {
             outputMimeType: "video/mp4"
         }
     };
-const image_url = (image_urls && image_urls.length > 0) ? image_urls[0] : null;
+// =============================================================
+// 📸 IMAGE DE RÉFÉRENCE VEO
+// =============================================================
 
-            // On utilise la variable image_url définie plus haut dans ton code (qui prend image_urls[0])
-            if (image_url && typeof image_url === 'string') {
-                console.log("📸 Image de début détectée pour Veo, conversion et intégration au SDK...");
-                try {
-                    // Si l'image arrive au format data:image/png;base64,xxxx
-                    if (image_url.includes("base64,")) {
-                        const parts = image_url.split("base64,");
-                        const mimeType = parts[0].split(":")[1].split(";")[0] || "image/png";
-                        const base64Data = parts[1];
+// Priorité : startImage → start_image_url → image_url → image_urls[0]
+const veoImageUrl =
+    (typeof startImage === "string" && startImage.trim()) ? startImage.trim() :
+    (typeof start_image_url === "string" && start_image_url.trim()) ? start_image_url.trim() :
+    (typeof image_url === "string" && image_url.trim()) ? image_url.trim() :
+    (Array.isArray(image_urls) && typeof image_urls[0] === "string" && image_urls[0].trim())
+        ? image_urls[0].trim()
+        : null;
 
-                        generateOptions.image = {
-                            inlineData: {
-                                data: base64Data,
-                                mimeType: mimeType
-                            }
-                        };
-                    } else {
-                        // Si c'est une URL publique directe (http/https), le SDK peut la traiter directement selon les versions,
-                        // ou si tu préfères la passer brute. Ici configuré pour une URL standard :
-                        generateOptions.image = image_url;
-                    }
-                } catch (imgError) {
-                    console.error("⚠️ Impossible de formater l'image pour Veo, la génération continue en Text-to-Video :", imgError.message);
-                }
+if (veoImageUrl) {
+    console.log("📸 Image de référence détectée pour Veo :", veoImageUrl);
+
+    try {
+        // ---------------------------------------------------------
+        // CAS 1 : image déjà au format Data URI
+        // ---------------------------------------------------------
+        if (veoImageUrl.startsWith("data:image/")) {
+
+            const match = veoImageUrl.match(
+                /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/
+            );
+
+            if (!match) {
+                throw new Error("Format Data URI de l'image invalide.");
             }
+
+            const mimeType = match[1];
+            const base64Data = match[2];
+
+            generateOptions.image = {
+                imageBytes: base64Data,
+                mimeType: mimeType
+            };
+
+            console.log(
+                "✅ Image Data URI convertie pour Veo | MIME :",
+                mimeType
+            );
+        }
+
+        // ---------------------------------------------------------
+        // CAS 2 : image hébergée sur Render / URL HTTPS
+        // ---------------------------------------------------------
+        else if (
+            veoImageUrl.startsWith("http://") ||
+            veoImageUrl.startsWith("https://")
+        ) {
+            console.log("🌐 Téléchargement de l'image de référence...");
+
+            const imageResponse = await fetch(veoImageUrl);
+
+            if (!imageResponse.ok) {
+                throw new Error(
+                    `Impossible de récupérer l'image (${imageResponse.status} ${imageResponse.statusText})`
+                );
+            }
+
+            const contentType =
+                imageResponse.headers.get("content-type") || "image/png";
+
+            if (!contentType.startsWith("image/")) {
+                throw new Error(
+                    `Le fichier récupéré n'est pas une image : ${contentType}`
+                );
+            }
+
+            const imageBuffer = Buffer.from(
+                await imageResponse.arrayBuffer()
+            );
+
+            if (!imageBuffer.length) {
+                throw new Error("L'image récupérée est vide.");
+            }
+
+            const base64Data = imageBuffer.toString("base64");
+
+            generateOptions.image = {
+                imageBytes: base64Data,
+                mimeType: contentType.split(";")[0]
+            };
+
+            console.log(
+                "✅ Image téléchargée et convertie pour Veo |",
+                `${imageBuffer.length} octets | MIME : ${contentType.split(";")[0]}`
+            );
+        }
+
+        else {
+            throw new Error(
+                "Format d'image non pris en charge pour Veo."
+            );
+        }
+
+        console.log("🎯 Image de référence réellement injectée dans la requête Veo.");
+
+    } catch (imgError) {
+        console.error(
+            "❌ Erreur lors de la préparation de l'image Veo :",
+            imgError.message
+        );
+
+        // IMPORTANT :
+        // On arrête la génération plutôt que de lancer une vidéo
+        // sans l'image demandée.
+        throw new Error(
+            "Impossible de préparer l'image de référence pour Veo."
+        );
+    }
+} else {
+    console.log("ℹ️ Aucune image de référence fournie pour Veo.");
+}
 // 1. Flush immédiat des headers pour activer le flux SSE
 res.flushHeaders();
 
