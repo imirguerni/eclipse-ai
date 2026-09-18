@@ -1780,10 +1780,10 @@ await new Promise((resolve, reject) => {
 
     // ⏱️ TIMEOUT SÉCURISÉ
     timeout = setTimeout(() => {
-        console.error("❌ FFMPEG : TIMEOUT après 120 secondes");
+        console.error("❌ FFMPEG : TIMEOUT après 700 secondes");
 
         safeFinish(() => {
-            reject(new Error("Timeout FFMPEG : dépassement 120s"));
+            reject(new Error("Timeout FFMPEG : dépassement 700s"));
         });
     }, 120000);
 
