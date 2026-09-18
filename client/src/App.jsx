@@ -2913,25 +2913,33 @@ if (isAuthLoading || isInitializing) {
   crossOrigin="anonymous"
   autoPlay
   controls={false}
+onLoadedMetadata={(e) => {
+  const video = e.target;
 
-  onLoadedMetadata={(e) => {
-    const video = e.target;
-    video.currentTime = 4.0;
-  }}
+  // On prend une image à 1 seconde.
+  // Évite de chercher exactement à la fin d'une vidéo de 4 secondes.
+  const previewTime = Math.min(1, Math.max(0, video.duration - 0.1));
 
-  onCanPlay={(e) => {
-    const video = e.target;
-    if (video.currentTime < 3.9) {
-      video.currentTime = 4.0;
-    }
-  }}
+  video.currentTime = previewTime;
+}}
 
-  onTimeUpdate={(e) => {
-    const video = e.target;
-    if (video.currentTime >= 4.1) {
-      video.pause();
-    }
-  }}
+onCanPlay={(e) => {
+  const video = e.target;
+
+  if (video.currentTime === 0) {
+    const previewTime = Math.min(1, Math.max(0, video.duration - 0.1));
+    video.currentTime = previewTime;
+  }
+}}
+
+onTimeUpdate={(e) => {
+  const video = e.target;
+
+  // On garde la miniature fixe
+  if (video.currentTime >= 1.1) {
+    video.pause();
+  }
+}}
 
   onError={(e) => {
     e.target.style.opacity = '0';
