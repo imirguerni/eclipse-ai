@@ -498,7 +498,7 @@ const engines = [
       "1080p": p.veo3_lite?.fhd8 || 33 
     } 
   },
-endpoint: "veo-3.1-lite-generate-001",
+endpoint: "veo-3.1-generate-001",
   annotation: "Google Lite - Rapide & Audio inclus"
   },
     // --- VIDÉO HAUT DE GAMME ---
@@ -2913,33 +2913,25 @@ if (isAuthLoading || isInitializing) {
   crossOrigin="anonymous"
   autoPlay
   controls={false}
-onLoadedMetadata={(e) => {
-  const video = e.target;
 
-  // On prend une image à 1 seconde.
-  // Évite de chercher exactement à la fin d'une vidéo de 4 secondes.
-  const previewTime = Math.min(1, Math.max(0, video.duration - 0.1));
+  onLoadedMetadata={(e) => {
+    const video = e.target;
+    video.currentTime = 4.0;
+  }}
 
-  video.currentTime = previewTime;
-}}
+  onCanPlay={(e) => {
+    const video = e.target;
+    if (video.currentTime < 3.9) {
+      video.currentTime = 4.0;
+    }
+  }}
 
-onCanPlay={(e) => {
-  const video = e.target;
-
-  if (video.currentTime === 0) {
-    const previewTime = Math.min(1, Math.max(0, video.duration - 0.1));
-    video.currentTime = previewTime;
-  }
-}}
-
-onTimeUpdate={(e) => {
-  const video = e.target;
-
-  // On garde la miniature fixe
-  if (video.currentTime >= 1.1) {
-    video.pause();
-  }
-}}
+  onTimeUpdate={(e) => {
+    const video = e.target;
+    if (video.currentTime >= 4.1) {
+      video.pause();
+    }
+  }}
 
   onError={(e) => {
     e.target.style.opacity = '0';

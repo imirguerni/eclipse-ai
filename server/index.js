@@ -1436,9 +1436,9 @@ if (isGoogleVideo) {
     // 🔐 SÉCURITÉ : Validation du modèle
     let officialGoogleModel;
   if (engineId === "veo3_lite") {
-        officialGoogleModel = "veo-3.1-lite-generate-001";
+        officialGoogleModel = "veo-3.1-generate-001";
     } else {
-        officialGoogleModel = "veo-3.1-generate-preview";
+        officialGoogleModel = "veo-3.1-generate-001";
     }
 
     console.log(`🔒 [Sécurisé] Appel Google SDK | Modèle : ${officialGoogleModel}`);
