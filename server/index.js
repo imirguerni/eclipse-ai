@@ -17,26 +17,6 @@ const { isIpBlacklisted, blacklistIp } = require('./security/ipBlacklist');
 const { detectSuspicious } = require('./security/detector');
 const Groq = require("groq-sdk");
 const ffmpeg = require('fluent-ffmpeg');
-
-function resizeVideoTo916(inputPath, outputPath) {
-    return new Promise((resolve, reject) => {
-        ffmpeg(inputPath)
-            // C'est ici que tu mets ton filtre FFmpeg pour le 9:16 sans déformation
-            .videoFilters([
-                "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"
-            ])
-            .output(outputPath)
-            .on('end', () => {
-                console.log("✅ Conversion 9:16 terminée avec succès !");
-                resolve(outputPath);
-            })
-            .on('error', (err) => {
-                console.error("❌ Erreur lors du traitement FFmpeg :", err.message);
-                reject(err);
-            })
-            .run(); // Lance le traitement
-    });
-}
 const { GoogleGenAI } = require('@google/genai');
 const cron = require('node-cron');
 const { RecaptchaEnterpriseServiceClient } = require('@google-cloud/recaptcha-enterprise');
@@ -1190,16 +1170,10 @@ app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
 
     // TON CODE ACTUEL CONTINUE ICI
     //     // 🛡️ 1. Récupération de l'IP et vérification de la blacklist Firestore en premier
-const forwardedFor = req.headers['x-forwarded-for'];
-
-const clientIp = forwardedFor
-    ? forwardedFor.split(',')[0].trim()
-    : req.socket.remoteAddress;
-
-console.log("🌐 IP BRUTE x-forwarded-for :", forwardedFor);
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+console.log("🌐 IP BRUTE x-forwarded-for :", req.headers['x-forwarded-for']);
 console.log("🌐 IP socket :", req.socket.remoteAddress);
-console.log("🌐 IP CLIENT RETENUE :", clientIp);
-
+console.log("🌐 IP UTILISÉE POUR BLACKLIST :", clientIp);
     const isBlocked = await isIpBlacklisted(clientIp);
     if (isBlocked) {
         console.warn(`🛑 Tentative de requête bloquée provenant d'une IP blacklistée : ${clientIp}`);
