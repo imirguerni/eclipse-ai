@@ -20,201 +20,127 @@ import PrivacyPolicyPage from './PrivacyPolicyPage';
 
 import CgvPage from './CgvPage';
 import LegalNoticePage from './LegalNoticePage';
-
 import VideoPreview from "./VideoPreview";
 import DevelopersPage from './DevelopersPage';
 import ContactModal from './ContactModal';
 import { doc, onSnapshot, collection, addDoc, serverTimestamp, query, where, orderBy, deleteDoc } from "firebase/firestore";
 import './i18n';
 
-const SUGGESTIONS = [
-  { 
-    id: 1, 
-    title: "Ville Cyberpunk", 
-    prompt: "Une vue de central park cyberpunk futuriste avec des néons, un éclairage cinématographique, 8k, ultra détaillé", 
-  img: "/videos/Ville-Cyberpunk.webp", 
-  url: "/videos/Ville-Cyberpunk.webp"},   
-  
-  { 
-    id: 2, 
-    title: "Sniper", 
-    prompt: "Un sniper en tenue de camouflage neige, allongé dans la neige profonde, haute montagne, réalisme extrême, angle de vue au ras du sol, focus net sur le fusil, ambiance hivernale hostile, lumière crue de haute altitude", 
-  img: "/videos/Sniper.webp", 
-  url: "/videos/Sniper.webp"}, 
-  { 
-    id: 3, 
-    title: "Coucher de soleil", 
-    prompt: "Un crabe sur un rocher observe le coucher de soleil sur une plage. La mise au point de la plage est légèrement floutée.",
-    img: "/videos/Coucher-de-soleil.webp", 
-    url: "/videos/Coucher-de-soleil.webp"},
-  { 
-    id: 4, 
-    title: "Combat dans les ruines urbaines", 
-    prompt: "Scène ultra réaliste, Une femme tactique aux cheveux bleus atterrit sur le sol dans un environnement d'immeuble en ruine, le regard perçant et concentré. Sa veste flotte dans les airs alors qu'elle vise le spectateur.", 
-     img: "/videos/Combat.webp", 
-     url: "/videos/Combat.webp"},
-  { 
-    id: 5, 
-    title: "Femme dans un penthouse nocturne", 
-    prompt: "Illustration anime cinématographique, personnage féminin antagoniste en pied, debout dans un luxueux bureau de penthouse moderne de nuit, braquant un pistolet directement vers la caméra, posture dominante et menaçante, contre-plongée marquée, veste de costume noire élégante, chemise noire ajustée légèrement ouverte au col, pantalon noir cintré, chaîne métallique discrète à la ceinture, une main dans la poche, coupe de cheveux courte dégradée noire, yeux rouges lumineux, peau pâle, expression froide et déterminée, éclairage dramatique, détails ultra-réalistes du visage et des cheveux, sol en marbre noir brillant, grand bureau de direction à l’arrière-plan, fauteuil en cuir, immenses baies vitrées donnant sur une ville illuminée la nuit, reflets réalistes sur les surfaces, ambiance sombre et sophistiquée, style néo-noir, ombres cinématographiques, style anime réaliste, qualité chef-d’œuvre, netteté extrême, éclairage volumétrique, profondeur de champ, contraste élevé, illustration conceptuelle professionnelle, qualité 8K, atmosphère de thriller d’action.", 
-     img: "/videos/penthouse-nocturne.webp", 
-     url: "/videos/penthouse-nocturne.webp"},
-  { 
-    id: 6, 
-    title: "Anime", 
-    prompt: "Style anime, une jeune femme aux longs cheveux blonds ondulés et aux yeux jaune d'or, assise au centre d'un banc de parc en bois vert. Elle a un bandage elle porte une veste verte ouverte sur un uniforme sombre orné de boutons dorés et d'une écharpe rouge et noire. Un badge rouge est visible sur sa manche. Ses mains sont posées sur ses genoux sur une jupe plissée blanche. Elle se trouve dans un parc. Elle regarde directement l'observateur avec une expression sérieuse.", 
-     img: "/videos/Anime1.webp", 
-     url: "/videos/Anime1.webp"},
-  { 
-    id: 7, 
-    title: "L'Île sous la Pleine Lune", 
-    prompt: "Magnifique temple asiatique traditionnel composé de plusieurs pagodes illuminées, situé au bord d'un lac parfaitement calme reflétant l'ensemble de la scène. Immense pleine lune dorée dominant le ciel, reflet complet de la lune dans l'eau. Vallée montagneuse spectaculaire avec falaises verticales majestueuses enveloppées de brume. Forêt d'automne aux couleurs chaudes orange, rouge et or entourant le temple. Lanternes lumineuses créant une ambiance mystique et chaleureuse. Brouillard cinématographique flottant entre les montagnes. Architecture asiatique richement détaillée avec toitures courbées, bois sculpté et éclairages traditionnels. Atmosphère paisible, féerique et spirituelle. Éclairage volumétrique, rayons lumineux subtils, reflets ultra réalistes sur l'eau, composition symétrique parfaite, profondeur de champ naturelle, couleurs riches et contrastées, photoréalisme extrême, ultra detailed, masterpiece, cinematic fantasy landscape, HDR, global illumination, ray tracing, Unreal Engine quality, 8K, ultra sharp focus, highly detailed textures, professional landscape photography, breathtaking scenery, panoramic composition, golden moonlight, realistic mist, award-winning photography.", 
-    img: "/videos/Lune.webp",
-     url: "/videos/Lune.webp"},
-  { 
-    id: 8, 
-    title: "3D", 
-    prompt: "Un immense trône royal recouvert de velours rouge et d'ornements dorés richement sculptés, décoré de motifs héraldiques et de statues de lions. Un rat majestueux dort paisiblement sur le trône comme un roi, portant une couronne incrustée de pierres précieuses bleues et dorées. Il tient un sceptre royal délicatement entre ses pattes. L'environnement est une ancienne cathédrale gothique en ruine, avec de gigantesques arches en pierre, des colonnes monumentales et des débris dispersés au sol. De puissants rayons de lumière traversent les hautes fenêtres, illuminant le rat et le trône dans une ambiance sacrée et dramatique. Particules de poussière flottant dans les faisceaux lumineux. Textures ultra détaillées du velours, du bois sculpté, de la pierre ancienne et de la fourrure du rat. Atmosphère cinématographique, fantasy médiévale réaliste, photoréalisme extrême, profondeur de champ naturelle, éclairage volumétrique, ray tracing, HDR, global illumination, Unreal Engine 5 quality, ultra realistic, masterpiece, highly detailed, 8K, cinematic fantasy, dramatic lighting, award-winning photography.", 
-    img: "/videos/3D.webp",
-     url: "/videos/3D.webp"},
-  { 
-    id: 9, 
-    title: "Submersion aquatique", 
-    prompt: "Guerrier samouraï japonais vu de profil sur le côté droit de l'image, regard déterminé dirigé vers l'horizon. Cheveux noirs attachés en chignon traditionnel, barbe légère, kimono sombre richement texturé, katana visible à la ceinture. Derrière lui apparaît son double spirituel entièrement composé d'eau cristalline et de fluides translucides. Le personnage aquatique est inversé et regarde dans la direction opposée, créant un contraste visuel fort. Silhouette d'eau formée de vagues, éclaboussures, filaments liquides et gouttelettes suspendues. Fond abstrait composé d'encres bleues, bleu nuit, gris et blanc, avec effets aquarelle et projections de peinture. Atmosphère mystique, spirituelle et contemplative. Éclairage cinématographique dramatique, détails extrêmes sur le visage, les cheveux, le tissu et l'eau. Reflets réalistes, transparence parfaite, textures ultra détaillées, composition artistique haut de gamme, concept art photoréaliste, masterpiece, ultra realistic, cinematic lighting, volumetric lighting, fantasy realism, hyper detailed, 8K, HDR, sharp focus, award-winning digital art.", 
-     img: "/videos/Submersion.webp",
-     url: "/videos/Submersion.webp"},
-  { 
-    id: 10, 
-    title: "forêt sombre", 
-    prompt: "Femme terrifiée courant dans une forêt sombre et dense, brouillard épais enveloppant les arbres morts et les branches cassées, ambiance de thriller ou d’horreur. Elle tient une lampe torche qui projette un faisceau de lumière perçant la brume, mettant en valeur son visage paniqué et son corps couvert de boue et de traces de lutte. Vêtements déchirés et salis par la course et les obstacles naturels. Lumière dramatique, atmosphère oppressante, humidité et texture réaliste du sol forestier, feuilles et branches détaillées. Arbres hauts et fins, profondeur de champ naturelle, textures ultra détaillées sur le visage, les vêtements et le sol. Photographie cinématographique en style thriller d’horreur, ultra réaliste, HDR, 8K, contraste élevé, réalisme extrême, maîtrise de la lumière et des ombres.", 
-     img: "/videos/Foret-sombre.webp",
-     url: "/videos/Foret-sombre.webp"},
-  { 
-    id: 11, 
-    title: "Magazine", 
-    prompt: "Femme blonde assise avec assurance sur le capot d'une voiture ancienne couleur crème des années 1960, vue en contre-plongée dramatique. Elle porte une combinaison verte élégante et des bottes militaires beiges à lacets. Une jambe est tendue vers l'objectif, mettant en valeur la semelle de la chaussure au premier plan. Expression sérieuse et regard direct vers la caméra. Route bordée de quelques palmiers espacés, lumière dorée du coucher de soleil, ambiance californienne. Reflets réalistes sur la carrosserie chromée de la voiture vintage. Profondeur de champ cinématographique, détails ultra nets sur le visage, les vêtements et le véhicule. Éclairage naturel golden hour, ombres douces, couleurs réalistes, photographie de mode haut de gamme, composition professionnelle, ultra-réaliste, 8K, HDR, photoréalisme extrême, texture de peau détaillée, objectif grand-angle 24 mm, qualité magazine de luxe.", 
-     img: "/videos/Magazine.webp", 
-    url: "/videos/Magazine.webp"},
-  { 
-    id: 12, 
-    title: "Intégration décors", 
-    prompt: "Modifie la photo en rajoutant, un manteau gris foncé et d'une longue jupe plissée vert forêt. Pose : Elle se tient debout sur un chemin pavé, une main dans la poche de son manteau, adoptant une pose élégante et légèrement tournée vers l'objectif. Décor : La scène se déroule à Central Park en automne, avec des arbres aux feuillages orangés et dorés encadrant la vue, et la silhouette des gratte-ciel new-yorkais visible en arrière-plan. Détails d'ambiance : Le sol est parsemé de feuilles mortes et de quelques pages de livres, créant une atmosphère poétique et mélancolique. Élément supplémentaire : Dans le coin supérieur gauche, une petite vignette encadrée montre un gros plan portrait de la même femme sous un angle différent.", 
-     img: "/videos/Intégration-décor.webp", 
-    url: "/videos/Intégration-décor.webp"},
-  { 
-    id: 13, 
-    title: "Marketing", 
-    prompt: "Portrait beauté ultra-réaliste d'une femme blonde aux yeux verts, regard intense face caméra, taches de rousseur naturelles, lèvres brillantes bordeaux, maquillage professionnel haut de gamme, tenant un rouge à lèvres rose près de son visage, ongles rouges élégants, boucles d'oreilles dorées, éclairage rouge dramatique, ambiance luxe et glamour, peau lumineuse avec texture réaliste, photographie cosmétique premium, publicité de marque de maquillage, profondeur de champ cinématographique, détails extrêmes, photoréalisme, qualité magazine de mode, studio professionnel, 8K, ultra détaillé.", 
-   img: "/videos/Marketing.webp", 
-    url: "/videos/Marketing.webp"},
-  { 
-    id: 14, 
-    title: "Portrait Aquarelle", 
-    prompt: "Logo de haute qualité, style logo, aquarelle, puissant logo représentant une tête de renard colorée vue de face, arrière-plan monochrome, par Yukisakura, magnifiques couleurs vives et complètes, format carré.", 
-   img: "/videos/Aquarelle.webp", 
-    url: "/videos/Aquarelle.webp"}, 
-  { 
-    id: 15, 
-    title: "Femme Cyberpunk", 
-    prompt: "Dans un futur cyberpunk dystopique, une jeune Coréenne de petite taille, à l’apparence fragile et vulnérable, marche dans une rue d’une petite ville cyberpunk. Elle a des cheveux courts violets ébouriffés, agrémentés de touches néon lumineuses. Elle porte des vêtements très usés : un pantalon cargo, un crop top court déchiré et un long manteau. Un cyberdeck est fixé sur le haut de sa cuisse gauche à l’aide de sangles. Son visage exprime la fatigue, l’épuisement et un profond sentiment d’impuissance.", 
-   img: "/videos/Cyberpunk.webp", 
-    url: "/videos/Cyberpunk.webp"}
+import { useTranslation } from 'react-i18next'; 
+import Filtre from './Filtre';
+import Outils from './Outils';
+
+const IMAGE_TUTORIAL_GUIDE_IDS = ["gpt_image2", "flux2pro", "nano_banana2_lite"];
+const VIDEO_TUTORIAL_GUIDE_IDS = ["default", "veo3.1", "veo3.1_fast", "seedance25", "seedance20", "seedance", "kling2.6", "kling26_motion", "kling30", "hailuo", "minimax_h3", "pixverse6"];
+const getImageTutorialGuide = (id, t) => {
+  const guideId = IMAGE_TUTORIAL_GUIDE_IDS.includes(String(id || "").toLowerCase()) ? String(id).toLowerCase() : "gpt_image2";
+  return {
+    objective: t(`tutorials.image.${guideId}.objective`),
+    features: t(`tutorials.image.${guideId}.features`, { returnObjects: true }),
+    steps: t(`tutorials.image.${guideId}.steps`, { returnObjects: true }),
+    prompt: t(`tutorials.image.${guideId}.prompt`),
+    resourceUrl: t(`tutorials.image.${guideId}.resourceUrl`, { defaultValue: "" }),
+    resourceLabel: t(`tutorials.image.${guideId}.resourceLabel`, { defaultValue: "" })
+  };
+};
+const getVideoTutorialGuide = (id, t) => {
+  const guideId = VIDEO_TUTORIAL_GUIDE_IDS.includes(String(id || "").toLowerCase()) ? String(id).toLowerCase() : "default";
+  return {
+    objective: t(`tutorials.video.${guideId}.objective`),
+    features: t(`tutorials.video.${guideId}.features`, { returnObjects: true }),
+    steps: t(`tutorials.video.${guideId}.steps`, { returnObjects: true }),
+    prompt: t(`tutorials.video.${guideId}.prompt`)
+  };
+};
+
+const VIDEO_TUTORIAL_RESOURCES = {
+  "seedance20": { videoId: "tfs8U3CbAOs", videoTitleKey: "tutorialResourceLabels.seedance20Title", resourceUrl: "https://github.com/seedance-official/Seedance-2.0", resourceLabelKey: "tutorialResourceLabels.seedance20" },
+  "hailuo": { videoId: "KYAlcVKJx8o", videoTitleKey: "tutorialResourceLabels.hailuoTitle", resourceUrl: "https://www.minimax.io/news/minimax-hailuo-23", resourceLabelKey: "tutorialResourceLabels.hailuo" },
+  "kling2.6": { resourceUrl: "https://kling.ai/fr/quickstart", resourceLabelKey: "tutorialResourceLabels.kling2_6" },
+  "kling26_motion": { resourceUrl: "https://kling.ai/fr/quickstart", resourceLabelKey: "tutorialResourceLabels.kling26_motion" },
+  "kling30": { resourceUrl: "https://kling.ai/fr/quickstart", resourceLabelKey: "tutorialResourceLabels.kling30" },
+  "veo3.1": { resourceUrl: "https://ai.google.dev/gemini-api/docs/veo?hl=fr", resourceLabelKey: "tutorialResourceLabels.veo3_1" },
+  "veo3.1_fast": { resourceUrl: "https://ai.google.dev/gemini-api/docs/veo?hl=fr", resourceLabelKey: "tutorialResourceLabels.veo3_1_fast" },
+  "minimax_h3": { resourceUrl: "https://github.com/MiniMax-AI/skills/blob/main/skills/frontend-dev/references/minimax-video-guide.md", resourceLabelKey: "tutorialResourceLabels.minimax_h3" },
+  "seedance25": { resourceUrl: "https://www.seedance.tv/blog/seedance-2-0-tutorial", resourceLabelKey: "tutorialResourceLabels.seedance25" },
+  "seedance": { resourceUrl: "https://github.com/seedance-official/Seedance-2.0", resourceLabelKey: "tutorialResourceLabels.seedance" }
+};
+
+const getVideoTutorialGuideKey = (engine) => {
+  const id = String(engine?.id || "").toLowerCase();
+  return VIDEO_TUTORIAL_GUIDE_IDS.includes(id) ? id : "default";
+};
+
+// Limites de prompt par moteur (caractères) : basées sur les schémas Runware connus.
+const VIDEO_PROMPT_LIMITS = { "veo3.1": 3000, "veo3.1_fast": 3000, "seedance25": 10000, "seedance20": 10000, "seedance": 3000, "minimax_h3": 7000, "pixverse6": 5000, "kling30": 2500, "kling26_motion": 2500, "kling2.6": 2500, "hailuo": 2500 };
+const getPromptLimit = (mode, engineId, hasFrameImages = false, hasSourceVideo = false) => {
+  if (String(mode || "").toUpperCase() === "TEXTE") return 10000;
+  const id = String(engineId || "").toLowerCase();
+  if (id.includes("veo3.1")) return 3000;
+  if (id.includes("seedance25") || id.includes("seedance-2.5")) return hasSourceVideo ? 9800 : 10000;
+  if (id.includes("seedance20") || id.includes("seedance-2.0")) return 10000;
+  if (id.includes("seedance")) return 3000;
+  if (id.includes("minimax_h3") || id.includes("minimax-h3")) return hasSourceVideo ? 6800 : 7000;
+  if (id.includes("pixverse6") || id.includes("pixverse-v6")) return hasFrameImages ? 2048 : hasSourceVideo ? 4900 : 5000;
+  if (id.includes("kling")) return 2500;
+  if (id.includes("hailuo")) return 2500;
+  return VIDEO_PROMPT_LIMITS[id] || 2500;
+};
+
+// Plafond par fichier importé : image 20 Mo, vidéo 64 Mo, audio 20 Mo.
+const MEDIA_UPLOAD_LIMITS = { image: 20 * 1024 * 1024, video: 64 * 1024 * 1024, audio: 20 * 1024 * 1024, other: 20 * 1024 * 1024 };
+const getMediaKind = (file) => {
+  const type = String(file?.type || "").toLowerCase();
+  const name = String(file?.name || "").toLowerCase();
+  if (type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|tiff?)$/.test(name)) return "image";
+  if (type.startsWith("video/") || /\.(mp4|mov|webm|m4v|avi|mkv|mpeg|mpg)$/.test(name)) return "video";
+  if (type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|opus)$/.test(name)) return "audio";
+  return "other";
+};
+const getMediaLimitBytes = (file) => MEDIA_UPLOAD_LIMITS[getMediaKind(file)] || MEDIA_UPLOAD_LIMITS.other;
+const formatMo = (bytes) => `${(bytes / (1024 * 1024)).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} Mo`;
+
+const SUGGESTION_KEYS = [
+  { id: 1, titleKey: "suggestions.image.1.title", promptKey: "suggestions.image.1.prompt", img: "/videos/Ville-Cyberpunk.webp", url: "/videos/Ville-Cyberpunk.webp" },
+  { id: 2, titleKey: "suggestions.image.2.title", promptKey: "suggestions.image.2.prompt", img: "/videos/Sniper.webp", url: "/videos/Sniper.webp" },
+  { id: 3, titleKey: "suggestions.image.3.title", promptKey: "suggestions.image.3.prompt", img: "/videos/Coucher-de-soleil.webp", url: "/videos/Coucher-de-soleil.webp" },
+  { id: 4, titleKey: "suggestions.image.4.title", promptKey: "suggestions.image.4.prompt", img: "/videos/Combat.webp", url: "/videos/Combat.webp" },
+  { id: 5, titleKey: "suggestions.image.5.title", promptKey: "suggestions.image.5.prompt", img: "/videos/penthouse-nocturne.webp", url: "/videos/penthouse-nocturne.webp" },
+  { id: 6, titleKey: "suggestions.image.6.title", promptKey: "suggestions.image.6.prompt", img: "/videos/Anime1.webp", url: "/videos/Anime1.webp" },
+  { id: 7, titleKey: "suggestions.image.7.title", promptKey: "suggestions.image.7.prompt", img: "/videos/Lune.webp", url: "/videos/Lune.webp" },
+  { id: 8, titleKey: "suggestions.image.8.title", promptKey: "suggestions.image.8.prompt", img: "/videos/3D.webp", url: "/videos/3D.webp" },
+  { id: 9, titleKey: "suggestions.image.9.title", promptKey: "suggestions.image.9.prompt", img: "/videos/Submersion.webp", url: "/videos/Submersion.webp" },
+  { id: 10, titleKey: "suggestions.image.10.title", promptKey: "suggestions.image.10.prompt", img: "/videos/Foret-sombre.webp", url: "/videos/Foret-sombre.webp" },
+  { id: 11, titleKey: "suggestions.image.11.title", promptKey: "suggestions.image.11.prompt", img: "/videos/Magazine.webp", url: "/videos/Magazine.webp" },
+  { id: 12, titleKey: "suggestions.image.12.title", promptKey: "suggestions.image.12.prompt", img: "/videos/Intégration-décor.webp", url: "/videos/Intégration-décor.webp" },
+  { id: 13, titleKey: "suggestions.image.13.title", promptKey: "suggestions.image.13.prompt", img: "/videos/Marketing.webp", url: "/videos/Marketing.webp" },
+  { id: 14, titleKey: "suggestions.image.14.title", promptKey: "suggestions.image.14.prompt", img: "/videos/Aquarelle.webp", url: "/videos/Aquarelle.webp" },
+  { id: 15, titleKey: "suggestions.image.15.title", promptKey: "suggestions.image.15.prompt", img: "/videos/Cyberpunk.webp", url: "/videos/Cyberpunk.webp" }
 ];
 
-const VIDEO_SUGGESTIONS = [
-  { 
-    id: 1, title: "crépuscule", typeStyle: "MANGA", 
-    prompt: "Samouraï solitaire en armure détaillée debout sur une colline d’herbes hautes, face à un coucher de soleil rouge intense sur une ville japonaise lointaine. Le vent souffle fort, faisant bouger ses vêtements et les herbes. Atmosphère épique et mélancolique, ciel dramatique avec nuages très lumineux. Caméra : départ en plan moyen derrière le samouraï, puis travelling arrière rapide et fluide révélant la vallée et la ville, suivi d’une légère rotation orbitale de 180° autour du personnage pour un effet cinématique final. Lumière golden hour très contrastée, lens flare réaliste, profondeur de champ cinématographique, rendu ultra réaliste, style film japonais blockbuster.", 
-   img: "/videos/crépuscule.webp", 
-    url: "/videos/crépuscule.webm" 
-  },
-  { 
-    id: 2, title: "Futuriste", typeStyle: "Cyberpunk", 
-    prompt: "Jeune femme cyberpunk aux cheveux violets marchant dans une ruelle coréenne humide et animée. Début en très gros plan sur ses bottes qui avancent lentement sur l'asphalte mouillé, reflets des néons colorés visibles dans les flaques d'eau. Caméra en travelling arrière fluide suivant ses pas. Après une seconde, la caméra remonte progressivement le long de ses jambes, de son équipement tactique et de son manteau usé. Elle continue de marcher avec assurance, mains dans les poches. La caméra poursuit son mouvement vertical jusqu'à son visage, révélant en arrière plan toute la ruelle, les enseignes coréennes lumineuses, la vapeur sortant des bouches d'égout et les passants en arrière-plan. Ambiance cyberpunk réaliste, mouvements naturels, lumière cinématographique, profondeur de champ réaliste, reflets sur le sol mouillé, ultra réaliste, 8K, qualité film, détails extrêmes.", 
-    img: "/videos/Cyberpunk.webp", 
-    url: "/videos/Cyberpunk.webm" 
-  },
-  { 
-    id: 3, title: "Forêt sinistre", typeStyle: "Réaliste", 
-    prompt: "Au cœur d'une forêt sombre et brumeuse en pleine nuit, une femme terrifiée court à pleine vitesse sur un étroit sentier boueux serpentant entre des arbres morts et des branches enchevêtrées. Ses vêtements sont sales et déchirés, son visage couvert de sueur, de boue et marqué par la peur. Elle serre fermement une lampe torche dont le faisceau perce l'épais brouillard. Mouvement de course naturel et réaliste, placement précis des pieds, transfert du poids du corps fidèle à la réalité, respiration subtile, cheveux et vêtements réagissant naturellement à chacun de ses mouvements. Aucun ralenti. La caméra débute par un travelling en contre-plongée dramatique, au ras du sol, suivant la femme alors qu'elle court vers l'objectif. Racines humides, éclaboussures de boue et branches cassées défilent rapidement au premier plan. Le faisceau de la lampe torche balaie les arbres, créant des ombres mouvantes et un éclairage volumétrique spectaculaire à travers la brume. Alors qu'elle poursuit sa fuite, la caméra s'élève progressivement et recule en douceur, passant d'une poursuite en contre-plongée à une vue aérienne de plus en plus haute. La forêt se dévoile sous elle, révélant l'immensité sauvage et isolée qui l'entoure. La femme devient une petite silhouette perdue dans l'obscurité, fuyant désespérément à travers ce paysage inquiétant. Grand plan aérien cinématographique, échelle épique, épais brouillard dérivant entre les arbres, profondeur atmosphérique réaliste, lumière lunaire filtrant naturellement à travers la canopée. Ambiance de thriller horrifique ultra réaliste, éclairage cinématographique, brouillard volumétrique, éclairage réaliste de la lampe torche, mouvements de caméra naturels, environnement forestier richement détaillé, reflets sur le sol humide, textures photoréalistes, large plage dynamique (HDR), tension dramatique permanente, qualité visuelle digne d'une superproduction hollywoodienne, rendu 8K, niveau de détail extrême, mise en scène immersive d'horreur cinématographique.", 
-      img: "/videos/Foret-sombre.webp", 
-    url: "/videos/Foret-sombre.webm" 
-  },
-  { 
-    id: 4, title: "Cours", typeStyle: "3D", 
-    prompt: "Plan cinématographique ultra dynamique dans une forêt dense transformée en parcours de compétition. Deux lapins anthropomorphes très détaillés s’affrontent en course sprint sur un sentier de terre étroit. Le lapin blanc en t-shirt bleu et sac à dos est en tête, poursuivi de près par le lapin gris en t-shirt rouge, expression de détermination intense. Caméra basse au sol en travelling avant très rapide, légèrement tremblée comme une caméra de course professionnelle. Accent fort sur la vitesse, motion blur sur les jambes et les bras, poussière et particules de terre qui explosent à chaque foulée. Végétation luxuriante sur les côtés, spectateurs animaux flous en arrière-plan (effet profondeur de champ). Style sport extrême, ambiance de finale de course, lumière dorée dramatique filtrant à travers les arbres, rendu 3D ultra réaliste type film d’animation haut budget, tension et énergie maximale.", 
-    img: "/videos/Cours.webp", 
-    url: "/videos/Cours.webm" 
-  },
-  { 
-    id: 5, title: "Astronaute", typeStyle: "ESPACE", 
-    prompt: "Un astronaute solitaire flotte dans l'espace profond au-dessus de la Terre. La caméra démarre en plan extrêmement large, montrant l'immensité du cosmos, la courbure de la Terre et l'astronaute minuscule au centre du cadre. La caméra avance progressivement vers l'astronaute avec un travelling avant fluide et rapide. À mesure qu'elle se rapproche, les détails de la combinaison deviennent visibles, les reflets du Soleil apparaissent sur la visière. Arrivée à distance moyenne, la caméra effectue une rotation orbitale de 180 degrés autour de l'astronaute, révélant successivement la Terre en arrière-plan puis le vide spatial étoilé. Mouvement parfaitement stable, sensation de gravité zéro, éclairage réaliste de l'espace, reflets physiques, qualité IMAX, photoréalisme extrême, profondeur de champ cinématographique, rendu 8K, style documentaire spatial à gros budget, motion blur naturel, détails ultra-réalistes, atmosphère épique et contemplative.", 
- img: "/videos/Astronaute.webp", 
-    url: "/videos/Astronaute.webm"
-  },
-  { 
-    id: 6, title: "Parc", typeStyle: "ANIME", 
-    prompt: "Style animé : une femme assise sur un banc dans un parc, un chat monte sur ses genoux et elle le caresse.", 
-    img: "/videos/Anime1.webp",
-    url: "/videos/Anime1.webm"
-  },
-  { 
-    id: 7, title: "Traveling", typeStyle: "Réaliste", 
-    prompt: "Scene ultra réaliste : Dans une chambre d’hôtel luxueuse, légèrement désordonnée. Une femme blonde est assise sur le lit, le maquillage noir recouvrant une grande partie de ses yeux. Travelling avant jusqu’au gros plan de son visage, qui semble exténué.", 
-     img: "/videos/encore-une.webp",
-    url: "/videos/encore-une.webm"
-  },
-  { 
-    id: 8, title: "Lac montagneuse", typeStyle: "Film", 
-    prompt: "Fluide doré en mouvement, ondes magnétiques, luxe, abstrait 3D", 
-     img: "/videos/lac-montagneuse.webp",
-    url: "/videos/lac-montagneuse.webm"
-  },
-  { 
-    id: 9, title: "Femme dans un penthouse nocturne", typeStyle: "Anime", 
-    prompt: "Illustration anime cinématographique, personnage féminin antagoniste en pied, debout dans un luxueux bureau de penthouse moderne de nuit, braquant un pistolet directement vers la caméra, posture dominante et menaçante, contre-plongée au fera mesure qu'elle avance la camera recule au rythme que la personne avance, veste de costume noire élégante, chemise noire ajustée légèrement ouverte au col, pantalon noir cintré, chaîne métallique discrète à la ceinture, une main dans la poche, coupe de cheveux courte dégradée noire, yeux rouges lumineux, peau pâle, expression froide et déterminée, éclairage dramatique, détails ultra-réalistes du visage et des cheveux, sol en marbre noir brillant, grand bureau de direction à l’arrière-plan, fauteuil en cuir, immenses baies vitrées donnant sur une ville illuminée la nuit, reflets réalistes sur les surfaces puis la camera fait un zoom sur le visage, ambiance sombre et sophistiquée, style néo-noir, ombres cinématographiques, style anime réaliste, qualité chef-d’œuvre, netteté extrême, éclairage volumétrique, profondeur de champ, contraste élevé, illustration conceptuelle professionnelle, qualité 8K, atmosphère de thriller d’action.", 
-    img: "/videos/penthouse-nocturne.webp",
-    url: "/videos/tiktok-5.webm"
-  },
-  { 
-    id: 10, title: "La poupée maudite", typeStyle: "Horreur", 
-    prompt: "Vieille maison abandonnée victorienne, pièce sombre et délabrée, papier peint déchiré, poussière flottant dans l'air, toiles d'araignée, éclairage cinématographique. Une poupée terrifiante en porcelaine fissurée est assise immobile dans un vieux fauteuil en velours au centre de la pièce. La caméra effectue un lent travelling avant depuis un plan large vers un plan rapproché. Une faible lumière lunaire traverse la fenêtre tandis qu'une bougie vacillante projette des ombres mouvantes sur les murs. Les cheveux emmêlés de la poupée bougent légèrement sous un courant d'air. Dans les deux dernières secondes, sa tête pivote lentement vers la caméra avec un mouvement anormal et inquiétant, ses yeux semblant suivre l'objectif. Ambiance oppressante, horreur psychologique, ultra réaliste, qualité cinéma hollywoodien, éclairage volumétrique, profondeur de champ cinématographique, détails extrêmes, 4K, format 16:9.", 
-     img: "/videos/poupee.webp",
-    url: "/videos/poupee.webm"
-  },
-  { 
-    id: 11, title: "Caméra de surveillance", typeStyle: "Réaliste", 
-    prompt: "Vidéo de télésurveillance ultra réaliste filmée de nuit dans un jardin entièrement recouvert de neige fraîche. La scène est capturée par une caméra de sécurité fixe en vision infrarouge noir et blanc, avec un léger bruit numérique, des artefacts de compression et un horodatage visible dans le coin de l'écran. Au centre du jardin se trouve un grand bonhomme de neige immobile. Un homme avance dans la neige en direction du bonhomme de neige, laissant des traces de pas derrière lui. Alors qu'il s'approche à moins d'un mètre, un chat surgit soudainement de l'intérieur du bonhomme de neige à une vitesse fulgurante. Le chat bondit directement vers le visage de l'homme, qui recule brutalement en criant de surprise. La caméra enregistre la scène avec des mouvements saccadés, une qualité de surveillance authentique et une ambiance inquiétante. Éclairage nocturne réaliste, ombres naturelles, détails photoréalistes, rendu cinématographique 4K, style vidéo virale de phénomène inexpliqué capturée par caméra de sécurité réelle.", 
-    img: "/videos/caméra.webp",
-    url: "/videos/caméra.webm"
-  },
-  { 
-    id: 12, title: "coucher de soleil", typeStyle: "3D", 
-    prompt: "Un crabe sur un rocher observe le coucher de soleil sur une plage. La mise au point de la plage est légèrement floutée.",
-   img: "/videos/Coucher-de-soleil.webp",
-    url: "/videos/ocean.webm"
-  },
-  { 
-    id: 13, title: "Attaque de zombies", typeStyle: "Réaliste", 
-    prompt: "Scène ultra-réaliste et cinématographique. Une immense horde de zombies envahit Times Square en pleine nuit. Des centaines de civils paniqués tentent de fuir dans toutes les directions tandis que les zombies les poursuivent à travers les rues illuminées. Véhicules abandonnés, collisions, explosions, cris et chaos total plongent la ville dans l'apocalypse. Caméra dynamique, mouvements nerveux, ambiance de film catastrophe à gros budget, éclairages urbains réalistes, détails photoréalistes, qualité 4K. Plan final spectaculaire : vue aérienne de New York. La ville entière est en flammes, d'immenses colonnes de fumée noire s'élèvent dans le ciel et recouvrent l'horizon. Plusieurs quartiers sont ravagés par les incendies. Atmosphère apocalyptique, lumière rougeoyante des flammes, destruction massive, rendu ultra-réaliste. Dernière séquence : vue depuis les berges de New York. est dévastée, enveloppée par la fumée et les incendies. Des hélicoptères survolent la ville en détresse tandis que des explosions illuminent l'horizon. Ambiance de fin du monde, cinématographie épique, détails extrêmes, qualité 4K, style blockbuster hollywoodien.", 
-    img: "/videos/attaque.webp",
-    url: "/videos/attaque.webm"
-  },
-  { 
-    id: 14, title: "Volcan", typeStyle: "Animation", 
-    prompt: "Plan cinématique ultra réaliste d’un monde préhistorique luxuriant au moment d’une éruption volcanique massive. La caméra débute en plan large aérien au-dessus d’une jungle extrêmement dense et détaillée. Les dinosaures au sol (T-Rex, tricératops, sauropodes) lèvent tous la tête et regardent vers le volcan en éruption au loin. Explosion volcanique spectaculaire avec projection de lave et nuage de cendres gigantesque. Pterodactyles en vol dans un ciel dramatique. Végétation très abondante, jungle humide, brouillard volumétrique et lumière dorée de fin de journée. Mouvement caméra fluide avec léger travelling avant + légère rotation vers le volcan. Style film blockbuster, hyperréaliste, profondeur de champ cinématographique, 4K.", 
-    img: "/videos/volcan.webp",
-    url: "/videos/volcan.webm"
-  },
-  { 
-    id: 15, title: "Couloir sombre", typeStyle: "Réaliste", 
-    prompt: "Caméra fixe dans un couloir sombre et abandonné d’une vieille maison délabrée, éclairage naturel faible venant d’une fenêtre au fond avec rideaux qui bougent légèrement. Une femme d’environ 40 ans, en pyjama sale et déchiré, rampe lentement sur un sol en bois humide vers la caméra. Elle est en état de panique extrême, respiration lourde, tremblante. Elle s’arrête soudainement, tourne lentement la tête vers l’arrière avec un regard terrifié, comme si quelque chose la poursuivait hors champ. L’ambiance est oppressante, silencieuse, tension progressive. La caméra reste stable, légère vibration réaliste type caméra tenue à la main. Style film d’horreur ultra réaliste, lumière froide, grain cinéma, 4K, profondeur de champ faible, atmosphère lourde et glauque. Durée 10 secondes, mouvement lent et continu, tension qui monte jusqu’au regard final vers l’arrière.", 
-  img: "/videos/Couloir-sombre.webp",
-    url: "/videos/Couloir-sombre.webm"
-  }
+const VIDEO_SUGGESTION_KEYS = [
+  { id: 1, titleKey: "suggestions.video.1.title", typeStyleKey: "suggestions.video.1.typeStyle", promptKey: "line6_suggestions_video_1_prompt", img: "/videos/crépuscule.webp", url: "/videos/crépuscule.webm" },
+  { id: 2, titleKey: "suggestions.video.2.title", typeStyleKey: "suggestions.video.2.typeStyle", promptKey: "line6_suggestions_video_2_prompt", img: "/videos/Cyberpunk.webp", url: "/videos/Cyberpunk.webm" },
+  { id: 3, titleKey: "suggestions.video.3.title", typeStyleKey: "suggestions.video.3.typeStyle", promptKey: "line6_suggestions_video_3_prompt", img: "/videos/Foret-sombre.webp", url: "/videos/Foret-sombre.webm" },
+  { id: 4, titleKey: "suggestions.video.4.title", typeStyleKey: "suggestions.video.4.typeStyle", promptKey: "line6_suggestions_video_4_prompt", img: "/videos/Cours.webp", url: "/videos/Cours.webm" },
+  { id: 5, titleKey: "suggestions.video.5.title", typeStyleKey: "suggestions.video.5.typeStyle", promptKey: "line6_suggestions_video_5_prompt", img: "/videos/Astronaute.webp", url: "/videos/Astronaute.webm" },
+  { id: 6, titleKey: "suggestions.video.6.title", typeStyleKey: "suggestions.video.6.typeStyle", promptKey: "line7_suggestions_video_6_prompt", img: "/videos/Anime1.webp", url: "/videos/Anime1.webm" },
+  { id: 7, titleKey: "suggestions.video.7.title", typeStyleKey: "suggestions.video.7.typeStyle", promptKey: "line7_suggestions_video_7_prompt", img: "/videos/encore-une.webp", url: "/videos/encore-une.webm" },
+  { id: 8, titleKey: "suggestions.video.8.title", typeStyleKey: "suggestions.video.8.typeStyle", promptKey: "line7_suggestions_video_8_prompt", img: "/videos/lac-montagneuse.webp", url: "/videos/lac-montagneuse.webm" },
+  { id: 9, titleKey: "suggestions.video.9.title", typeStyleKey: "suggestions.video.9.typeStyle", promptKey: "suggestions.video.9.prompt", img: "/videos/penthouse-nocturne.webp", url: "/videos/tiktok-5.webm" },
+  { id: 10, titleKey: "suggestions.video.10.title", typeStyleKey: "suggestions.video.10.typeStyle", promptKey: "suggestions.video.10.prompt", img: "/videos/poupee.webp", url: "/videos/poupee.webm" },
+  { id: 11, titleKey: "suggestions.video.11.title", typeStyleKey: "suggestions.video.11.typeStyle", promptKey: "suggestions.video.11.prompt", img: "/videos/caméra.webp", url: "/videos/caméra.webm" },
+  { id: 12, titleKey: "suggestions.video.12.title", typeStyleKey: "suggestions.video.12.typeStyle", promptKey: "suggestions.video.12.prompt", img: "/videos/Coucher-de-soleil.webp", url: "/videos/ocean.webm" },
+  { id: 13, titleKey: "suggestions.video.13.title", typeStyleKey: "suggestions.video.13.typeStyle", promptKey: "suggestions.video.13.prompt", img: "/videos/attaque.webp", url: "/videos/attaque.webm" },
+  { id: 14, titleKey: "suggestions.video.14.title", typeStyleKey: "suggestions.video.14.typeStyle", promptKey: "suggestions.video.14.prompt", img: "/videos/volcan.webp", url: "/videos/volcan.webm" },
+  { id: 15, titleKey: "suggestions.video.15.title", typeStyleKey: "suggestions.video.15.typeStyle", promptKey: "suggestions.video.15.prompt", img: "/videos/Couloir-sombre.webp", url: "/videos/Couloir-sombre.webm" }
 ];
 
 function App() {
+  
+  const { t, i18n } = useTranslation();
+  const SUGGESTIONS = SUGGESTION_KEYS.map(({ titleKey, promptKey, ...item }) => ({ ...item, promptKey, title: t(titleKey), prompt: t(promptKey) }));
+  const VIDEO_SUGGESTIONS = VIDEO_SUGGESTION_KEYS.map(({ titleKey, promptKey, typeStyleKey, ...item }) => ({ ...item, promptKey, title: t(titleKey), prompt: t(promptKey), typeStyle: t(typeStyleKey) }));
   // --- 1. ÉTATS DES JETONS (Lecture initiale du LocalStorage) ---
   const [tokens, setTokens] = useState(() => {
     const saved = localStorage.getItem("eclipse_tokens");
@@ -254,7 +180,7 @@ const consumeToken = async () => {
   
   // 4. Si aucun des deux n'est suffisant
   else {
-    alert(`⚠️ Crédits insuffisants ! Cette génération coûte ${currentPrice} 💎.`);
+    alert(t("app.error.insufficientCredits", { price: currentPrice }));
     setShowPricing(true); 
     return false; 
   }
@@ -264,9 +190,22 @@ const [showLogin, setShowLogin] = useState(false);
 const [showStudio, setShowStudio] = useState(false);
 const [mode, setMode] = useState("VIDEO"); // ✅ On commence en mode VIDEO
 const [prompt, setPrompt] = useState("");
+  const selectedSuggestionPromptRef = useRef(null);
+  useEffect(() => {
+    const selected = selectedSuggestionPromptRef.current;
+    if (!selected) return;
+    if (prompt !== selected.lastText) { selectedSuggestionPromptRef.current = null; return; }
+    const translatedPrompt = t(selected.promptKey);
+    selectedSuggestionPromptRef.current = { ...selected, lastText: translatedPrompt };
+    setPrompt(translatedPrompt);
+    setActiveItem((current) => current && current.id === `inspi-${selected.id}` ? { ...current, prompt: translatedPrompt } : current);
+  }, [i18n.language]);
 const [selectedStyle, setSelectedStyle] = useState("Réaliste");
 const [aspectRatio, setAspectRatio] = useState("16:9");
 const [selectedModel, setSelectedModel] = useState("Hailuo AI"); // ✅ On met direct Hailuo
+const isVeoPanelModel = (selectedModel || "")
+  .toLowerCase()
+  .includes("veo");
 const [isLoading, setIsLoading] = useState(false);
 const [isThinking, setIsThinking] = useState(false);
 const [chatMessages, setChatMessages] = useState([]);
@@ -280,10 +219,15 @@ const [itemToDelete, setItemToDelete] = useState(null);
 const [remixStrength, setRemixStrength] = useState(0.5); // 0.5 = équilibre parfait
 const [uploadedImage, setUploadedImage] = useState(null);
 const promptRef = useRef(null);
+const [isEngineMenuOpen, setIsEngineMenuOpen] = useState(false);
+const [showVideoTutorial, setShowVideoTutorial] = useState(false);
+const [videoTutorialTab, setVideoTutorialTab] = useState("guide");
+const [showImageTutorial, setShowImageTutorial] = useState(false);
+const [imageTutorialTab, setImageTutorialTab] = useState("guide");
+const [tutorialCopyState, setTutorialCopyState] = useState("");
 
 const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
 const [neededAmount, setNeededAmount] = useState(0);
-
 const [showCgv, setShowCgv] = useState(false);
 const [showLegal, setShowLegal] = useState(false);
 
@@ -292,6 +236,59 @@ const [userPlan, setUserPlan] = useState("debutant");
 const [isInitializing, setIsInitializing] = useState(true);
 
 const [videoSource, setVideoSource] = useState(null);
+const [videoSourceDuration, setVideoSourceDuration] = useState(0);
+// Opération vidéo spécifique à Veo 3.1
+const [veoVideoOperation, setVeoVideoOperation] = useState(null);
+const [veoReferenceImage, setVeoReferenceImage] = useState(null);
+const [showReferencePanel, setShowReferencePanel] = useState(false);
+useEffect(() => {
+  console.log("👁️ showReferencePanel CHANGÉ :", showReferencePanel);
+}, [showReferencePanel]);
+const [veoEditVideo, setVeoEditVideo] = useState(null);
+const [h3ReferenceImages, setH3ReferenceImages] = useState([]);
+const [h3ReferenceVideos, setH3ReferenceVideos] = useState([]);
+const [h3ReferenceAudios, setH3ReferenceAudios] = useState([]);
+const [h3Dialogue, setH3Dialogue] = useState("");
+const [h3Seed, setH3Seed] = useState("");
+const [h3PromptExpansion, setH3PromptExpansion] = useState("balanced");
+const [minimaxH3VideoOperation, setMinimaxH3VideoOperation] = useState("edit");
+const [modelReferenceImages, setModelReferenceImages] = useState([]); // Références des modèles image
+const [seedanceReferenceImages, setSeedanceReferenceImages] = useState([]);
+const [seedanceReferenceVideos, setSeedanceReferenceVideos] = useState([]);
+const [seedanceReferenceAudios, setSeedanceReferenceAudios] = useState([]);
+const [nanoReferenceVideo, setNanoReferenceVideo] = useState(null);
+const [pixverseNegativePrompt, setPixverseNegativePrompt] = useState("");
+const [pixverseMultiClip, setPixverseMultiClip] = useState(false);
+const [pixverseStyle, setPixverseStyle] = useState("");
+const [pixverseThinking, setPixverseThinking] = useState("auto");
+const [seedance25Operation, setSeedance25Operation] = useState("extend");
+const [pixverseSeed, setPixverseSeed] = useState("");
+const [seedanceSeed, setSeedanceSeed] = useState("");
+const [seedanceAudioEnabled, setSeedanceAudioEnabled] = useState(true);
+const [imageSeed, setImageSeed] = useState("");
+const [imageOutputFormat, setImageOutputFormat] = useState("JPG");
+const [gptImageQuality, setGptImageQuality] = useState("auto");
+const [gptImageModeration, setGptImageModeration] = useState("auto");
+const [fluxSafetyTolerance, setFluxSafetyTolerance] = useState("2");
+const [nanoThinking, setNanoThinking] = useState("MINIMAL");
+const [nanoTemperature, setNanoTemperature] = useState("1");
+const [nanoTopP, setNanoTopP] = useState("0.95");
+const [nanoSystemPrompt, setNanoSystemPrompt] = useState("");
+const [showH3ReferencePanel, setShowH3ReferencePanel] = useState(false);
+useEffect(() => {
+  if (!videoSource || !selectedModel) return;
+  const normalizedModel = selectedModel.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (normalizedModel.includes("seedance20")) {
+    setSeedanceReferenceVideos(prev => prev.slice(0, 2));
+  }
+  if (normalizedModel.includes("minimaxh3")) {
+    setH3ReferenceVideos(prev => prev.slice(0, 2));
+  }
+}, [videoSource, selectedModel]);
+
+const [selectedOptionModal, setSelectedOptionModal] = useState('');
+const [showEditor, setShowEditor] = useState(false);
+const [h3ReferenceSlot, setH3ReferenceSlot] = useState(null);
 const [isAuthLoading, setIsAuthLoading] = useState(true);
 const [showDropdown, setShowDropdown] = useState(false);
 const [cost, setCost] = useState(0);
@@ -302,13 +299,47 @@ const [showContactModal, setShowContactModal] = useState(false);
 const [showPrivacy, setShowPrivacy] = useState(false);
 const [showPricing, setShowPricing] = useState(false);
 const [wantsAudio, setWantsAudio] = useState(false);
+const [veoMode, setVeoMode] = useState("text-to-video");
+const [veoAudioSource, setVeoAudioSource] = useState(null);
+const [veoReferenceImages, setVeoReferenceImages] = useState([]);
+const [veoReferenceSlot, setVeoReferenceSlot] = useState(null);
+const veoReferenceSlotRef = useRef(null);
 const [resolution, setResolution] = useState("1080p");
+
+useEffect(() => {
+  if (mode !== "VIDEO" || !selectedModel) return;
+
+  const model = selectedModel
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  if (model.includes("minimaxh3")) {
+    setShowH3ReferencePanel(true);
+  } else {
+    setShowH3ReferencePanel(false);
+  }
+
+  if (model.includes("seedance25") && !["480p", "720p", "1080p", "full hd"].includes(String(resolution).toLowerCase())) {
+    setResolution("720p");
+  }
+}, [selectedModel, mode, resolution]);
 const [startImage, setStartImage] = useState(null);
 const [startImagePreview, setStartImagePreview] = useState(null);
 const [endImage, setEndImage] = useState(null);
 
+const [colorSettings, setColorSettings] = useState({
+  exposure: 0,
+  contrast: 0,
+  saturation: 0,
+  temperature: 0,
+  brightness: 0
+});
+
+const [activeSubTab, setActiveSubTab] = useState('Éclairage');
 const scrollContainerRef = useRef(null); 
 const [hoverItem, setHoverItem] = useState(null); // Pour stocker la miniature survolée
+
+const outilsRef = useRef(null);
 
 // Historique
 // ✅ Nouveau code : 100% Firebase, 0% localStorage
@@ -319,6 +350,7 @@ const [history, setHistory] = useState([]);
 
 
   // --- RÉFÉRENCES ---
+  
   const chatEndRef = useRef(null);
   const successAudio = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2436/2436-preview.mp3"));
   const scrollInspiRef = useRef(null);
@@ -431,41 +463,692 @@ const packs = ["0.00", "12.99", "24.99", "34.99", "59.99", "159.99"];
 
 const PRICING_DATA = {
 "0.00": { 
-    // --- MODE DIAMANTS (Marge ~50% pour absorber les frais Stripe) ---
-    veo3:  { hd4: 55, hd6: 81, hd8: 107, fhd4: 99, fhd6: 147, fhd8: 195},
-     veo3_lite: { hd4: 12,   hd6: 16,  hd8: 21,    fhd4: 18,  fhd6: 26,  fhd8: 33 },
-       kling26:  {  fhd5: 28, fhd10: 53 },
-    kling26_motion:{ fhd5: 28, fhd10: 53, hd5: 18, hd10: 33 },
-    kling30: { hd5: 38, fhd5: 48, hd10: 68, fhd10: 88, hd15: 98, fhd15: 128},
- hailuo:  { p512_6: 14, hd6: 18,  fhd6: 29,  hd10: 29, p512_10: 25, },
-     "luma-ray2":  { hd5: 31,  p540_5: 18,   p540_9: 30, fhd5: 58,  hd9: 54,  fhd9: 103 },
-   "pixverse6": { hd5: 28,  fhd5: 42,  hd10: 44,  fhd10: 73, p540_5: 18, p540_10: 28 },
-    seedance: { hd4: 38, sd4: 20, sd12: 49,  fhd4: 78,  hd12: 103,  fhd12: 203 },
-    seedance20: { hd5: 173, sd5: 123, sd10: 243, sd15: 363, fhd5: 383, hd10: 343, fhd10: 763, hd15: 513, fhd15: 1143},
-    flux:     { pro: 4,   dev: 3,    schnell: 1 }
+    // --- veo 3.1) ---
+veo3:  { hd4: 263,   // 720p  - 4s (0,80$  11 videos)
+         hd6: 393,   // 720p  - 6s (1,20$)
+         hd8: 523,   // 720p  - 8s (1,60$)
+         fhd4: 263,  // 1080p - 4s (0,80$)
+         fhd6: 393,  // 1080p - 6s (1,20$)
+         fhd8: 523 },  // 1080p - 8s (1,60$) 
+
+  // --- Veo 3.1 fast) ---
+veo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max
+         hd6: 191,  // 720p  - 6s ($0.60)
+         hd8: 253,  // 720p  - 8s ($0.80)
+         fhd4: 128, // 1080p - 4s ($0.40) -> 24 vidéos max
+         fhd6: 191, // 1080p - 6s ($0.60)
+         fhd8: 253  },  // 1080p - 8s ($0.80) // 
+
+// --- kling 2.6 pro) ---
+  kling26: {
+    fhd5: 110,
+    fhd10: 217
   },
+
+  // --- kling 2.6 motion ---
+  kling26_motion: {
+    fhd5: 110,
+    fhd10: 217
+  },
+// --- Kling 3.0 ---
+  kling30: {
+    // HD (720p)
+    hd3: 80,
+    hd4: 105,
+    hd5: 131,
+    hd6: 156,
+    hd7: 182,
+    hd8: 207,
+    hd9: 233,
+    hd10: 258,
+    hd11: 284,
+    hd12: 309,
+    hd13: 335,
+    hd14: 360,
+    hd15: 386,
+
+    // FULL HD (1080p)
+    fhd3: 108,
+    fhd4: 143,
+    fhd5: 178,
+    fhd6: 213,
+    fhd7: 248,
+    fhd8: 283,
+    fhd9: 318,
+    fhd10: 353,
+    fhd11: 388,
+    fhd12: 423,
+    fhd13: 458,
+    fhd14: 493,
+    fhd15: 528
+  },
+
+  // --- HAILUO 2.3 ---
+  hailuo: {
+    hd6: 91,
+    hd10: 179,
+    fhd6: 160
+  },
+
+  // --- MINIMAX H3 ---
+  minimax_h3: {
+    // HD (768p)
+    hd4: 103,
+    hd5: 128,
+    hd6: 153,
+    hd7: 178,
+    hd8: 203,
+    hd9: 228,
+    hd10: 253,
+    hd11: 278,
+    hd12: 303,
+    hd13: 328,
+    hd14: 353,
+    hd15: 378,
+
+    // 2K / FHD
+    fhd4: 163,
+    fhd5: 203,
+    fhd6: 243,
+    fhd7: 283,
+    fhd8: 323,
+    fhd9: 363,
+    fhd10: 403,
+    fhd11: 443,
+    fhd12: 483,
+    fhd13: 523,
+    fhd14: 563,
+    fhd15: 603
+  },
+
+  // --- PIXVERSE V6 ---
+  pixverse6: {
+    // 360p (SD)
+    p360_1: 11,
+    p360_2: 19,
+    p360_3: 26,
+    p360_4: 34,
+    p360_5: 42,
+    p360_6: 50,
+    p360_7: 58,
+    p360_8: 65,
+    p360_9: 73,
+    p360_10: 81,
+    p360_11: 89,
+    p360_12: 97,
+    p360_13: 104,
+    p360_14: 112,
+    p360_15: 120,
+
+    // 540p (SD+)
+    p540_1: 14,
+    p540_2: 25,
+    p540_3: 35,
+    p540_4: 46,
+    p540_5: 57,
+    p540_6: 68,
+    p540_7: 79,
+    p540_8: 89,
+    p540_9: 100,
+    p540_10: 111,
+    p540_11: 122,
+    p540_12: 133,
+    p540_13: 143,
+    p540_14: 154,
+    p540_15: 165,
+
+    // 720p (HD)
+    hd1: 17,
+    hd2: 31,
+    hd3: 44,
+    hd4: 58,
+    hd5: 72,
+    hd6: 86,
+    hd7: 100,
+    hd8: 113,
+    hd9: 127,
+    hd10: 141,
+    hd11: 155,
+    hd12: 169,
+    hd13: 182,
+    hd14: 196,
+    hd15: 210,
+
+    // 1080p (FULL HD)
+    fhd1: 31,
+    fhd2: 60,
+    fhd3: 88,
+    fhd4: 117,
+    fhd5: 145,
+    fhd6: 173,
+    fhd7: 202,
+    fhd8: 230,
+    fhd9: 259,
+    fhd10: 287,
+    fhd11: 315,
+    fhd12: 344,
+    fhd13: 372,
+    fhd14: 401,
+    fhd15: 429
+  },
+  // --- SEEDANCE 1.5 ---
+  seedance: {
+    // SD (480p)
+    sd4: 23,
+    sd5: 28,
+    sd6: 32,
+    sd7: 38,
+    sd8: 44,
+    sd9: 50,
+    sd10: 52,
+    sd11: 57,
+    sd12: 62,
+
+    // HD (720p)
+    hd4: 47,
+    hd5: 58,
+    hd6: 69,
+    hd7: 80,
+    hd8: 91,
+    hd9: 102,
+    hd10: 113,
+    hd11: 124,
+    hd12: 135,
+
+    // FULL HD (1080p)
+    fhd4: 103,
+    fhd5: 127,
+    fhd6: 151,
+    fhd7: 176,
+    fhd8: 201,
+    fhd9: 226,
+    fhd10: 251,
+    fhd11: 276,
+    fhd12: 301
+  },
+
+  // --- SEEDANCE 2.0 ---
+  seedance20: {
+    // SD (480p)
+    sd4: 101,
+    sd5: 123,
+    sd6: 147,
+    sd7: 171,
+    sd8: 195,
+    sd9: 219,
+    sd10: 243,
+    sd11: 267,
+    sd12: 292,
+    sd13: 316,
+    sd14: 340,
+    sd15: 377,
+
+    // HD (720p)
+    hd4: 224,
+    hd5: 280,
+    hd6: 335,
+    hd7: 390,
+    hd8: 445,
+    hd9: 500,
+    hd10: 555,
+    hd11: 610,
+    hd12: 664,
+    hd13: 719,
+    hd14: 774,
+    hd15: 833,
+
+    // FULL HD (1080p)
+    fhd4: 555,
+    fhd5: 694,
+    fhd6: 832,
+    fhd7: 970,
+    fhd8: 1108,
+    fhd9: 1246,
+    fhd10: 1385,
+    fhd11: 1523,
+    fhd12: 1661,
+    fhd13: 1799,
+    fhd14: 1937,
+    fhd15: 2076
+  },
+
+  // --- SEEDANCE 2.5 ---
+  seedance25: {
+    // SD (480p)
+    sd4: 136,
+    sd5: 169,
+    sd6: 202,
+    sd7: 236,
+    sd8: 269,
+    sd9: 302,
+    sd10: 336,
+    sd11: 369,
+    sd12: 402,
+    sd13: 435,
+    sd14: 469,
+    sd15: 502,
+    sd16: 535,
+    sd17: 568,
+    sd18: 602,
+    sd19: 635,
+    sd20: 668,
+    sd21: 701,
+    sd22: 735,
+    sd23: 768,
+    sd24: 801,
+    sd25: 834,
+    sd26: 868,
+    sd27: 901,
+    sd28: 934,
+    sd29: 967,
+    sd30: 1001,
+
+    // HD (720p)
+    hd4: 303,
+    hd5: 378,
+    hd6: 453,
+    hd7: 527,
+    hd8: 602,
+    hd9: 677,
+    hd10: 752,
+    hd11: 827,
+    hd12: 902,
+    hd13: 977,
+    hd14: 1052,
+    hd15: 1127,
+    hd16: 1202,
+    hd17: 1277,
+    hd18: 1352,
+    hd19: 1427,
+    hd20: 1502,
+    hd21: 1577,
+    hd22: 1652,
+    hd23: 1727,
+    hd24: 1802,
+    hd25: 1877,
+    hd26: 1952,
+    hd27: 2027,
+    hd28: 2102,
+    hd29: 2177,
+    hd30: 2251,
+
+    // FULL HD (1080p)
+    fhd4: 802,
+    fhd5: 1001,
+    fhd6: 1201,
+    fhd7: 1401,
+    fhd8: 1600,
+    fhd9: 1800,
+    fhd10: 1999,
+    fhd11: 2199,
+    fhd12: 2399,
+    fhd13: 2598,
+    fhd14: 2798,
+    fhd15: 2998,
+    fhd16: 3198,
+    fhd17: 3397,
+    fhd18: 3597,
+    fhd19: 3797,
+    fhd20: 3996,
+    fhd21: 4196,
+    fhd22: 4396,
+    fhd23: 4595,
+    fhd24: 4795,
+    fhd25: 4995,
+    fhd26: 5194,
+    fhd27: 5394,
+    fhd28: 5594,
+    fhd29: 5793,
+    fhd30: 5992
+  },
+  // --- Images) ---
+
+// --- GPT Image 2) ---
+    gptImage2: 
+
+{  transparentBackground: 11,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---
+  inpaint: 11,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---
+  textToImage: 18,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---
+  referenceToImage: 26}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
+  },
+
+  
+  // --- flux2pro) benefice 5 euros ---
+  flux2pro: {
+  mp1: 13,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---
+  mp2: 19,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
+  mp4: 29         // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
+},
+
+  // --- banana 2 lite) benefice 5 euros ---
+nanoBanana2Lite: {
+  k1: 15,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---
+  reference1k: 15      // --- Image de référence  : 12 ⚡ par image ( 257) ---
+},
 
   "12.99": { 
     // --- MODE ÉCLAIRS (Abonnés - Prix coûtant + petite marge) ---
-veo3: { hd4: 52, hd6: 78, hd8: 104, fhd4: 96, fhd6: 144, fhd8: 192},
-  veo3_lite: { hd4: 9,   hd6: 12, hd8: 18,  fhd4: 15,  fhd6: 23, fhd8: 30 }, 
-    kling26:  {  fhd5: 25, fhd10: 50 },
-    kling26_motion:{ fhd5: 25, fhd10: 50, hd5: 15, hd10: 30  },
-kling30: { hd5: 35, fhd5: 45, hd10: 65, fhd10: 85, hd15: 95, fhd15: 125},
-    hailuo:  { p512_6: 11, hd6: 15,  fhd6: 26,  hd10: 26, p512_10: 22, },
-   "luma-ray2": { 
-  p540_5: 15,   // 540p - 5 secondes
-  hd5: 20,   // 720p - 5 secondes
-  fhd5: 40,  // 1080p - 5 secondes
-  p540_9: 27,   // 540p - 9/10 secondes
-  hd9: 36,   // 720p - 9/10 secondes
-  fhd9: 75   // 1080p - 9/10 secondes
+veo3:  { hd4: 260,   // 720p  - 4s (0,80$)
+         hd6: 390,   // 720p  - 6s (1,20$)
+         hd8: 520,   // 720p  - 8s (1,60$)
+         fhd4: 260,  // 1080p - 4s (0,80$)
+         fhd6: 390,  // 1080p - 6s (1,20$)
+         fhd8: 520 },  // 1080p - 8s (1,60$) 
+
+ veo3_lite: { hd4: 125,  // 720p  - 4s ($0.40) -> 24 vidéos max
+         hd6: 188,  // 720p  - 6s ($0.60)
+         hd8: 250,  // 720p  - 8s ($0.80)
+         fhd4: 125, // 1080p - 4s ($0.40) -> 24 vidéos max
+         fhd6: 188, // 1080p - 6s ($0.60)
+         fhd8: 250  },  // 1080p - 8s ($0.80) // 
+
+     
+// --- Kling 2.6 Pro : tarif abonnement Débutant ---
+       kling26:  { fhd5: 110, fhd10: 217 },
+
+// --- Kling 2.6 Motion Control : tarif abonnement Débutant ---
+       kling26_motion: { fhd5: 110, fhd10: 217 },
+
+// --- HD (Kling 3.0 Standard - 720p) ---             
+        kling30: {
+  hd3: 77,
+  hd4: 102,
+  hd5: 128,
+  hd6: 153,
+  hd7: 179,
+  hd8: 204,
+  hd9: 230,
+  hd10: 255, // 🎯 Référence 10s (11 vidéos max)
+  hd11: 281,
+  hd12: 306,
+  hd13: 332,
+  hd14: 357,
+  hd15: 383,
+
+  // --- FULL HD (Kling 3.0 Pro - 1080p) : 35 Éclairs / sec ---
+  fhd3: 105,
+  fhd4: 140,
+  fhd5: 175,
+  fhd6: 210,
+  fhd7: 245,
+  fhd8: 280,
+  fhd9: 315,
+  fhd10: 350, // 🎯 Référence 10s (8 vidéos max)
+  fhd11: 385,
+  fhd12: 420,
+  fhd13: 455,
+  fhd14: 490,
+  fhd15: 525},
+
+// TARIFICATION HAILUO 2.3
+ hailuo:  { 
+
+  hd6: 88,    // 🎯 34 vidéos max (4,15 € profit)
+  hd10: 176,  // 🎯 17 vidéos max (4,15 € profit)
+
+  // --- FULL HD (1080p) ---
+  fhd6: 157  }, // 🎯 19 vidéos max (4,44 € profit)
+  // 
+
+   "minimax_h3": {
+  // --- HD (768p) ---
+  hd4: 100,
+  hd5: 125,
+  hd6: 150,
+  hd7: 175,
+  hd8: 200,
+  hd9: 225,
+  hd10: 250, // 🎯 12 vidéos max (~4,11 € profit)
+  hd11: 275,
+  hd12: 300,
+  hd13: 325,
+  hd14: 350,
+  hd15: 375, // 🎯 8 vidéos max (~4,03 € profit)
+
+  // --- 2K ---
+  fhd4: 160,
+  fhd5: 200,
+  fhd6: 240,
+  fhd7: 280,
+  fhd8: 320,
+  fhd9: 360,
+  fhd10: 400, // 🎯 7 vidéos max (~4,52 € profit)
+  fhd11: 440,
+  fhd12: 480,
+  fhd13: 520,
+  fhd14: 560,
+  fhd15: 600 }, // 🎯 5 vidéos max (~3,94 € profit)
+  
+// TARIFICATION PIXVERSE V6 (1s à 15s)
+   "pixverse6":
+
+   // --- 360p (SD) ---   
+   { p360_1: 8,
+  p360_2: 16,
+  p360_3: 23,
+  p360_4: 31,
+  p360_5: 39,  // 🎯 77 vidéos max (4,06 € profit)
+  p360_6: 47,
+  p360_7: 55,
+  p360_8: 62,
+  p360_9: 70,
+  p360_10: 78,
+  p360_11: 86,
+  p360_12: 94,
+  p360_13: 101,
+  p360_14: 109,
+  p360_15: 117,
+
+  // --- 540p (SD+) ---
+  p540_1: 11,
+  p540_2: 22,
+  p540_3: 32,
+  p540_4: 43,
+  p540_5: 54,  // 🎯 55 vidéos max (4,08 € profit)
+  p540_6: 65,
+  p540_7: 76,
+  p540_8: 86,
+  p540_9: 97,
+  p540_10: 108,
+  p540_11: 119,
+  p540_12: 130,
+  p540_13: 140,
+  p540_14: 151,
+  p540_15: 162,
+
+  // --- 720p (HD) ---
+  hd1: 14,
+  hd2: 28,
+  hd3: 41,
+  hd4: 55,
+  hd5: 69,   // 🎯 43 vidéos max (4,00 € profit)
+  hd6: 83,
+  hd7: 97,
+  hd8: 110,
+  hd9: 124,
+  hd10: 138,
+  hd11: 152,
+  hd12: 166,
+  hd13: 179,
+  hd14: 193,
+  hd15: 207,
+
+  // --- 1080p (FULL HD) ---
+  fhd1: 28,
+  fhd2: 57,
+  fhd3: 85,
+  fhd4: 114,
+  fhd5: 142,  // 🎯 21 vidéos max (4,21 € profit)
+  fhd6: 170,
+  fhd7: 199,
+  fhd8: 227,
+  fhd9: 256,
+  fhd10: 284,
+  fhd11: 312,
+  fhd12: 341,
+  fhd13: 369,
+  fhd14: 398,
+  fhd15: 426},
+
+  // seedance 1.5 sdk fal)
+    seedance: { // --- SD (480p) ---
+  sd4: 20,
+  sd5: 25,  // 🎯 120 vidéos max (7,00 € profit)
+  sd6: 29,
+  sd7: 35,
+  sd8: 41,
+  sd9: 47,
+  sd10: 49,
+  sd11: 54,
+  sd12: 59,
+
+  // --- HD (720p) ---
+  hd4: 44,
+  hd5: 55, // 🎯 5s : 54 vidéos max (7,00 € profit)
+  hd6: 66,
+  hd7: 77,
+  hd8: 88,
+  hd9: 99,
+  hd10: 110,
+  hd11: 121,
+  hd12: 132,
+
+  // --- FULL HD (1080p) ---
+  fhd4: 100,
+  fhd5: 124,  // 🎯 24 vidéos max (7,00 € profit)
+  fhd6: 148,
+  fhd7: 173,
+  fhd8: 198,
+  fhd9: 223,
+  fhd10: 248,
+  fhd11: 273,
+  fhd12: 298 },
+
+  // seedance 2.0)
+"seedance20": {
+  // --- SD (480p) 4s : 30 vidéos 5 euros de chiffre ---
+  sd4: 98, sd5: 120, sd6: 144, sd7: 168, sd8: 192, sd9: 216, sd10: 240, sd11: 264, sd12: 289, sd13: 313, sd14: 337, sd15: 374,
+
+  // --- HD (720p) 4s : 13 vidéos 5 euros de chiffre  ---
+  hd4: 221, hd5: 277, hd6: 332, hd7: 387, hd8: 442, hd9: 497, hd10: 552, hd11: 607, hd12: 661, hd13: 716, hd14: 771, hd15: 830,
+
+  // --- FULL HD (1080p) 4s : 5 vidéos 5 euros de chiffre  ---
+  fhd4: 552, fhd5: 691, fhd6: 829, fhd7: 967, fhd8: 1105, fhd9: 1243, fhd10: 1382, fhd11: 1520, fhd12: 1658, fhd13: 1796, fhd14: 1934, fhd15: 2073
 },
-   "pixverse6": { hd5: 25,  fhd5: 39,  hd10: 41,  fhd10: 70, p540_5: 15, p540_10: 25 },
-    seedance: { hd4: 35, sd4: 17, sd12: 46, fhd4: 75,  hd12: 100,  fhd12: 200 },
-    seedance20: { hd5: 170, sd5: 120, sd10: 240, sd15: 360, fhd5: 380, hd10: 340, fhd10: 760, hd15: 510, fhd15: 1140},
-    flux:     { pro: 3,   dev: 2,    schnell: 1 }
-  }
+
+seedance25: {
+  // --- SD (480p) ---
+  sd4: 133,
+  sd5: 166,   // ---  5s : 13 vidéos 4.5 euros de chiffre  ---
+  sd6: 199,
+  sd7: 233,
+  sd8: 266,
+  sd9: 299,
+  sd10: 333,
+  sd11: 366,
+  sd12: 399,
+  sd13: 432,
+  sd14: 466,
+  sd15: 499,
+  sd16: 532,
+  sd17: 565,
+  sd18: 599,
+  sd19: 632,
+  sd20: 665,
+  sd21: 698,
+  sd22: 732,
+  sd23: 765,
+  sd24: 798,
+  sd25: 831,
+  sd26: 865,
+  sd27: 898,
+  sd28: 931,
+  sd29: 964,
+  sd30: 998,
+
+  // --- HD (720p) ---
+  hd4: 300,
+  hd5: 375,
+  hd6: 450,
+  hd7: 524,
+  hd8: 599,
+  hd9: 674,
+  hd10: 749,
+  hd11: 824,
+  hd12: 899,
+  hd13: 974,
+  hd14: 1049,
+  hd15: 1124,
+  hd16: 1199,
+  hd17: 1274,
+  hd18: 1349,
+  hd19: 1424,
+  hd20: 1499,
+  hd21: 1574,
+  hd22: 1649,
+  hd23: 1724,
+  hd24: 1799,
+  hd25: 1874,
+  hd26: 1949,
+  hd27: 2024,
+  hd28: 2099,
+  hd29: 2174,
+  hd30: 2248,
+
+  // --- FULL HD (1080p) ---
+  fhd4: 799,
+  fhd5: 998,
+  fhd6: 1198,
+  fhd7: 1398,
+  fhd8: 1597,
+  fhd9: 1797,
+  fhd10: 1996,
+  fhd11: 2196,
+  fhd12: 2396,
+  fhd13: 2595,
+  fhd14: 2795,
+  fhd15: 2995,
+  fhd16: 3195,
+  fhd17: 3394,
+  fhd18: 3594,
+  fhd19: 3794,
+  fhd20: 3993,
+  fhd21: 4193,
+  fhd22: 4393,
+  fhd23: 4592,
+  fhd24: 4792,
+  fhd25: 4992,
+  fhd26: 5191,
+  fhd27: 5391,
+  fhd28: 5591,
+  fhd29: 5790,
+  fhd30: 5989
+
+},
+  // --- Images) ---
+
+// --- GPT Image 2) ---
+    gptImage2: 
+
+{  transparentBackground: 8,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---
+  inpaint: 8,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---
+  textToImage: 15,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---
+  referenceToImage: 23}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
+  },
+
+  
+  // --- flux2pro) benefice 5 euros ---
+  flux2pro: {
+  mp1: 11,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---
+  mp2: 16,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
+  mp4: 26          // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
+},
+
+  // --- banana 2 lite) benefice 5 euros ---
+nanoBanana2Lite: {
+  k1: 12,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---
+  reference1k: 12       // --- Image de référence  : 12 ⚡ par image ( 257) ---
+ }
 };
 
 // --- LIAISON DES PLANS (Éviter les erreurs de saisie) ---
@@ -480,54 +1163,75 @@ const p = PRICING_DATA[currentUserPrice] || PRICING_DATA["0.00"];
 const engines = [
 
   { 
-  id: "veo3_lite", 
-  name: "Veo 3.1 Lite", 
+
+  id: "veo3.1_fast", 
+  name: "Veo 3.1 fast", 
   type: "VIDEO",
+
+  // Runware
+  runwareModel: "google:3@3",
+
+  canDualImage: false,
+
   minPriceForLightning: "12.99",
+
   prices: {
     "4": { 
-      "720p": p.veo3_lite?.hd4 || 12, 
-      "1080p": p.veo3_lite?.fhd4 || 18 
+      "720p": p.veo3_lite?.hd4 || 128, 
+      "1080p": p.veo3_lite?.fhd4 || 128 
     },
-      "6": { 
-        "720p": p.veo3_lite?.hd6 || 16, 
-        "1080p": p.veo3_lite?.fhd6|| 26
-         },
+    "6": { 
+      "720p": p.veo3_lite?.hd6 || 191, 
+      "1080p": p.veo3_lite?.fhd6 || 191
+    },
     "8": { 
-      "720p": p.veo3_lite?.hd8 || 21, 
-      "1080p": p.veo3_lite?.fhd8 || 33 
+      "720p": p.veo3_lite?.hd8 || 253, 
+      "1080p": p.veo3_lite?.fhd8 || 253
     } 
   },
-endpoint: "veo-3.1-generate-001",
-  annotation: "Google Lite - Rapide & Audio inclus"
+
+  // Configuration spécifique Runware / Google
+  providerSettings: {
+    google: {
+      enhancePrompt: true,
+      generateAudio: true
+     }
   },
+
+  },
+  
     // --- VIDÉO HAUT DE GAMME ---
   { 
-id: "veo3", 
-    name: "Veo 3",  
+id: "veo3.1", 
+    name: "Veo 3.1",  
     type: "VIDEO",
+    runwareModel: "google:3@2",
     canDualImage: false, 
     minPriceForLightning: "12.99",
     prices: {
       "4": { 
-        "720p": p.veo3?.hd4 || 55, 
-        "1080p": p.veo3?.fhd4 || 96 
+        "720p": p.veo3?.hd4 || 263, 
+        "1080p": p.veo3?.fhd4 || 263 
       },
       "6": { 
-        "720p": p.veo3?.hd6 || 78, 
-        "1080p": p.veo3?.fhd6 || 144 
+        "720p": p.veo3?.hd6 || 393, 
+        "1080p": p.veo3?.fhd6 || 393 
          },
       "8": { 
-        "720p": p.veo3?.hd8 || 104, 
-        "1080p": p.veo3?.fhd8 || 192 
+        "720p": p.veo3?.hd8 || 523, 
+        "1080p": p.veo3?.fhd8 || 523 
       }
     },
-endpoint: 'veo-3.1-generate-001',
-extendEndpoint: "fal-ai/veo3.1/extend-video", 
-annotation: "Moteur Google - Fidélité Extrême"
+// Configuration spécifique au provider Runware
+  providerSettings: {
+    google: {
+      enhancePrompt: true,
+      generateAudio: true
+    }
+  },
+
   },
   {     
-
     id: "kling26_motion", 
     name: "Kling 2.6 Motion Control", 
     type: "VIDEO",
@@ -535,138 +1239,177 @@ annotation: "Moteur Google - Fidélité Extrême"
     minPriceForLightning: "12.99",
     prices: {
       "5": { 
-        "720p": p.kling26_motion?.hd5 || 18,
-        "1080p": p.kling26_motion?.fhd5 || 28
+        "1080p": p.kling26_motion?.fhd5 || 110
       },
       "10": { 
-        "720p": p.kling26_motion?.hd10 || 33,
-        "1080p": p.kling26_motion?.fhd10 || 53
+        "1080p": p.kling26_motion?.fhd10 || 217
       }
     },
-    endpoint: "fal-ai/kling-video/v2.6/standard/motion-control",
+    endpoint: "klingai:kling-video@2.6-pro",
     annotation: "Transfert de mouvement d'une vidéo vers une image"
-    },
-  { 
-    
-  id: "kling30", 
-  name: "Kling 3.0 Pro", 
-   type: "VIDEO",
-  canDualImage: true, 
-  minPriceForLightning: "12.99",
-  prices: {
-    "5": { 
-      "720p": p.kling30?.hd5 || 38, 
-      "1080p": p.kling30?.fhd5 || 48
-    },
-    "10": { 
-      "720p": p.kling30?.hd10 || 68, 
-      "1080p": p.kling30?.fhd10 || 88
-        },
-    "15": { 
-      "720p": p.kling30?.hd15 || 98, 
-      "1080p": p.kling30?.fhd15 || 128
-    }
-  },
-textEndpoint: "fal-ai/kling-video/v3/pro/text-to-video",
-
-// 2. L'endpoint pour l'IMAGE (c'est celui-ci qui gère l'extrapolation)
-endpoint: "fal-ai/kling-video/v3/pro/image-to-video",
-
-// 3. L'endpoint pour le Motion Control (Video-to-Video)
-motionEndpoint: "fal-ai/kling-video/v3/pro/motion-control",
-  annotation: "Moteur Premium - Qualité Cinéma"
 },
-  { 
+{
+   
+    id: "kling30",
+    name: "Kling 3.0",
+    type: "VIDEO",
+    canDualImage: true,
+    minPriceForLightning: "12.99",
 
-  id: "kling26", 
-  name: "Kling 2.6 Pro", 
-  type: "VIDEO",
-  canDualImage: true, 
-  minPriceForLightning: "12.99",
-  prices: {
-    "5": { 
-      
-      "1080p": p.kling26?.fhd5 || 28
-    },
-    "10": { 
-      "1080p": p.kling26?.fhd10 || 53
-    }
-  },
-  textEndpoint: "fal-ai/kling-video/v2.6/pro/text-to-video",
-// On pointe vers le endpoint de base pour le dual image
-  endpoint: "fal-ai/kling-video/v2.6/pro/image-to-video",
-  // On définit le endpoint spécifique pour le Motion Control (Video-to-Video)
-  annotation: "Excellent rapport Qualité/Prix"
-},
-{ 
-  id: "hailuo", 
-  name: "Hailuo AI", 
-  type: "VIDEO",
-  canDualImage: true, 
-  minPriceForLightning: "12.99",
-  prices: {
-    "6": { 
-      "512p": p.hailuo?.p512_6 || 14,
-      "768p": p.hailuo?.hd6 || 18, 
-      "1080p": p.hailuo?.fhd6 || 29
-    },
-    "10": { 
-      "512p": p.hailuo?.p512_10 || 25,
-      "768p": p.hailuo?.hd10 || 29, 
-    } 
-  },
-  endpoint: "fal-ai/minimax/hailuo-02/standard/text-to-video",
-  annotation: "Mouvements ultra-réalistes"
+    prices: (function() {
+        const dynamicPrices = {};
+
+        for (let i = 3; i <= 15; i++) {
+            dynamicPrices[i.toString()] = {
+                "720p": p.kling30?.[`hd${i}`] || 200,
+                "1080p": p.kling30?.[`fhd${i}`] || 500
+            };
+        }
+
+        return dynamicPrices;
+    })(),
+
+    // Kling 3.0 Standard — 720p
+    runwareModel: "klingai:kling-video@3-standard",
+    standardModel: "klingai:kling-video@3-standard",
+
+    // Kling 3.0 Pro — 1080p
+    proModel: "klingai:kling-video@3-pro",
+
+    annotation: "Kling 3.0 — Standard 720p / Pro 1080p"
 },
   {
- id: "luma-ray2", 
-  name: "Luma Ray 2 flash", 
+    id: "kling2.6",
+    name: "Kling 2.6 Pro",
+    type: "VIDEO",
+
+    // Runware
+    runwareModel: "klingai:kling-video@2.6-pro",
+
+    canDualImage: false,
+
+    minPriceForLightning: "12.99",
+
+    prices: {
+        "5": {
+            "1080p": p.kling26?.fhd5 || 110
+        },
+        "10": {
+            "1080p": p.kling26?.fhd10 || 217
+        }
+    },
+
+    providerSettings: {
+        klingai: {
+            sound: true
+        }
+    },
+},
+
+{
+  id: "hailuo",
+  name: "Hailuo 2.3",
   type: "VIDEO",
-  canDualImage: true, 
+  runwareModel: "minimax:4@1",
+  canDualImage: false,
   minPriceForLightning: "12.99",
-  prices: { 
-    // Correction : on utilise p["luma-ray2"] au lieu de p.luma
-    "5":  { "720p": p["luma-ray2"]?.hd5 || 31, "540p": p["luma-ray2"]?.p540_5 || 18, "1080p": p["luma-ray2"]?.fhd5 || 58 }, 
-    "10": { "720p": p["luma-ray2"]?.hd9 || 54, "540p": p["luma-ray2"]?.p540_9 || 30,"1080p": p["luma-ray2"]?.fhd9 || 103 } 
+  prices: {
+    "6": {
+      "768p": p.hailuo?.hd6 || 91,
+      "1080p": p.hailuo?.fhd6 || 179
+    },
+
+    "10": {
+      "768p": p.hailuo?.hd10 || 160
+    }
   },
-  endpoint: "fal-ai/luma-dream-machine/ray-2-flash"
+  annotation: "Mouvements ultra-réalistes"
+},
+
+  {
+id: "minimax_h3",
+name: "MiniMax H3",
+type: "VIDEO",
+runwareModel: "minimax:h3@0",
+canDualImage: true,
+minPriceForLightning: "12.99",
+model: "minimax:h3@0",
+prices: (function() {
+  const dynamicPrices = {};
+
+  for (let i = 4; i <= 15; i++) {
+    dynamicPrices[i.toString()] = {
+      "768p": p.minimax_h3?.[`hd${i}`] || 378,
+      "1440p": p.minimax_h3?.[`2k${i}`] || 603
+    };
+  }
+
+  return dynamicPrices;
+})(),
+
 },
 
   // --- VIDÉO ACCESSIBLE ---
 {
-  id: "pixverse6", name: "Pixverse V6",  type: "VIDEO",
-canDualImage: true, 
+id: "pixverse6", 
+  name: "Pixverse V6",  
+  type: "VIDEO",
+  canDualImage: true,
   minPriceForLightning: "12.99",
-  prices: { 
-    "5":  { "720p": p.pixverse6?.hd5 || 28, "1080p": p.pixverse6?.fhd5 || 42, "540p": p.pixverse6?.p512_5 || 18 }, 
-    "10": { "720p": p.pixverse6?.hd10 || 44, "1080p": p.pixverse6?.fhd10 || 73, "540p": p.pixverse6?.p512_10|| 28 } 
-  }, 
-endpoint: "fal-ai/pixverse/v6/text-to-video"},
+  prices: (function() {
+    const dynamicPrices = {};
+    for (let i = 1; i <= 15; i++) {
+      dynamicPrices[i.toString()] = {
+        "360p": p.pixverse6?.[`p360_${i}`] || 117,
+        "540p": p.pixverse6?.[`p540_${i}`] || 162,
+        "720p": p.pixverse6?.[`hd${i}`] || 207,
+        "1080p": p.pixverse6?.[`fhd${i}`] || 426
+      };
+    }
+    return dynamicPrices;
+  })(),
+  runwareModel: "pixverse:1@8",
+  annotation: "PixVerse V6 — 360p à 1080p, 1 à 15 s, audio et multi-shot"},
+
 { 
+  id: "seedance25", 
+  name: "seedance 2.5", 
+  type: "VIDEO",
+  canDualImage: true, 
+  minPriceForLightning: "12.99",
+  prices: (function() {
+    const dynamicPrices = {};
+    for (let i = 4; i <= 30; i++) {
+      dynamicPrices[i.toString()] = {
+        "480p": p.seedance25?.[`sd${i}`] || 998,
+        "720p": p.seedance25?.[`hd${i}`] || 2248,
+        "1080p": p.seedance25?.[`fhd${i}`] || 5989
+      };
+    }
+    return dynamicPrices;
+  })(),
+  runwareModel: "bytedance:seedance@2.5",
+  annotation: "Seedance 2.5 — références image/vidéo/audio, édition et extension, 4 à 30 s"
+},
+{
    id: "seedance20", 
   name: "seedance 2.0", 
   type: "VIDEO",
   canDualImage: true, 
   minPriceForLightning: "12.99",
-  prices: {
-   "5": { 
-       "480p": p.seedance20.sd5 || 123, 
-      "720p": p.seedance20.hd5 || 173, 
-      "1080p": p.seedance20.fhd5 || 383
-    },
-    "10": { 
-      "480p": p.seedance20.sd10 || 243, 
-      "720p": p.seedance20.hd10 || 343, 
-      "1080p": p.seedance20.fhd10 || 763
-        },
-    "15": { 
-      "480p": p.seedance20.sd15 || 363, 
-      "720p": p.seedance20.hd15 || 513, 
-      "1080p": p.seedance20.fhd15 || 1143
-    } 
-  },
-endpoint: "bytedance/seedance-2.0/text-to-video", 
-  annotation: "Mouvements ultra-réalistes, audio inclus"
+ prices: (function() {
+    const dynamicPrices = {};
+    for (let i = 4; i <= 15; i++) {
+      dynamicPrices[i.toString()] = {
+        "480p": p.seedance20?.[`sd${i}`] || (i === 5 ? 123 : i === 10 ? 243 : i === 15 ? 363 : Math.round(24.3 * i)),
+        "720p": p.seedance20?.[`hd${i}`] || (i === 5 ? 173 : i === 10 ? 343 : i === 15 ? 513 : Math.round(34.3 * i)),
+        "1080p": p.seedance20?.[`fhd${i}`] || (i === 5 ? 383 : i === 10 ? 763 : i === 15 ? 1143 : Math.round(76.3 * i))
+      };
+    }
+    return dynamicPrices;
+  })(),
+runwareModel: "bytedance:seedance@2.0",
+  annotation: "Seedance 2.0 — jusqu'à 9 images, 3 vidéos et 3 audios de référence"
 },
 { 
   id: "seedance", 
@@ -674,46 +1417,61 @@ endpoint: "bytedance/seedance-2.0/text-to-video",
   type: "VIDEO",
   canDualImage: false, // Supporte Start/End frame mais pas Dual Image classique
   minPriceForLightning: "12.99",
-  prices: { 
-    "4": { // On garde "5" pour l'interface utilisateur (valeur par défaut)
- "480p": p.seedance?.sd4 || 20,  
-      "720p": p.seedance?.hd4 || 38,           
-      "1080p": p.seedance?.fhd4 || 78 
-    },
-    "12": { // On mappe le choix "Long" sur le tarif 12s
-       "480p": p.seedance?.sd12 || 49,
-      "720p": p.seedance?.hd12 || 103, 
-      "1080p": p.seedance?.fhd12 || 203 
-    } 
-  },
+  prices: (function() {
+    const dynamicPrices = {};
+    for (let i = 4; i <= 12; i++) {
+      dynamicPrices[i.toString()] = {
+        "480p": p.seedance?.[`sd${i}`] || 59,
+        "720p": p.seedance?.[`hd${i}`] || 132,
+        "1080p": p.seedance?.[`fhd${i}`] || 298
+      };
+    }
+    return dynamicPrices;
+  })(),
 endpoint: "fal-ai/bytedance/seedance/v1.5/pro/text-to-video",
   annotation: "Audio natif & Lip-sync synchronisés"
   },
   // --- IMAGES ---
-{ 
-
-  id: "fal-ai/flux-pro/v1.1",
-  name: "Flux Pro", 
-  type: "IMAGE", 
+{
+  id: "gpt_image2",
+  name: "GPT Image 2",
+  type: "IMAGE",
+  runwareModel: "openai:gpt-image@2",
   minPriceForLightning: "12.99",
-  prices: { "0": { "1080p": p.flux?.pro || 4 } }, // Le "0" peut être piégeux, assure-toi que ton calcul le lit bien
-  annotation: "Ultra-Haute Qualité - v1.1"
+  prices: { "0": { "1080p": p.flux?.pro || 4 } },
+  maxReferenceImages: 16,
+  annotation: "Génération et édition d'images, jusqu'à 16 références"
 },
-{ 
-  id: "fal-ai/flux/dev", 
-  name: "Flux Dev", 
-  type: "IMAGE", 
+{
+  id: "flux2pro",
+  name: "FLUX.2 Pro",
+  type: "IMAGE",
+  runwareModel: "bfl:5@1",
   minPriceForLightning: "12.99",
-  prices: { "0": { "1080p": p.flux?.dev || 3 } }
+  prices: { "0": { "1080p": p.flux?.dev || 3 } },
+  maxReferenceImages: 9,
+  annotation: "FLUX.2 Pro — édition guidée par jusqu'à 9 images"
 },
-{ 
-  id: "fal-ai/flux/schnell", 
-  name: "Flux Schnell", 
-  type: "IMAGE", 
+{
+  id: "nano_banana2_lite",
+  name: "Nano Banana 2 Lite",
+  type: "IMAGE",
+  runwareModel: "google:nano-banana@2-lite",
   minPriceForLightning: "12.99",
-  prices: { "0": { "1080p": p.flux?.schnell || 1 } }
+  prices: { "0": { "1080p": p.flux?.schnell || 1 } },
+  maxReferenceImages: 14,
+  annotation: "Génération et édition rapide, jusqu'à 14 images de référence"
 } 
 ]; // Fermeture correcte de l'array engines
+
+// Réduit immédiatement un ancien prompt si l'utilisateur change de moteur
+// ou ajoute une image/vidéo qui impose une limite plus stricte.
+useEffect(() => {
+  const selectedId = String(engines.find(e => e.name === selectedModel)?.id || selectedModel || "").toLowerCase();
+  const limit = getPromptLimit(mode, selectedId, Boolean(startImage || endImage), Boolean(videoSource));
+  if (prompt.length > limit) setPrompt(prompt.slice(0, limit));
+}, [mode, selectedModel, startImage, endImage, videoSource, prompt]);
+
 
 
 function getPriceDisplay(engine, duration, resolution, userPlan) {
@@ -725,16 +1483,22 @@ function getPriceDisplay(engine, duration, resolution, userPlan) {
 
     // 🛡️ CORRECTION : Si c'est le Kling Motion Control, on force TOUJOURS le Full HD (fhd)
     const isKlingMotion = engine?.id === "kling26_motion" || engine?.id?.includes("motion");
-    const isFullHD = isKlingMotion || engine?.id?.includes("kling26") || resolution === "1080p" || resolution === "Full HD";
     
     const resKey = isFullHD ? "fhd" : "hd";
     const lookupKey = duration === "0" ? resKey : `${resKey}${duration}`;
 
     // 1. PRIX ÉCLAIR
-    const lightningPrice = PRICING_DATA[currentPriceKey]?.[engine.id]?.[lookupKey];
+    const isImageEngine = engine.type === "IMAGE";
+    const imageTier = engine.id === "gpt_image2" ? "pro" : engine.id === "flux2pro" ? "dev" : "schnell";
+    const pricingEngineKey = isImageEngine ? "flux" : engine.id;
+    const lightningPrice = isImageEngine
+      ? PRICING_DATA[currentPriceKey]?.[pricingEngineKey]?.[imageTier]
+      : PRICING_DATA[currentPriceKey]?.[pricingEngineKey]?.[lookupKey];
 
     // 2. PRIX DIAMANT
-    const diamondPrice = PRICING_DATA["0.00"]?.[engine.id]?.[lookupKey] || engine.rubyPrice;
+    const diamondPrice = (isImageEngine
+      ? PRICING_DATA["0.00"]?.[pricingEngineKey]?.[imageTier]
+      : PRICING_DATA["0.00"]?.[pricingEngineKey]?.[lookupKey]) || engine.rubyPrice;
 
     // 3. LOGIQUE D'AUTORISATION
     const packs = ["0.00", "12.99", "24.99", "34.99", "59.99", "159.99"];
@@ -747,7 +1511,13 @@ function getPriceDisplay(engine, duration, resolution, userPlan) {
         return `${diamondPrice} 💎`;
     }
 }
-const styles = ["Réaliste", "Cyberpunk", "Anime", "Aquarelle",  "Animation 3D"]; 
+const styles = [
+  t("app.style.realistic", { defaultValue: "Réaliste" }),
+  t("app.style.cyberpunk", { defaultValue: "Cyberpunk" }),
+  t("app.style.anime", { defaultValue: "Anime" }),
+  t("app.style.watercolor", { defaultValue: "Aquarelle" }),
+  t("app.style.animation3d", { defaultValue: "Animation 3D" })
+]; 
 // 🔄 Détection de génération en cours si la page a été rafraîchie/réouverte
 useEffect(() => {
     if (!user) return;
@@ -773,7 +1543,11 @@ const checkPendingGeneration = async () => {
                 // Réactivation visuelle du grand carré et du loader
                 setIsLoading(true);
                 setProgress(50); // Valeur indicative pendant le chargement
-                setStatusMsg("Génération en cours de finalisation...");
+                setStatusMsg(
+  t("app.status.generationFinalizing", {
+    defaultValue: t("line3_app_status_generationFinalizing")
+  })
+);
             }
         } catch (err) {
             console.error("Impossible de vérifier l'état des générations :", err);
@@ -827,7 +1601,7 @@ useEffect(() => {
   }
 }, 
 
-[mode]); // Ajoute 'engines' ici au cas où ils chargent de façon asynchrone // Ajoute 'engines' ici au cas où ils chargent de façon asynchrone
+[mode, i18n.language]); // Rafraîchit aussi les suggestions quand la langue change.
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
@@ -857,17 +1631,53 @@ useEffect(() => {
   }
 };
 const handleFileToUrl = async (e, previewOrImageSetter, maybeImageSetter) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  // La modal Filtre appelle cette fonction avec un objet File ; les autres
+  // zones de l'application l'appellent avec un événement input classique.
+  const directFile = typeof File !== "undefined" && e instanceof File;
+  const file = directFile ? e : e?.target?.files?.[0];
+  if (!file) return null;
 
   console.log("📁 FICHIER SÉLECTIONNÉ :", file);
   console.log("📦 Taille :", file.size, "octets");
   console.log("🖼️ Type :", file.type);
 
+  const maxBytes = getMediaLimitBytes(file);
+  if (file.size > maxBytes) {
+    const kind = getMediaKind(file);
+    const label = kind === "image" ? t("line1_app_file_kind_image") : kind === "video" ? t("line1_app_file_kind_video") : kind === "audio" ? t("line1_app_file_kind_audio") : t("line1_app_file_kind_other");
+    setErrorMsg?.(`${file.name} dépasse la limite de ${formatMo(maxBytes)} pour ${label}. Taille du fichier : ${formatMo(file.size)}.`);
+    if (!directFile && e?.target) e.target.value = "";
+    return null;
+  }
+
   // ============================================================
   // APERÇU LOCAL
   // ============================================================
   const previewUrl = URL.createObjectURL(file);
+
+  // Appel direct depuis la modal : retourner l'URL publique, sans attendre
+  // un callback d'événement qui n'existe pas dans ce cas.
+  if (directFile) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) throw new Error(`Erreur upload (${response.status})`);
+      const data = await response.json();
+      const publicUrl = data.url || data.filePath;
+      if (!publicUrl) throw new Error('Le serveur n’a retourné aucune URL.');
+      URL.revokeObjectURL(previewUrl);
+      return publicUrl;
+    } catch (error) {
+      URL.revokeObjectURL(previewUrl);
+      console.error('❌ Échec de l’upload de la référence Veo :', error);
+      setErrorMsg?.(`Impossible d’envoyer l’image ${file.name}.`);
+      throw error;
+    }
+  }
 
   if (typeof previewOrImageSetter === 'function') {
     previewOrImageSetter(previewUrl);
@@ -946,18 +1756,59 @@ const handleFileToUrl = async (e, previewOrImageSetter, maybeImageSetter) => {
   reader.readAsDataURL(file);
 };
 
+const uploadFilesToPublicUrls = async (files) => {
+  const urls = [];
+  for (const file of Array.from(files || [])) {
+    const maxBytes = getMediaLimitBytes(file);
+    if (file.size > maxBytes) {
+      const kind = getMediaKind(file);
+      const label = kind === "image" ? t("line1_app_file_kind_image") : kind === "video" ? t("line1_app_file_kind_video") : kind === "audio" ? t("line1_app_file_kind_audio") : t("line1_app_file_kind_other");
+      setErrorMsg(`Le fichier ${file.name} dépasse la limite de ${formatMo(maxBytes)} pour ${label} (taille : ${formatMo(file.size)}).`);
+      continue;
+    }
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, {
+        method: "POST",
+        body: formData
+      });
+      if (!response.ok) throw new Error(`Upload échoué (${response.status})`);
+      const data = await response.json();
+      const url = data.url || data.filePath;
+      if (url) urls.push(url);
+    } catch (error) {
+      console.error("❌ Échec d'upload d'une référence :", error);
+      setErrorMsg?.(`Impossible d'envoyer le fichier ${file.name}.`);
+    }
+  }
+  return [...new Set(urls)];
+};
+
 const handleFileChange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  const maxBytes = getMediaLimitBytes(file);
+  if (file.size > maxBytes) {
+    const kind = getMediaKind(file);
+    const label = kind === "image" ? t("line1_app_file_kind_image") : kind === "video" ? t("line1_app_file_kind_video") : kind === "audio" ? t("line1_app_file_kind_audio") : t("line1_app_file_kind_other");
+    setErrorMsg(`Le fichier ${file.name} dépasse la limite de ${formatMo(maxBytes)} pour ${label}.`);
+    e.target.value = "";
+    return;
+  }
   const formData = new FormData();
   formData.append('file', file);
   try {
     setIsLoading(true);
-    setStatusMsg("Chargement du fichier...");
+    setStatusMsg(
+  t("app.status.fileLoading", {
+    defaultValue: "Chargement du fichier..."
+  })
+);
 
 const res = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, { method: 'POST', body: formData });      const data = await res.json();
       if (data.url) {
-        const newItem = { id: Date.now(), url: data.url, prompt: "Fichier importé", type: "IMAGE" };
+        const newItem = { id: Date.now(), url: data.url, prompt: t("line3_app_status_fileImported"), type: "IMAGE" };
         setActiveItem(newItem);
         confetti();
       }
@@ -981,7 +1832,7 @@ const handleLogout = async () => {
     setHistory([]);
     return;
   }
-
+console.log("👤 USER UID ACTUEL :", user.uid);
   // Écoute directement la collection imageLocks pour cet utilisateur
   const q = query(
     collection(db, "imageLocks"),
@@ -1034,7 +1885,7 @@ useEffect(() => {
                         resolution === "1080p" || 
                         resolution?.toLowerCase().includes("fhd");
 
-    // 1. DÉTERMINATION DU PLAN (Éclairs ou Diamants )(Mode Full HD : Diamants)
+    // 1. DÉTERMINATION DU PLAN (Éclairs ou Diamants)
     const currentPlanPrice = PLAN_TO_PRICE[userPlan?.toLowerCase()] || "0.00";
     const userTierIdx = packsList.indexOf(currentPlanPrice);
     const reqTierIdx = packsList.indexOf(String(currentEngineData.minPriceForLightning));
@@ -1058,38 +1909,80 @@ if (mode === "IMAGE") {
 } else {
     // Sécurité : on extrait le chiffre
     const cleanDurationStr = duration.toString().replace(/\D/g, "");
-    const isLongChosen = (duration === "long" || ["10", "12", "8", "9", "15"].includes(cleanDurationStr));
+    const isLongChosen = (duration === "long" || ["10", "12", "8", "9", "15"].includes(cleanDurationStr)); 
     
     if (currentEngineId === "veo3_lite") {
         calcDuration = cleanDurationStr === "6" ? "6" : (cleanDurationStr === "8" ? "8" : "4");
     } else if (currentEngineId === "veo3") {
         calcDuration = cleanDurationStr === "6" ? "6" : (cleanDurationStr === "8" ? "8" : "4");
-    } else if (currentEngineId === "seedance20") {
-        // ✅ GESTION SPÉCIFIQUE SEEDANCE 2.0 (Paliers 5, 10, 15)
-        calcDuration = (cleanDurationStr === "15") ? "15" : (cleanDurationStr === "10" ? "10" : "5");
+
+          } else if (currentEngineId === "seedance25") {
+        // ✅ GESTION SPÉCIFIQUE SEEDANCE 2.5 (De 4 à 30 secondes libres)
+        const numDur = parseInt(cleanDurationStr, 10) || 5;
+        const pricingDuration = seedance25Operation === "edit" && videoSourceDuration > 0
+          ? Math.ceil(videoSourceDuration)
+          : numDur;
+        calcDuration = Math.max(4, Math.min(30, pricingDuration)).toString();
+
+} else if (currentEngineId.includes("pixverse")) {
+        // ✅ GESTION SPÉCIFIQUE PIXVERSE V6 (Libre de 1 à 15 secondes)
+        const numDur = parseInt(cleanDurationStr, 10) || 5;
+        calcDuration = Math.max(1, Math.min(15, numDur)).toString();
+
+} else if (currentEngineId === "kling30" || currentEngineId.includes("kling3")) {
+        // ✅ GESTION SPÉCIFIQUE KLING 3.0 (Par exemple, support natif jusqu'à 15s)
+        const numDur = parseInt(cleanDurationStr, 10) || 5;
+        calcDuration = Math.max(3, Math.min(15, numDur)).toString();
+        
+} else if (currentEngineId.includes("seedance20") || currentEngineId.includes("seedance-2.0")) {
+    // ✅ GESTION SPÉCIFIQUE SEEDANCE 2.0
+    const numDur = parseInt(cleanDurationStr, 10) || 5;
+    calcDuration = Math.max(4, Math.min(15, numDur)).toString();
+
+
+    } else if (currentEngineId === "kling26" || currentEngineId === "kling2.6") {
+        // Kling 2.6 Pro : durées tarifées de 5 ou 10 secondes.
+        calcDuration = cleanDurationStr === "10" ? "10" : "5";
+
+       }   else if (currentEngineId === "veo3.1" || currentEngineId === "veo3.1_fast") {
+        // Veo supporte des durées flexibles (ex: 4, 6, 8 secondes)
+        calcDuration = cleanDurationStr === "6" ? "6" : (cleanDurationStr === "8" ? "8" : "4");
+          
     } else if (currentEngineId.includes("seedance")) {
         // Ancienne version v1.5
-        calcDuration = isLongChosen ? "12" : "4";
+         const numDur = parseInt(cleanDurationStr, 10) || 5;
+        calcDuration = Math.max(4, Math.min(12, numDur)).toString();
+
     } else if (currentEngineId.includes("hailuo")) {
         calcDuration = isHighResMode ? "6" : (isLongChosen ? "10" : "6");
-    } else if (currentEngineId.includes("luma")) {
-        calcDuration = isLongChosen ? "9" : "5";
- } else if (cleanDurationStr === "15" && currentEngineId !== "kling26" && currentEngineId !== "kling26_motion") {
+
+    } else if (currentEngineId.includes("minimax_h3")) {
+             const numDur = parseInt(cleanDurationStr, 10) || 5;
+        calcDuration = Math.max(4, Math.min(15, numDur)).toString();
+
+} else if (currentEngineId === "kling26" || currentEngineId === "kling26_motion") {
+        // ✅ Forçage strict 5s ou 10s pour Kling 2.6
+        calcDuration = cleanDurationStr === "10" ? "10" : "5";
+    } else if (cleanDurationStr === "15" && currentEngineId !== "kling26" && currentEngineId !== "kling26_motion") {
         calcDuration = "15";
     } else {
         calcDuration = isLongChosen ? "10" : "5";
     }
 }
     // 3. RÉCUPÉRATION DU PRIX SUR LE BON ID
-const pricingId = currentEngineId.includes("luma") ? "luma-ray2" : 
+const pricingId = currentEngineId.includes("minimax") || currentEngineId.includes("h3") ? "minimax_h3" :
                         currentEngineId.includes("pixverse") ? "pixverse6" : 
+                        currentEngineId.includes("veo3.1") ? "veo3.1" :
+                        currentEngineId.includes("seedance25") ? "seedance25" :
+                        currentEngineId === "kling2.6" ? "kling26" :
                         currentEngineId;
 
-const isLuma = currentEngineId.includes("luma");
+const isMinimax = currentEngineId.includes("minimax") || currentEngineId.includes("h3"); 
 const isPixverse = currentEngineId.includes("pixverse");           
 const isHailuo = currentEngineId.includes("hailuo");
 const normalizedResolution = resolution?.toLowerCase().replace(/\s/g, "");
 
+const is360p = normalizedResolution === "360p" || normalizedResolution === "sd";
 const is540p = normalizedResolution === "540p";
 const is512p = normalizedResolution === "512p"; // Gardé pour Hailuo si nécessaire
 const isSD = normalizedResolution === "480p" || normalizedResolution === "sd";
@@ -1099,17 +1992,27 @@ if (isHailuo && is512p) {
     // ⚙️ Logique spécifique pour Hailuo (512p)
     priceKey = calcDuration === "10" ? "p512_10" : "p512_6";
 } 
-else if (isPixverse && is540p) {
-    // ⚙️ Logique spécifique pour Pixverse (540p)
-    priceKey = calcDuration === "10" ? "p540_10" : "p540_5";
-} 
-else if (isLuma && is540p) {
-    // ⚙️ Logique spécifique pour Luma (540p strictement en 5s ou 9s)
-    priceKey = (calcDuration === "9") ? "p540_9" : "p540_5";
+else if (isPixverse) {
+    // ⚙️ Logique dynamique 1s-15s pour Pixverse (360p, 540p, 720p=hd, 1080p=fhd)
+    if (is360p) {
+        priceKey = `p360_${calcDuration}`;
+    } else if (is540p) {
+        priceKey = `p540_${calcDuration}`;
+    } else {
+        const resPrefix = isHighResMode || normalizedResolution === "1080p" ? "fhd" : "hd";
+        priceKey = `${resPrefix}${calcDuration}`;
+    }
+}
+else if (isMinimax) {
+    // ⚙️ Logique spécifique pour MiniMax (768p -> hd, 2K -> fhd)
+    const is2K = resolution === "2K" || resolution?.toLowerCase().includes("2k") || isHighResMode;
+    const resPrefix = is2K ? "fhd" : "hd";
+    priceKey = `${resPrefix}${calcDuration}`;
 }
 else {
-    // ✅ Détermination propre du préfixe standard (sd, hd ou fhd)
-    const resPrefix = isSD ? "sd" : (isHighResMode ? "fhd" : "hd");
+    // 🛡️ CORRECTION : On force le préfixe fhd pour Kling 2.6 et Kling 2.6 Motion
+    const isKling26Engine = currentEngineId?.includes("kling26") || currentEngineId === "kling2.6";
+    const resPrefix = isKling26Engine ? "fhd" : (isSD ? "sd" : (isHighResMode ? "fhd" : "hd"));
     priceKey = `${resPrefix}${calcDuration}`;
 }
 
@@ -1128,28 +2031,51 @@ else {
     targetPlan,
     tableTrouvee: PRICING_DATA[targetPlan]?.[pricingId]
 });
-    let baseCost = PRICING_DATA[targetPlan]?.[pricingId]?.[priceKey] || 0;
+    let baseCost = 0;
 
-    // Fallback de sécurité corrigé pour Hailuo
-    if (baseCost === 0) {
+    // Tarification dédiée aux nouveaux moteurs d'images, alignée sur pricingConfig.js.
+    if (mode === "IMAGE") {
+        const imageTable = PRICING_DATA[targetPlan] || PRICING_DATA["0.00"];
+        const hasReferenceImage = (Array.isArray(modelReferenceImages) && modelReferenceImages.length > 0) || Boolean(startImage || uploadedImage);
+        if (currentEngineId === "gpt_image2") {
+            baseCost = imageTable?.gptImage2?.[hasReferenceImage ? "referenceToImage" : "textToImage"] || 0;
+        } else if (currentEngineId === "flux2pro") {
+            const imageWidth = aspectRatio === "16:9" ? 1280 : aspectRatio === "9:16" ? 720 : 1024;
+            const imageHeight = aspectRatio === "16:9" ? 720 : aspectRatio === "9:16" ? 1280 : 1024;
+            const pixels = imageWidth * imageHeight;
+            const megapixels = pixels / 1_000_000;
+            const sizeKey = megapixels <= 1.5 ? "mp1" : megapixels <= 3 ? "mp2" : "mp4";
+            baseCost = imageTable?.flux2pro?.[sizeKey] || 0;
+        } else if (currentEngineId === "nano_banana2_lite") {
+            baseCost = imageTable?.nanoBanana2Lite?.[hasReferenceImage || Boolean(nanoReferenceVideo) ? "reference1k" : "k1"] || 0;
+        }
+    } else {
+        baseCost = PRICING_DATA[targetPlan]?.[pricingId]?.[priceKey] || 0;
+    }
+
+    // Fallback de sécurité corrigé pour Hailuo ; ne pas remplacer un tarif d'image manquant par un ancien prix FLUX.
+    if (mode === "VIDEO" && baseCost === 0) {
         const fallbackData = currentEngineData.prices?.[calcDuration] || Object.values(currentEngineData.prices || {})[0];
         
         let defaultResKey = isHighResMode ? "1080p" : "720p";
-  if (isHailuo) {
+  if (currentEngineId === "kling2.6" || currentEngineId.includes("kling26")) {
+    defaultResKey = "1080p";
+} else if (isHailuo) {
     defaultResKey = is512p
         ? (calcDuration === "10" ? "p512_10" : "p512_6")
         : "hd" + calcDuration;
-        } else if (isPixverse) {
-    defaultResKey = is512p
-        ? (calcDuration === "10" ? "p512_10" : "p512_5")
-        : "hd" + calcDuration;
-}
+} else if (isPixverse) {
+        // ⚙️ Fallback Pixverse dynamique selon résolution demandée
+        defaultResKey = is360p ? `p360_${calcDuration}`
+                      : is540p ? `p540_${calcDuration}`
+                      : isHighResMode ? `fhd${calcDuration}`
+                      : `hd${calcDuration}`;
+    }
 
         baseCost = fallbackData?.[defaultResKey] || currentEngineData.rubyPrice || 20;
     }
 
 // 4. MULTIPLICATEURS ET ARRONDIS
-
 if (mode === "VIDEO") {
         const techId = currentEngineId.toLowerCase();
 
@@ -1162,8 +2088,17 @@ if (mode === "VIDEO") {
         }
 
         if (wantsAudio) {
-            const multi = (techId.includes("kling") || techId.includes("hailuo") || techId.includes("veo") || techId.includes("luma")) ? 2.0 : 
-                          (techId.includes("seedance") ? 1.5 : 1.25);
+            // ✅ On s'assure que seedance25 n'applique PAS de multiplicateur audio (audio gratuit)
+        const multi = (techId.includes("seedance25")) ? 1.0 :
+              techId.includes("minimax") ? 1.0 :
+              techId.includes("seedance20") ? 1.0 :
+              techId.includes("kling30") ? 1.5 :
+              techId.includes("pixverse") ? 1.3 :
+              techId.includes("hailuo") ? 1.0 :
+              (techId.includes("veo") && (techId.includes("veo3_lite") || techId.includes("veo3.1_fast"))) ? 1.5 :
+              (techId.includes("kling")  || techId.includes("veo") || techId.includes("luma")) ? 2.0 : 
+              (techId.includes("seedance") ? 2.0 : 1.25);
+
             baseCost *= multi;
         }
 
@@ -1171,13 +2106,13 @@ if (mode === "VIDEO") {
             baseCost += 1;
         }
 
-        const isExactPriceModel = techId.includes("luma") || 
-                                 techId.includes("lite") || 
-                                 techId.includes("kling") || 
-                                 techId.includes("hailuo") || 
-                                 techId.includes("pixverse") || 
-                                 techId.includes("seedance") ||
-                                 techId.includes("veo");
+        const isExactPriceModel = techId.includes("minimax") || 
+                                       techId.includes("lite") || 
+                                       techId.includes("kling") || 
+                                       techId.includes("hailuo") || 
+                                       techId.includes("pixverse") || 
+                                       techId.includes("seedance") ||
+                                       techId.includes("veo");
 
         if (isExactPriceModel) {
             baseCost = Math.ceil(baseCost);
@@ -1193,83 +2128,31 @@ if (mode === "VIDEO") {
 },
 
 // Et dans ton tableau de dépendances, mets bien ta vraie variable au lieu de hasVideoSource :
-[selectedModel, resolution, mode, duration, wantsAudio, endImage, userPlan, videoSource]);
-
+[selectedModel, resolution, mode, duration, wantsAudio, endImage, userPlan, videoSource, videoSourceDuration, seedance25Operation, modelReferenceImages, startImage, uploadedImage, nanoReferenceVideo, aspectRatio]);
 const getEndpoint = (engineData, hasStartImage, hasVideoSource) => {
   if (!engineData || !engineData.id) return "";
-  
-  const engineId = engineData.id.toLowerCase();
-  
-  // Prise en compte de "Full HD", "1080p" et "pro"
-  const isPro = resolution === "1080p" || resolution === "Full HD" || resolution === "pro";
-  const range = isPro ? "pro" : "standard";
+  const engineId = String(engineData.id).toLowerCase();
 
-  // 0. GESTION SPÉCIFIQUE KLING MOTION CONTROL
-  if (engineId === "kling26_motion" || engineId.includes("motion")) {
-      return `fal-ai/kling-video/v2.6/${range}/motion-control`;
-  }
-// GESTION SPÉCIFIQUE LUMA RAY 2 FLASH (Endpoints dynamiques)
-if (engineId.includes("luma")) {
-      if (hasVideoSource) {
-          return "fal-ai/luma-dream-machine/ray-2-flash/modify"; 
-      
-      }
-      return hasStartImage 
-          ? "fal-ai/luma-dream-machine/ray-2-flash/image-to-video" // Mode Image-to-Video
-          : "fal-ai/luma-dream-machine/ray-2-flash";           // Mode Text-to-Video
-  }
-// PRIORITÉ PIXVERSE V6
-if (engineId.includes("pixverse")) {
-    // Si une vidéo source est présente, on utilise l'endpoint d'extension
-    if (hasVideoSource) {
-        return "fal-ai/pixverse/v6/extend";
-    }
-    const hasAnyImage = Boolean(startImage || uploadedImage || endImage);
-    
-    return hasAnyImage 
-        ? "fal-ai/pixverse/v6/image-to-video" 
-        : "fal-ai/pixverse/v6/text-to-video";
-}
-  // 1. PRIORITÉ HAILUO
-  if (engineId.includes("hailuo")) {
-      const mode = hasStartImage ? "image-to-video" : "text-to-video";
-      return `fal-ai/minimax/hailuo-02/${range}/${mode}`;
+  // Runware identifie directement les modèles vidéo : aucun endpoint fournisseur côté client.
+  if (engineData.runwareModel ||
+      engineId.includes("veo3.1") ||
+      engineId === "kling26_motion" ||
+      engineId.includes("kling") ||
+      engineId.includes("hailuo") ||
+      engineId.includes("minimax_h3") ||
+      engineId === "pixverse6" ||
+      engineId === "seedance25" ||
+      engineId === "seedance20") {
+    return engineData.runwareModel || engineData.endpoint || "";
   }
 
-  // 2. PRIORITÉ KLING 3.0 (Parentheses corrigées)
-  if (engineId === "kling30" || (engineId.includes("kling") && engineId.includes("3"))) {
-      const mode = hasStartImage ? "image-to-video" : "text-to-video";
-      return `fal-ai/kling-video/v3/${range}/${mode}`;
+  // Fal est conservé exclusivement pour Seedance 1.5 Pro.
+  if (engineId === "seedance") {
+    return hasStartImage
+      ? "fal-ai/bytedance/seedance/v1.5/pro/image-to-video"
+      : "fal-ai/bytedance/seedance/v1.5/pro/text-to-video";
   }
-// 3.A. PRIORITÉ SEEDANCE 1.5 PRO (Mis à jour pour l'image de début ou de fin)
-  if (engineId.includes("seedance") && engineId.includes("1.5")) {
-      const modePath = (hasStartImage || (typeof endImage !== 'undefined' && endImage)) ? "image-to-video" : "text-to-video";
-      return `fal-ai/bytedance/seedance/v1.5/${range}/${modePath}`;
-  }
-
-  // 3. PRIORITÉ SEEDANCE 2.0
-// Ajout de "|| endImage" pour déclencher le mode reference dès qu'une image de fin est présente
-// PRIORITÉ PIXVERSE V6 CORRIGÉE
-if (engineId.includes("pixverse")) {
-    if (hasVideoSource) {
-        return "fal-ai/pixverse/v6/extend";
-    }
-    
-    const hasStart = Boolean(startImage || uploadedImage);
-    const hasEnd = Boolean(endImage);
-
-    // Si tu as les deux, on cible l'endpoint "transition"
-    if (hasStart && hasEnd) {
-        return "fal-ai/pixverse/v6/transition";
-    }
-    
-    return (hasStart || hasEnd) 
-        ? "fal-ai/pixverse/v6/image-to-video" 
-        : "fal-ai/pixverse/v6/text-to-video";
-  }
-  
-  // 5. FALLBACK par défaut
-  return engineData.textEndpoint || engineData.endpoint;
+  return engineData.textEndpoint || engineData.endpoint || "";
 };
 // --- FONCTION handleGenerate ---
 const handleGenerate = async () => {
@@ -1328,7 +2211,7 @@ setActiveItem(item);
 
 
   const styleKey = (selectedStyle || "").trim().toLowerCase();
-  let cleanPrompt = prompt ? prompt.trim() : "";
+  let cleanPrompt = prompt ? prompt.trim().slice(0, getPromptLimit(mode, engineData.id, Boolean(startImage || endImage), Boolean(videoSource))) : "";
   let styleSuffix = "";
 
   // Définition des suffixes selon le style
@@ -1378,7 +2261,7 @@ switch (styleKey) {
   }
 
   // Nettoyage final des doubles virgules et espaces multiples
-  finalPrompt = finalPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ');
+  finalPrompt = finalPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').slice(0, getPromptLimit(mode, engineData.id, Boolean(startImage || endImage), Boolean(videoSource)));
 // --- 🔍 LOG DE VÉRIFICATION ---
   console.log("--- PROMPT FINAL ENVOYÉ À L'API ---");
   console.log("Moteur:", selectedModel);
@@ -1397,17 +2280,21 @@ if (!engineData) {
   console.error(`❌ Impossible de trouver l'engin correspondant à : ${selectedModel}`);
   return;
 }
+if (engineData.id === "seedance25" && videoSource && seedance25Operation === "edit" && !(videoSourceDuration > 0)) {
+  setErrorMsg(t("line3_app_error_waitSourceDuration"));
+  return;
+}
 // Déclaration unique au début
 let finalModelId = engineData.id;
 const isKlingMotion = finalModelId === "kling26_motion";
 
 if (isKlingMotion && !startImage && !uploadedImage) {
-  if (typeof setErrorMsg === 'function') setErrorMsg("Veuillez sélectionner une image pour le personnage.");
+  if (typeof setErrorMsg === 'function') setErrorMsg(t("line3_app_error_selectCharacterImage"));
   return;
 }
 
 if (isKlingMotion && !videoSource) {
-  if (typeof setErrorMsg === 'function') setErrorMsg("Veuillez importer une vidéo de référence pour le mouvement.");
+  if (typeof setErrorMsg === 'function') setErrorMsg(t("line3_app_error_importMotionVideo"));
   return;
 }
 
@@ -1423,12 +2310,14 @@ finalModelId = engineData.id;  let effectiveDuration = mode === "IMAGE" ? "0" : 
 const isHighRes = (resolution === "Full HD" || resolution === "1080p");
 
   // 🛡️ SÉCURITÉ VEO : On nettoie les entrées avant de préparer l'objet final
-  if (finalModelId.toLowerCase().includes("veo")) {
-      console.warn("⚠️ Nettoyage des paramètres : Veo ne supporte pas V2V ou Image de fin.");
-      // Tu peux même annuler les variables d'état si nécessaire pour l'UI
-      setVideoSource(null);
-      setEndImage(null);
-  }
+if (
+  finalModelId.toLowerCase().includes("veo") &&
+  !veoVideoOperation
+) {
+  console.warn("⚠️ Nettoyage des paramètres Veo.");
+  setVideoSource(null);
+  setEndImage(null);
+}
 
   // --- 3. RÉCUPÉRATION DU COÛT ET DU TYPE (DEPUIS LE STUDIO) ---
   // On utilise finalCost et costType pour être raccord avec l'affichage à l'écran
@@ -1477,7 +2366,7 @@ if (isPriorityUser) {
     setStatusMsg(`⚡ Priorité Max : ${selectedModel} vous répond immédiatement...`);
 } else {
     // On utilise selectedModel pour que le message change selon ton choix
-    const actionVerb = mode === "IMAGE" ? "Prépare votre image" : "Met en scène votre vidéo";
+    const actionVerb = mode === "IMAGE" ? t("line1_app_status_prepareImage") : t("line1_app_status_stageVideo");
     setStatusMsg(`⏳ ${selectedModel} : ${actionVerb}...`);
 }
 
@@ -1502,23 +2391,8 @@ const lumaParams = {
 // --- 1. Calcul du modèle final (Mutation vers Image-to-Image)
 // On vérifie startImage OU uploadedImage pour être sûr de couvrir tous les cas de Remix
 // ✅ CORRIGÉ : Pas de "let" (on réassigne la variable déjà créée plus haut) et on utilise engineData
-finalModelId = engineData.id.toLowerCase(); 
+finalModelId = engineData.id.toLowerCase();
 const hasImageSource = startImage || uploadedImage;
-
-if (mode === "IMAGE" && hasImageSource) {
-    // Cas pour Flux Dev (souvent encore en /image-to-image)
-    if (finalModelId.includes("flux/dev")) {
-        finalModelId = "fal-ai/flux/dev/image-to-image";
-    } 
-    // Cas pour Flux 1.1 Pro
-    else if (finalModelId.includes("flux-pro/v1.1")) {
-        finalModelId = "fal-ai/flux-pro/v1.1/redux";
-    } 
-    // Cas pour Flux Schnell
-    else if (finalModelId.includes("flux/schnell")) {
-        finalModelId = "fal-ai/flux/schnell";
-    }
-}
 
 // 2. Choix de l'endpoint
 const endpoint = mode === "IMAGE" ? 'generate-image' : 'generate-video';    
@@ -1531,9 +2405,21 @@ const tailKey = isKling ? (isV26 ? "end_image_url" : "tail_image_url") : "end_im
 // ... juste avant le "const endpoint = ..."
 
 // 2. Choix dynamique de l'endpoint via la nouvelle fonction
-const hasStartImage = !!(startImage || uploadedImage || endImage);
-const hasVideoSource = typeof videoSource !== 'undefined' ? !!videoSource : false; 
-const targetModelEndpoint = getEndpoint(engineData, hasStartImage, hasVideoSource);
+
+const hasStartImage =
+  !!(startImage || uploadedImage);
+
+const hasVideoSource =
+  typeof videoSource !== 'undefined'
+    ? !!videoSource
+    : false;
+
+const targetModelEndpoint =
+  getEndpoint(
+    engineData,
+    hasStartImage,
+    hasVideoSource
+  );
 
 // --- 📊 RÉSUMÉ DES PARAMÈTRES DE GÉNÉRATION ---
 console.log("--- 📊 PARAMÈTRES DE GÉNÉRATION ---");
@@ -1562,33 +2448,306 @@ const getValidDuration = (modelId, dur) => {
 
     return d;
 };
-if (isKlingMotion) {
-    return {
-      image_url: startImage || uploadedImage || null,
-      video_url: videoSource,
-      prompt: finalPrompt,
-      character_orientation: (typeof characterOrientation !== 'undefined' && characterOrientation) ? characterOrientation : "video",
-      keep_original_sound: (typeof wantsAudio !== 'undefined') ? wantsAudio : true
-    };
-  }
-if (finalModelId.includes("luma") && finalModelId.includes("flash")) {
-        const hasVid = Boolean(videoSource);
-        const hasImg = Boolean(startImage || uploadedImage || endImage);
 
-        return {
-            prompt: finalPrompt,
-            resolution: resolution?.toLowerCase().includes("540") ? "540p" : ((resolution === "Full HD" || resolution === "1080p") ? "1080p" : "720p"),            
-            duration: (effectiveDuration === "10" || effectiveDuration === "9") ? "9s" : "5s",
-            aspect_ratio: aspectRatio || "16:9",
-            ...(hasVid ? { video_url: videoSource } : {}),
-            ...(hasImg ? { 
-                image_url: startImage || uploadedImage || null,
-                end_image_url: endImage || null 
-            } : {}),
-            loop: false
-        };
-    }
+// ============================================================
+// RUNWARE — OPTIONS PIXVERSE V6
+// ============================================================
+if (finalModelId === "pixverse6") {
+    return {
+        prompt: finalPrompt,
+        resolution: ["360p", "540p", "720p", "1080p"].includes(resolution) ? resolution : "720p",
+        duration: Math.max(1, Math.min(15, parseFloat(effectiveDuration) || 5)),
+        enable_audio: Boolean(wantsAudio),
+        negativePrompt: pixverseNegativePrompt.trim(),
+        ...(pixverseSeed.trim() !== "" && Number.isInteger(Number(pixverseSeed)) && Number(pixverseSeed) >= 0 ? { seed: Number(pixverseSeed) } : {}),
+        settings: {
+            audio: Boolean(wantsAudio),
+            multiClip: Boolean(pixverseMultiClip),
+            ...(pixverseStyle ? { style: pixverseStyle } : {}),
+            thinking: pixverseThinking
+        },
+        ...(videoSource ? { video_url: videoSource } : {}),
+        ...(startImage || uploadedImage ? { start_image_url: startImage || uploadedImage } : {}),
+        ...(endImage ? { end_image_url: endImage } : {})
+    };
+}
+
+// ============================================================
+// RUNWARE — SEEDANCE 2.0 / 2.5 : RÉFÉRENCES MULTIMODALES
+// ============================================================
+if (finalModelId === "seedance20" || finalModelId === "seedance25") {
+    return {
+        prompt: finalPrompt,
+        aspect_ratio: aspectRatio || "16:9",
+        resolution: resolution || "720p",
+        duration: Math.max(4, Math.min(finalModelId === "seedance25" ? 30 : 15, parseInt(effectiveDuration, 10) || 5)),
+        ...(seedanceSeed.trim() !== "" && Number.isInteger(Number(seedanceSeed)) && Number(seedanceSeed) >= 0 ? { seed: Number(seedanceSeed) } : {}),
+        enable_audio: seedanceAudioEnabled,
+        settings: {
+            audio: seedanceAudioEnabled,
+            ...(finalModelId === "seedance25" && videoSource ? { operation: seedance25Operation } : {})
+        },
+        ...(videoSource ? { video_url: videoSource } : {}),
+        ...(startImage || uploadedImage ? { start_image_url: startImage || uploadedImage } : {}),
+        ...(endImage ? { end_image_url: endImage } : {}),
+        ...(seedanceReferenceImages.length ? { referenceImages: seedanceReferenceImages } : {}),
+        ...(seedanceReferenceVideos.length ? { referenceVideos: seedanceReferenceVideos } : {}),
+        ...(seedanceReferenceAudios.length ? { referenceAudios: seedanceReferenceAudios } : {})
+    };
+}
+
+// ============================================================
+// RUNWARE — MODÈLES IMAGE
+// ============================================================
+if (["gpt_image2", "flux2pro", "nano_banana2_lite"].includes(finalModelId)) {
+    return {
+        prompt: finalPrompt,
+        width,
+        height,
+        aspect_ratio: aspectRatio || "1:1",
+        outputFormat: imageOutputFormat,
+        ...(imageSeed.trim() !== "" && Number.isInteger(Number(imageSeed)) && Number(imageSeed) >= 0 ? { seed: Number(imageSeed) } : {}),
+        ...(finalModelId === "gpt_image2" ? { providerSettings: { openai: { quality: gptImageQuality, moderation: gptImageModeration } } } : {}),
+        ...(finalModelId === "flux2pro" ? { providerSettings: { bfl: { safetyTolerance: Number(fluxSafetyTolerance) } } } : {}),
+        ...(finalModelId === "nano_banana2_lite" ? { settings: { thinking: nanoThinking, temperature: Number(nanoTemperature), topP: Number(nanoTopP), ...(nanoSystemPrompt.trim() ? { systemPrompt: nanoSystemPrompt.trim().slice(0, 50000) } : {}) } } : {}),
+        ...(modelReferenceImages.length ? { referenceImages: modelReferenceImages } : {}),
+        ...(finalModelId === "nano_banana2_lite" && nanoReferenceVideo ? { referenceVideos: [nanoReferenceVideo] } : {})
+    };
+}
+
+// ============================================================
+// 🛡️ VEO 3.1 / VEO 3.1 FAST — RUNWARE
+// ============================================================
+if (finalModelId.includes("veo3.1")) {
+
+    const isFast =
+        finalModelId.includes("fast") ||
+        finalModelId.includes("flash");
+
+    const hasVid = Boolean(videoSource);
+    const hasImg = Boolean(startImage || uploadedImage);
+
+    return {
+        prompt: finalPrompt,
+
+        aspect_ratio:
+            aspectRatio || "16:9",
+
+        duration:
+            getValidDuration(
+                finalModelId,
+                effectiveDuration
+            ),
+
+        resolution:
+            (resolution === "Full HD" ||
+             resolution === "1080p")
+                ? "1080p"
+                : "720p",
+
+        enable_audio:
+            wantsAudio,
+
+        // Modèle Runware
+        runwareModel:
+            isFast
+                ? "google:3@3"
+                : "google:3@2",
+
+        // Vidéo source
+        ...(hasVid
+            ? {
+                video_url: videoSource
+              }
+            : {}),
+
+        // Image de départ
+        ...(hasImg
+            ? {
+                image_url:
+                    startImage ||
+                    uploadedImage
+              }
+            : {})
+    };
+}
+// ============================================================
+// 🎬 KLING 2.6 PRO FULL HD — RUNWARE
+// ============================================================
+if (finalModelId === "kling2.6") {
+
+    const hasVid = Boolean(videoSource);
+    const hasImg = Boolean(startImage || uploadedImage);
+
+    return {
+        prompt: finalPrompt,
+
+        aspect_ratio:
+            aspectRatio || "16:9",
+
+        duration:
+            getValidDuration(
+                finalModelId,
+                effectiveDuration
+            ),
+
+        // Kling 2.6 Pro = Full HD uniquement
+        resolution: "1080p",
+
+        enable_audio:
+            wantsAudio,
+
+        // Modèle Runware
+        runwareModel:
+            "klingai:kling-video@2.6-pro",
+
+        // ====================================================
+        // 🎥 VIDÉO SOURCE → VIDEO TO VIDEO
+        // ====================================================
+        ...(hasVid
+            ? {
+                video_url: videoSource
+              }
+            : {}),
+
+        // ====================================================
+        // 🖼️ IMAGE DE DÉPART → IMAGE TO VIDEO
+        // ====================================================
+        ...(hasImg
+            ? {
+                image_url:
+                    startImage ||
+                    uploadedImage
+              }
+            : {})
+    };
+}
+// ============================================================
+// 🎬 KLING 2.6 MOTION CONTROL — RUNWARE
+// ============================================================
+if (isKlingMotion) {
+
+    const motionImage =
+        startImage ||
+        uploadedImage ||
+        null;
+
+    const motionVideo =
+        videoSource ||
+        null;
+
+    return {
+
+        prompt:
+            finalPrompt,
+
+        duration:
+            getValidDuration(
+                finalModelId,
+                effectiveDuration
+            ),
+
+        resolution:
+            "1080p",
+
+        // Modèle Runware
+        runwareModel:
+            "klingai:kling-video@2.6-pro",
+
+        // Image du personnage
+        image_url:
+            motionImage,
+
+        // Vidéo contenant les mouvements
+        video_url:
+            motionVideo,
+
+        // Orientation du personnage
+        character_orientation:
+            (
+                typeof characterOrientation !== "undefined" &&
+                characterOrientation
+            )
+                ? characterOrientation
+                : "video",
+
+        // Conserver le son original de la vidéo
+        keep_original_sound:
+            (
+                typeof wantsAudio !== "undefined"
+            )
+                ? wantsAudio
+                : true
+    };
+}
+// ✅ GESTION SPÉCIFIQUE MINIMAX (H3)
+// ============================================================
+// 🎬 MINIMAX H3 — RUNWARE
+// ============================================================
+if (finalModelId === "minimax_h3") {
+
+    const h3Duration = Math.max(
+        4,
+        Math.min(
+            15,
+            parseInt(effectiveDuration, 10) || 5
+        )
+    );
+
+    const h3Resolution =
+        resolution === "2K" ||
+        resolution === "1440p"
+            ? "1440p"
+            : "768p";
+
+    const hasVid = Boolean(videoSource);
+    const hasStart = Boolean(startImage || uploadedImage);
+    const hasEnd = Boolean(endImage);
+
+    return {
+        prompt: finalPrompt,
+
+        resolution: h3Resolution,
+
+        duration: h3Duration,
+
+        // Image de départ
+        ...(hasStart
+            ? {
+                startImage:
+                    startImage ||
+                    uploadedImage
+              }
+            : {}),
+
+        // Image de fin
+        ...(hasEnd
+            ? {
+                endImage: endImage
+              }
+            : {}),
+
+        // Vidéo de référence + opération choisie dans l'interface
+        ...(hasVid
+            ? {
+                video: videoSource,
+                video_url: videoSource,
+                operation: minimaxH3VideoOperation
+              }
+            : {}),
+
+        // Références multimodales : Runware impose une image ou une vidéo si l'audio est fourni.
+        ...(h3ReferenceImages.length ? { referenceImages: h3ReferenceImages.slice(0, 9) } : {}),
+        ...(h3ReferenceVideos.length ? { video_urls: h3ReferenceVideos.slice(0, 3) } : {}),
+        ...(h3ReferenceAudios.length ? { audio_urls: h3ReferenceAudios.slice(0, 3) } : {}),
+        ...(h3Dialogue.trim() ? { dialogue: h3Dialogue.trim().slice(0, 2000) } : {}),
+        ...(h3Seed.trim() !== "" && Number.isInteger(Number(h3Seed)) && Number(h3Seed) >= 0 ? { seed: Number(h3Seed) } : {}),
+        settings: { promptExpansion: h3PromptExpansion },
+        enable_audio: true
+    };
+}
     // 1. ISOLATION DE VEO LITE
+    /*
 if (finalModelId.includes("veo3_lite")) {
     return { 
         prompt: finalPrompt, 
@@ -1611,24 +2770,12 @@ if (finalModelId.includes("veo3_lite")) {
             ...((typeof videoSource !== 'undefined' && videoSource) ? { video_url: videoSource } : { image_url: startImage || uploadedImage || null }) 
         };
     }
+*/
 
     // ... tes autres conditions (kling, pixverse, etc.) ...
     if (finalModelId.includes("kling")) return { prompt: finalPrompt, [imageKey]: startImage || uploadedImage || null, [tailKey]: endImage || null, generate_audio: wantsAudio, aspect_ratio: aspectRatio, duration: ["15", "10", "5"].includes(effectiveDuration) ? effectiveDuration : "5", negative_prompt: "blur, distort, and low quality" };
-if (finalModelId.includes("pixverse")) {
-  const is540p = resolution === "540p";
-    return { 
-        prompt: finalPrompt, 
-        image_url: startImage || uploadedImage || null, 
-        ...(endImage && { end_image_url: endImage }), 
-        // Ajoute ceci si tu passes une vidéo source pour la modif :
-        ...(videoSource && { video_url: videoSource }), 
-        duration: parseInt(effectiveDuration), 
-        generate_audio_switch: wantsAudio, 
-        resolution: is540p ? "540p" : ((resolution === "Full HD" || resolution === "1080p") ? "1080p" : "720p")
-    };
-}
-
-if (finalModelId.includes("seedance")) {
+// Les traitements PixVerse V6 et Seedance 2.0/2.5 sont définis plus haut avec leurs paramètres Runware dédiés.
+if (finalModelId === "seedance") {
         return {
             prompt: finalPrompt,
             aspect_ratio: aspectRatio || "16:9",
@@ -1640,16 +2787,18 @@ if (finalModelId.includes("seedance")) {
         };
     }
 
-    if (finalModelId.includes("hailuo")) 
-    return { 
-        prompt: finalPrompt, 
-        image_url: startImage || uploadedImage || null, 
-        end_image_url: endImage || null, 
-        prompt_optimizer: true, 
-        aspect_ratio: aspectRatio,
-        resolution: (resolution === "Full HD" || resolution === "1080p") ? "1080p" : ((resolution === "512p" || resolution === "512p") ? "512p" : "768p"), 
-        duration: parseInt(effectiveDuration) 
-    };    if (finalModelId.includes("lite")) return { prompt: finalPrompt, image_url: startImage || uploadedImage || null, end_image_url: endImage || null, duration: parseInt(effectiveDuration), resolution: (resolution === "Full HD" || resolution === "1080p") ? "1080p" : "720p", aspect_ratio: aspectRatio };
+ if (finalModelId.includes("hailuo")) 
+return { 
+    prompt: finalPrompt, 
+    image_url: startImage || uploadedImage || null, 
+    prompt_optimizer: true, 
+    aspect_ratio: aspectRatio,
+    resolution:
+        (resolution === "Full HD" || resolution === "1080p")
+            ? "1080p"
+            : "768p",
+    duration: parseInt(effectiveDuration, 10)
+};   if (finalModelId.includes("lite")) return { prompt: finalPrompt, image_url: startImage || uploadedImage || null, end_image_url: endImage || null, duration: parseInt(effectiveDuration), resolution: (resolution === "Full HD" || resolution === "1080p") ? "1080p" : "720p", aspect_ratio: aspectRatio };
     
     return { prompt: finalPrompt, start_image_url: startImage || uploadedImage || null, end_image_url: endImage || null, aspect_ratio: aspectRatio };
 })();
@@ -1708,7 +2857,7 @@ try {
 
     if (typeof setErrorMsg === "function") {
         setErrorMsg(
-            "La vérification de sécurité n'est pas disponible. Veuillez actualiser la page puis réessayer."
+            t("line3_app_error_securityUnavailable")
         );
     }
 
@@ -1729,20 +2878,78 @@ const payload = {
     aspect_ratio: aspectRatio, 
     
     duration: effectiveDuration,
-resolution: (finalModelId.includes("hailuo") || finalModelId.includes("seedance20") || finalModelId.includes("seedance")) 
+
+resolution: (finalModelId.includes("hailuo") || finalModelId.includes("seedance20") || finalModelId.includes("seedance25") || finalModelId.includes("seedance")) 
     ? resolution 
     : ((["540p", "Full HD", "1080p", "720p", "480p"].includes(resolution)) ? resolution : "720p"),
 
     // Transmission des images sous les différents formats attendus
-    startImage: currentStartImg,
-    start_image_url: currentStartImg,
-    image_url: currentStartImg,
-    end_image_url: endImage || null,
+  
+ // Pour Veo, l'image de départ sera envoyée uniquement via
+ // engineSpecificParams.image_url.
+ ...(!finalModelId.toLowerCase().includes("veo3.1")
+    ? {
+        startImage: currentStartImg,
+        start_image_url: currentStartImg,
+        image_url: currentStartImg
+      }
+    : {}),
+
+ end_image_url: endImage || null,
 
 
-video: videoSource || null,   
-    video_url: videoSource || null,  
-    
+video: videoSource || null,
+
+...(finalModelId === "minimax_h3" &&
+    h3ReferenceVideos.length > 0 && {
+      video_urls: h3ReferenceVideos
+    }),
+
+video_url: videoSource || null,
+
+// Opération Veo 3.1 : modification ou prolongation
+
+...(finalModelId.toLowerCase().includes("veo3.1") &&
+    videoSource &&
+    veoVideoOperation && {
+        videoOperation: veoVideoOperation
+    }),
+
+
+...(finalModelId.toLowerCase().includes("veo3.1") &&
+    veoReferenceImages.filter(
+        url => url && url !== currentStartImg
+    ).length > 0 && {
+        referenceImages: [
+            ...new Set(
+                veoReferenceImages.filter(
+                    url => url && url !== currentStartImg
+                )
+            )
+        ].slice(0, 3)
+    }),
+
+    // Images de référence MiniMax H3
+...(finalModelId === "minimax_h3" &&
+    h3ReferenceImages.length > 0 && {
+        referenceImages: h3ReferenceImages.slice(0, 9)
+    }),
+    // Références d'image pour les modèles image Runware
+...(["gpt_image2", "flux2pro", "nano_banana2_lite"].includes(finalModelId) && modelReferenceImages.length > 0 && {
+    referenceImages: modelReferenceImages
+}),
+    // Références multimodales Seedance 2.0/2.5
+...(["seedance20", "seedance25"].includes(finalModelId) && seedanceReferenceImages.length > 0 && {
+    referenceImages: seedanceReferenceImages
+}),
+...(["seedance20", "seedance25"].includes(finalModelId) && seedanceReferenceVideos.length > 0 && {
+    referenceVideos: seedanceReferenceVideos
+}),
+...(["seedance20", "seedance25"].includes(finalModelId) && seedanceReferenceAudios.length > 0 && {
+    referenceAudios: seedanceReferenceAudios
+}),
+...(finalModelId === "nano_banana2_lite" && nanoReferenceVideo ? { referenceVideos: [nanoReferenceVideo] } : {}),
+
     width: width,
     height: height,
     engine: selectedModel,
@@ -1781,7 +2988,7 @@ const res = await fetch(`${import.meta.env.VITE_API_URL}/${targetRoute}`, {
 
 // --- 1. GESTION DE L'ERREUR SERVEUR (0 CRÉDIT, ETC.) ---// 🛑 1. GESTION DES ERREURS HTTP (400, 500, etc.)
 if (!res.ok) {
-    let errorMessage = "Erreur lors de la génération";
+    let errorMessage = t("line3_app_error_generation");
     try {
         const errorData = await res.json();
         errorMessage = errorData.error || errorData.message || errorMessage;
@@ -1808,43 +3015,57 @@ if (!res.ok) {
     return; // On stoppe l'exécution immédiatement !
 }
 
-// --- PARSAGE ET DÉTECTION D'ERREUR SSE ---
-// 📡 2. LECTURE DU FLUX SSE EN TEMPS RÉEL
-const reader = res.body.getReader();
-const decoder = new TextDecoder();
+// --- PARSAGE COMPATIBLE JSON RUNWARE + FLUX SSE (VEO / SEEDANCE 1.5) ---
 let data = null;
+const contentType = (res.headers.get("content-type") || "").toLowerCase();
 
-while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
-    
-    for (const line of lines) {
-        if (line.startsWith('data:')) {
-            try {
-                const jsonStr = line.replace('data:', '').trim();
-                if (jsonStr) {
-                    const parsed = JSON.parse(jsonStr);
-                    data = parsed;
-                    
-                    // Interception d'une erreur renvoyée par le serveur dans le flux
-                    if (parsed.status === 'failed' || parsed.error) {
-                        setIsLoading(false);
-                        setProgress(0);
-                        setStatusMsg("");
-                        if (typeof setErrorMsg === 'function') {
-                            setErrorMsg(parsed.error || "Problème technique lors de la génération. Vos crédits ont été restitués.");
-                        }
-                        return;
-                    }
-                }
-            } catch (e) {
-                // Ignore les lignes incomplètes pendant le stream
-            }
-        }
+if (contentType.includes("application/json")) {
+    // Les moteurs Runware synchrones renvoient du JSON classique.
+    data = await res.json();
+    if (data?.status === "failed" || data?.error) {
+        setIsLoading(false);
+        setProgress(0);
+        setStatusMsg("");
+        setErrorMsg(data.error || t("line3_app_error_generationFailed"));
+        if (typeof fetchUserProfile === "function") fetchUserProfile();
+        return;
     }
+} else {
+    // Veo et Seedance 1.5 utilisent encore un flux SSE.
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let sseBuffer = "";
+    const parseSseLine = (line) => {
+        if (!line.startsWith("data:")) return false;
+        try {
+            const jsonStr = line.slice(5).trim();
+            if (!jsonStr) return false;
+            const parsed = JSON.parse(jsonStr);
+            data = parsed;
+            if (parsed.status === "failed" || parsed.error) {
+                setIsLoading(false);
+                setProgress(0);
+                setStatusMsg("");
+                setErrorMsg(parsed.error || t("line3_app_error_technicalGeneration"));
+                if (typeof fetchUserProfile === "function") fetchUserProfile();
+                return true;
+            }
+        } catch (e) {
+            console.warn("Événement SSE JSON ignoré :", e.message);
+        }
+        return false;
+    };
+    while (true) {
+        const { value, done } = await reader.read();
+        sseBuffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = sseBuffer.split(/\r?\n/);
+        sseBuffer = lines.pop() || "";
+        for (const line of lines) {
+            if (parseSseLine(line)) return;
+        }
+        if (done) break;
+    }
+    if (sseBuffer.trim() && parseSseLine(sseBuffer.trim())) return;
 }
 
 if (!data) {
@@ -1854,13 +3075,15 @@ if (!data) {
 
 }
 // 4. Extraction de l'URL directe
-let finalUrl = data.videoUrl || data.imageUrl || data.url || data.video_url || data.resultUrl;
-const falRequestId = data.requestId || data.request_id;
-
+let finalUrl = data.videoURL || data.videoUrl || data.imageUrl || data.url || data.video_url || data.resultUrl;
 console.log("✅ DATA FINALE :", data);
-console.log("URL IMMÉDIATE :", finalUrl || "Aucune (Attente Polling/Async)");
-setStatusMsg(""); 
+console.log("URL IMMÉDIATE :", finalUrl || "Aucune URL retournée");
+setStatusMsg("");
 setIsLoading(false);
+if (!finalUrl) {
+    setErrorMsg(t("line3_app_error_noResultUrl"));
+    return;
+}
 // ==========================================================
 // 1. CAS SUCCÈS IMMÉDIAT (Simulation / Direct)
 // ==========================================================
@@ -1904,189 +3127,16 @@ if (finalUrl) {
     return;
 }
 
-// ==========================================================
-// 2. CAS POLLING FAL.AI (Si pas d'URL directe)
-// ==========================================================
-if (!finalUrl && falRequestId) {
-    console.log("⏳ Suivi Fal.ai démarré pour Request ID :", falRequestId);
-    setStatusMsg(`⏳ Génération en cours sur ${selectedModel}...`);
 
-    let attempts = 0;
-    const falInterval = setInterval(async () => {
-        try {
-            attempts++;
-            if (attempts > 100) { 
-                clearInterval(falInterval);
-                setIsLoading(false);
-                setErrorMsg("Temps d'attente dépassé pour Fal.ai.");
-                return;
-            }
 
-            const statusRes = await fetch(`${import.meta.env.VITE_API_URL}/api/status/${falRequestId}`);
-            if (!statusRes.ok) return;
 
-            const statusData = await statusRes.json();
-            if (statusData.status === "COMPLETED" && (statusData.videoUrl || statusData.imageUrl)) {
-                clearInterval(falInterval);
-
-                const resultUrl = statusData.videoUrl || statusData.imageUrl;
-                const finalItem = {
-                    id: Date.now(),
-                    url: resultUrl,
-                    prompt: prompt,
-                    type: mode,
-                    model: selectedModel,
-                    style: selectedStyle,
-                    aspectRatio: aspectRatio,
-                    ...(mode === "VIDEO" && {
-                        resolution: resolution,
-                        duration: duration,
-                        startImage: startImage,
-                        endImage: endImage,
-                        wantsAudio: wantsAudio
-                    })
-                };
-                setActiveItem(finalItem);
-                setProgress(100);
-                setIsLoading(false);
-                setStatusMsg("");
-                setPrompt("");
-                if (successAudio.current) successAudio.current.play().catch(() => {});
-            } else if (statusData.status === "FAILED") {
-                clearInterval(falInterval);
-                setIsLoading(false);
-                setErrorMsg("La génération a échoué chez Fal.ai.");
-            }
-        } catch (err) {
-            console.error("❌ Erreur polling Fal.ai :", err);
-        }
-    }, 4000);
-
-    return; 
-}
-
-        if (data.async && data.operationName) {
-            console.log("⏳ Mode asynchrone détecté. Début du suivi pour :", data.operationName);
-            // --- NOUVEAU SYSTÈME DE SUIVI SÉCURISÉ ---
-            let currentProgress = 15;
-            const progressInterval = setInterval(() => {
-                if (currentProgress < 90) {
-                    currentProgress += 2; 
-                    setProgress(currentProgress);
-                }
-            }, 2000);
-
-            // ⏱️ Gestion du temps max (10 minutes)
-            let attempts = 0; 
-            const maxAttempts = 100; // 100 essais * 6 secondes = 600s = 10 minutes
-
-         // ==========================================================
-// 🌟 GESTION DE LA BOUCLE DE SUIVI (POLLING) - VERSION MISE À JOUR
-// ==========================================================
-
-const intervalId = setInterval(async () => {
-    try {
-        attempts++;
-
-        // ⏱️ Sécurité : Timeout après 10 minutes
-        if (attempts > maxAttempts) {
-            clearInterval(intervalId);
-            clearInterval(progressInterval);
-            setIsLoading(false);
-            setErrorMsg("Temps d'attente maximum dépassé (10 min).");
-            throw new Error("Timeout : Google Veo n'a pas répondu dans le temps imparti.");
-        }
-
-        if (!data?.operationName) {
-            clearInterval(intervalId);
-            clearInterval(progressInterval);
-            throw new Error("Le ticket d'opération renvoyé par le serveur est manquant.");
-        }
-
-const statusRes = await fetch("${import.meta.env.VITE_API_URL}/check-veo-status", {
-              method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                operationName: data.operationName,
-                userId: user?.uid || "",
-                cost: cost || 0,
-                fieldToDecrement: data.fieldToDecrement || "tokens"
-            })
-        });
-
-        if (!statusRes.ok) return; // On continue la boucle si le réseau est instable
-        const statusData = await statusRes.json();
-
-        // 🏁 Vérification de fin de traitement
-        if (statusData.done) {
-            clearInterval(intervalId); // 🛑 Arrêt strict
-            clearInterval(progressInterval);
-
-            if (statusData.error) {
-                console.error("❌ Erreur retournée par Google Veo :", statusData.error);
-                setErrorMsg(`Erreur Google Veo: ${statusData.error}`);
-                setIsLoading(false);
-            } 
-            else if (statusData.videoUrl) {
-                console.log("✅ Vidéo reçue, URL :", statusData.videoUrl);
-                
-                const finalItem = {
-                    id: Date.now(),
-                    url: statusData.videoUrl,
-                    prompt: prompt,
-                    type: mode,
-                    model: selectedModel,
-                    style: selectedStyle,
-                    aspectRatio: aspectRatio,
-                    ...(mode === "VIDEO" && {
-                        resolution: resolution,
-                        duration: duration,
-                        startImage: startImage,
-                        endImage: endImage,
-                        wantsAudio: wantsAudio
-                    })
-                };
-                
-                // Mise à jour de l'état
-                setActiveItem(finalItem);
-                console.log("DEBUG: ActiveItem forcé sur :", finalItem); 
-                setProgress(100);
-
-                // Nettoyage UI
-                setPrompt("");
-                setStartImage(null);
-                setEndImage(null);
-                setWantsAudio(false);
-                setDuration("5");
-                setIsLoading(false);
-                setStatusMsg("");
-                if (successAudio.current) successAudio.current.play().catch(() => {});
-            } 
-            else {
-                // 🛡️ CAS D'ERREUR SILENCIEUSE
-                console.error("⚠️ Le serveur a fini le traitement mais aucune URL n'a été retournée.");
-                setErrorMsg("Traitement terminé, mais la vidéo est indisponible. Veuillez réessayer.");
-                setIsLoading(false);
-            }
-        }
-    } catch (pollingError) {
-        clearInterval(intervalId);
-        clearInterval(progressInterval);
-        setIsLoading(false);
-        console.error("❌ Erreur dans la boucle de suivi :", pollingError.message);
-    }
-}, 6000);
-
-        }        
-        // ==========================================================
-
-        // Fallback Pollinations pour les images
+  // Fallback Pollinations pour les images
 if (mode === "IMAGE" && finalUrl && finalUrl.includes("pollinations.ai")) {
           const cleanPrompt = encodeURIComponent(`${prompt}, ${selectedStyle} style`);
           finalUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=${width}&height=${height}&nologo=true&seed=${Date.now()}`;
         }
 
-        // ✂️ MODIFICATION ICI : Sécurité pour éviter le doublon avec Google Veo
+        // Sécurité pour éviter le doublon avec un traitement asynchrone
         if (finalUrl && !data.async) {
           // ✅ MISE À JOUR : Objet newItem ultra-complet pour Remix (Image & Vidéo)
           const newItem = { 
@@ -2135,11 +3185,15 @@ if (mode === "IMAGE" && finalUrl && finalUrl.includes("pollinations.ai")) {
     setStatusMsg("");
 
     // Message à l'utilisateur
-    setErrorMsg(
-        e.message && e.message.includes("400") 
-            ? "Crédits insuffisants pour générer cette vidéo." 
-            : "Problème technique, veuillez réessayez plus tard. Vos crédits ont été restitués."
-    );
+setErrorMsg(
+    e.message && e.message.includes("400")
+        ? t("app.error.insufficientCredits", {
+            defaultValue: t("line3_app_error_insufficientCreditsVideo")
+          })
+        : t("app.error.technicalGeneration", {
+            defaultValue: t("line3_app_error_refundTechnical")
+          })
+);
 
     setTimeout(() => {
         setErrorMsg(null);
@@ -2262,7 +3316,7 @@ const token = await currentUser.getIdToken();
 console.log("🔐 Token Firebase récupéré :", !!token);
 
     if (!realUserId) {
-        alert("Erreur : Utilisateur non connecté ou session expirée.");
+        alert(t("app.error.sessionExpired"));
         return;
     }
 
@@ -2307,7 +3361,7 @@ console.log("🔐 Token Firebase récupéré :", !!token);
       }
     } catch (error) {
       console.error("❌ Erreur lors de la suppression :", error);
-      alert("Impossible de supprimer l'élément.");
+      alert(t("app.error.deleteFailed"));
     }
 };
 
@@ -2330,9 +3384,17 @@ console.log("🔐 Token Firebase récupéré :", !!token);
 
         {/* Infos de la carte (Prompt & Actions) */}
         <div className="history-info">
-          <p className="history-prompt-text">{item.prompt || item.description || item.text || "Sans description"}</p>
+          <p className="history-prompt-text">{item.prompt || item.description || item.text || t("app.history.noDescription")}</p>
           <div className="history-actions">
-            <button className="btn-remix-small">Remixer</button>
+            <button className="btn-remix-small" onClick={(e) => { e.stopPropagation(); handleRemix(item); }}>{t("app.history.remixButton")}</button>
+            {item.type === "VIDEO" && (item.url || item.videoUrl) && (
+              <button
+                type="button"
+                className="btn-remix-small"
+                onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(item); }}
+                title={t("app.history.editVideoTitle")}
+              >{t("app.history.editButton")}</button>
+            )}
 <button
     className="btn-delete-small"
     onClick={(e) => deleteHistoryItem(e, item.id)}
@@ -2390,18 +3452,33 @@ const importLocalVideos = async () => {
 useEffect(() => {
     if (mode !== "VIDEO" || !selectedModel) return;
 
-    const model = selectedModel.toLowerCase();
-    const cleanModel = model.replace(/\s+/g, '');
+const model = selectedModel.toLowerCase();
+const cleanModel = model.replace(/[^a-z0-9]/g, '');
     const d = duration.toString();
 
     let allowed = [];
 
-    if (cleanModel.includes("veo3") && !model.includes("lite")) {
+if (cleanModel.includes("seedance25") || cleanModel.includes("seedance-2.5")) {
+    // ✅ GESTION SPÉCIFIQUE SEEDANCE 2.5 : Génère toujours toutes les durées de 4 à 30 secondes
+    allowed = Array.from({ length: 27 }, (_, i) => String(i + 4));
+
+    
+    } else if (cleanModel.includes("veo3") && !model.includes("lite")) {
         allowed = ["4", "6", "8"];
     } else if (model.includes("lite")) {
         allowed = ["4", "8"];
-    } else if (model.includes("seedance 2.0")) {
-        allowed = ["5", "10", "15"];
+} else if (cleanModel.includes("seedance20") || cleanModel.includes("seedance-2.0") || cleanModel.includes("seedance 2.0")) {
+    // ✅ GESTION SPÉCIFIQUE SEEDANCE 2.0 : Génère toutes les durées de 4 à 15 secondes (12 valeurs)
+    allowed = Array.from({ length: 12 }, (_, i) => String(i + 4));
+    } else if (cleanModel.includes("minimaxh3")) {
+
+    // MiniMax H3 : toutes les durées de 4 à 15 secondes
+    allowed = Array.from(
+        { length: 12 },
+        (_, i) => String(i + 4)
+    );
+
+
     } else {
         // Logique miroir exacte de ton "CAS GÉNÉRAL"
         const firstOption = model.includes("seedance") ? "4" : model.includes("hailuo") ? "6" : "5";
@@ -2422,13 +3499,22 @@ useEffect(() => {
     if (!allowed.includes(d)) {
         setDuration(allowed[0]);
     }
-}, [selectedModel, mode, resolution]); // Ajout de resolution ici car elle impacte Hailuo dans ton code
+},
+
+[selectedModel]); // Réinitialise uniquement au changement de moteur pour laisser choisir 480p, 720p ou 1080p
 // 🔄 Réinitialise la résolution à 480p si on passe sur Seedance 2 et qu'elle n'est pas adaptée
 useEffect(() => {
   if (!selectedModel) return;
   const modelLower = selectedModel.toLowerCase();
+  const normalizedModel = modelLower.replace(/[^a-z0-9]/g, "");
 
-  if (modelLower.includes("seedance")) {
+  // Le nom affiché « seedance 2.5 » contient un espace : utiliser l'identifiant normalisé
+  // pour éviter de le confondre avec Seedance 1.5/2.0 et de lui imposer 480p.
+  if (normalizedModel.includes("seedance25")) {
+    if (!["720p", "1080p", "Full HD", "480p"].includes(resolution)) {
+      setResolution("720p");
+    }
+  } else if (modelLower.includes("seedance")) {
     if (resolution !== "480p" && resolution !== "sd") {
       setResolution("480p");
     }
@@ -2437,22 +3523,72 @@ useEffect(() => {
     if (resolution !== "768p" && resolution !== "512p" && resolution !== "1080p") {
       setResolution("768p");
     }
-  } else if (modelLower.includes("pixverse")) {
-    // ✅ Ajout pour Pixverse : autorise 720p, 1080p ou 512p, sinon met 720p par défaut
-    if (resolution !== "720p" && resolution !== "1080p" && resolution !== "512p") {
-      setResolution("720p");
+} else if (modelLower.includes("pixverse")) {
+    // ✅ Autorise 360p, 540p, 720p et 1080p pour Pixverse, sinon met 720p par défaut
+    if (!["360p", "540p", "720p", "1080p"].includes(resolution)) {
+        setResolution("720p");
     }
-} else if (modelLower.includes("luma")) {
-    // ✅ Autorise le 540p, 720p (HD) ou 1080p / Full HD
-    if (resolution !== "540p" && resolution !== "720p" && resolution !== "1080p" && resolution !== "Full HD") {
-      setResolution("720p");
+
+} else if (modelLower.includes("minimax_h3")) {
+
+    if (
+        resolution !== "768p" &&
+        resolution !== "1440p" &&
+        resolution !== "2K"
+    ) {
+        setResolution("768p");
     }
-  }
+}
 }, [selectedModel]);
 
+const handleEditHistoryItem = (item) => {
+  if (!item) return;
+
+  console.log("✏️ Ouverture de l'éditeur pour :", item);
+
+  const mediaUrl = item.url || item.videoUrl || null;
+
+  if (!mediaUrl) {
+    console.error("❌ Aucune vidéo disponible pour l'édition.");
+    return;
+  }
+
+  setActiveItem(item);
+  setMode(item.type || "VIDEO");
+
+  const modelForItem = String(item.model || item.engine || "");
+  if (modelForItem) setSelectedModel(modelForItem);
+  const isVeoItem = /veo/i.test(modelForItem);
+
+  setVeoEditVideo(mediaUrl);
+  setVideoSource(isVeoItem ? mediaUrl : null);
+  setVeoVideoOperation(isVeoItem ? "edit" : null);
+  if (!isVeoItem) {
+    setVeoReferenceImages([]);
+    setVeoReferenceSlot(null);
+    veoReferenceSlotRef.current = null;
+    setShowReferencePanel(false);
+  }
+
+  setPrompt(
+    item.prompt && item.prompt.startsWith("Fichier local :")
+      ? ""
+      : (item.prompt || "")
+  );
+
+  setShowEditor(true);
+};
 
 const handleRemix = (item) => {
   if (!item) return;
+
+const itemModel = String(
+  item.model || item.engine || ""
+).toLowerCase();
+
+const isVeoVideo =
+  item.type === "VIDEO" &&
+  itemModel.includes("veo3.1");
 
   setMode(item.type);
 
@@ -2467,12 +3603,19 @@ const handleRemix = (item) => {
   if (item.style) setSelectedStyle(item.style);
   
   // 3. Gestion spécifique au type
-  if (item.type === "VIDEO") {
+if (item.type === "VIDEO") {
     setResolution(item.resolution || "720p");
-      
+
     setStartImage(item.startImage || null);
     setEndImage(item.endImage || null);
     setWantsAudio(item.wantsAudio || false);
+
+    // 🎬 VE0 3.1 : préparer la vidéo pour le mode EDIT / REMIX
+    if (isVeoVideo) {
+        setVeoVideoOperation("edit");
+        setUploadedImage(null);
+        setVideoSource(item.url || item.videoUrl || null);
+    }
   } else {
     // SI C'EST UNE IMAGE
     setStartImage(null); 
@@ -2483,7 +3626,7 @@ const handleRemix = (item) => {
   }
 
   // 4. Feedback et UI
-  setStatusMsg(item.type === "VIDEO" ? "🎬 Vidéo chargée dans le Studio !" : "🖼️ Image chargée dans le Studio !");
+  setStatusMsg(item.type === "VIDEO" ? t("line3_app_status_videoLoaded") : t("line3_app_status_imageLoaded"));
   
   const mainContent = document.querySelector('.main-content');
   if (mainContent) {
@@ -2552,26 +3695,25 @@ if (showPricing) {
 
   }
 // 1. Conditions d'Utilisation
-if (showTerms) {
-  return (
-    <>
-      <TermsPage 
-        onBack={() => setShowTerms(false)} 
-        onContactClick={() => {
-          console.log("Bouton cliqué (Terms) !");
-          setShowContactModal(true);
-        }} 
-      />
-
-      {showContactModal && (
-        <ContactModal 
-          user={user} 
-          onClose={() => setShowContactModal(false)} 
+  // 2. Politique de Confidentialité
+  if (showPrivacy) {
+    return (
+      <>
+        <PrivacyPage
+          onBack={() => setShowPrivacy(false)}
+          onContactClick={() => setShowContactModal(true)}
         />
-      )}
-    </>
-  );
-}
+
+        {showContactModal && (
+          <ContactModal
+            user={user}
+            onClose={() => setShowContactModal(false)}
+          />
+        )}
+      </>
+    );
+  }
+
 
 // 2. Politique de Confidentialité
 if (showPrivacy) {
@@ -2617,35 +3759,50 @@ if (showCgv) {
   );
 }
 
-// 4. Mentions Légales
-if (showLegal) {
-  return (
-    <>
-      <LegalNoticePage 
-        onBack={() => setShowLegal(false)} 
-        onShowPrivacy={() => {
-          setShowLegal(false);    // Ferme les mentions légales
-          setShowPrivacy(true);   // Ouvre la politique de confidentialité
-        }}
-        onContactClick={() => {
-          setShowContactModal(true);
-        }} 
-      />
-
-      {showContactModal && (
-        <ContactModal 
-          user={user} 
-          onClose={() => setShowContactModal(false)} 
+  // 4. Mentions légales
+  if (showLegal) {
+    return (
+      <>
+        <LegalNoticePage
+          onBack={() => setShowLegal(false)}
+          onShowPrivacy={() => {
+            setShowLegal(false);
+            setShowPrivacy(true);
+          }}
+          onContactClick={() => {
+            setShowContactModal(true);
+          }}
         />
-      )}
-    </>
-  );
-}
 
-  // 3. On vérifie la Confidentialité
-  if (showPrivacy) {
-    return <PrivacyPage onBack={() => setShowPrivacy(false)} />;
+        {showContactModal && (
+          <ContactModal
+            user={user}
+            onClose={() => setShowContactModal(false)}
+          />
+        )}
+      </>
+    );
   }
+
+  // 3. Politique de confidentialité traduite
+  if (showPrivacy) {
+    return (
+      <>
+        <PrivacyPage
+          onBack={() => setShowPrivacy(false)}
+          onContactClick={() => setShowContactModal(true)}
+        />
+
+        {showContactModal && (
+          <ContactModal
+            user={user}
+            onClose={() => setShowContactModal(false)}
+          />
+        )}
+      </>
+    );
+  }
+
 if (isAuthLoading || isInitializing) {
   return (
     <div style={{ 
@@ -2670,7 +3827,9 @@ if (isAuthLoading || isInitializing) {
         marginBottom: '20px'
       }}></div>
       <p style={{ letterSpacing: '1px', fontSize: '14px', opacity: 0.8 }}>
-        SYNCHRONISATION SÉCURISÉE...
+        {t("app.security.sync", {
+  defaultValue: "SYNCHRONISATION SÉCURISÉE..."
+})}
       </p>
       
       <style>{`
@@ -2737,6 +3896,25 @@ if (isAuthLoading || isInitializing) {
   showDropdown={showDropdown} 
   setShowDropdown={setShowDropdown}
 />
+
+<Outils
+  ref={outilsRef}
+  user={user}
+  db={db}
+  activeItem={activeItem}
+  onMediaImported={(media) => {
+    console.log('📥 Média importé depuis Outils :', media);
+    setActiveItem(media);
+  }}
+  onMediaApplied={(historyItem) => {
+    console.log('🎨 Média appliqué depuis Outils :', historyItem);
+    setActiveItem(historyItem);
+  }}
+  onHistoryUpdate={(historyItem) => {
+    console.log('🗂️ Historique mis à jour depuis Outils :', historyItem);
+  }}
+/>
+
 {statusMsg && (
       <div className="notification-toast" style={{
         position: 'absolute',
@@ -2753,8 +3931,9 @@ if (isAuthLoading || isInitializing) {
         pointerEvents: 'none'
       }}>
         {statusMsg}
+        
       </div>
-    )}
+)}
 
 <div className="main-viewport" 
   style={{ 
@@ -2809,6 +3988,10 @@ if (isAuthLoading || isInitializing) {
                 handleRemix(item);
                 setView('studio'); 
               }}
+              onEdit={(item) => {
+                handleEditHistoryItem(item);
+                setView('studio');
+              }}
               onDownload={(item) => handleDownload(item)}
               onDelete={(id) => setItemToDelete(id)} 
             />
@@ -2825,7 +4008,7 @@ if (isAuthLoading || isInitializing) {
                   {/* ... Ton code de sidebar continue ici ... */}
     
 <button className="new-chat-btn" onClick={handleNewGeneration}>
-  Nouvelle discussion      
+  {t("app.newDiscussion", { defaultValue: "Nouvelle discussion" })}
 </button>
 
     {uploadedImage && (
@@ -2837,8 +4020,9 @@ if (isAuthLoading || isInitializing) {
         border: '1px solid rgba(168, 85, 247, 0.3)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <label className="field-label-tiny" style={{ color: '#a855f7', fontWeight: 'bold' }}>FIDÉLITÉ AU REMIX</label>
-          <span style={{ color: '#fff', fontSize: '12px' }}>{Math.round(remixStrength * 100)}%</span>
+<label className="field-label-tiny" style={{ color: '#a855f7', fontWeight: 'bold' }}>
+  {t("app.remix.fidelity", { defaultValue: "FIDÉLITÉ AU REMIX" })}</label>
+  <span style={{ color: '#fff', fontSize: '12px' }}>{Math.round(remixStrength * 100)}%</span>
         </div>
         
         <input 
@@ -2852,17 +4036,21 @@ if (isAuthLoading || isInitializing) {
         />
         
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>
-          <span>Créatif</span>
-          <span>Strict</span>
+      <span>{t("app.remix.creative", { defaultValue: "Créatif" })}</span>
+<span>{t("app.remix.strict", { defaultValue: "Strict" })}</span>
         </div>
       </div>
     )}
 
     <div className="history-section" style={{ marginTop: '20px' }}>
-      <p className="field-label-tiny">HISTORIQUE ({history.length})</p>
-      <div className="history-list">
+<p className="field-label-tiny">
+  {t("app.history.title", {
+    defaultValue: "HISTORIQUE"
+  })} ({history.length})
+</p>      <div className="history-list">
 
-{/* --- HISTORIQUE OPTIMISÉ : CAPTURE VISUELLE À 4 SECONDES --- */}
+{/* --- HISTORIQUE OPTIMISÉ : --- */}
+
 {history.map(item => {
   // 1. Récupération de l'URL brute du média
   let mediaUrl = item.url || item.videoUrl || item.imageUrl || (item.video && item.video.url);          
@@ -2967,24 +4155,72 @@ if (isAuthLoading || isInitializing) {
       {/* Infos Bas de Carte */}
       <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(0,0,0,0.2)' }}>
         <p style={{ margin: 0, fontSize: '12px', color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
-         {item.prompt || item.description || item.text || "Sans description"}
+         {item.prompt || item.description || item.text || t("app.history.noDescription")}
         </p>
 
-        {activeItem?.id === item.id && (
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemix(item);
-            }}
-            style={{ 
-              background: '#a855f7', color: '#fff', border: 'none', borderRadius: '6px', 
-              padding: '5px 0', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
-            }}
-          >
-            🪄 Remixer
-          </button>
-        )}
+{activeItem?.id === item.id && (
+
+  <div
+    style={{
+      display: 'flex',
+      gap: '6px',
+      width: '100%'
+    }}
+  >
+    {/* 🪄 REMIXER — recharge le prompt dans le Studio */}
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        handleRemix(item);
+        setView('studio');
+      }}
+      style={{ 
+        flex: 1,
+        background: '#a855f7',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '6px', 
+        padding: '6px 0',
+        fontSize: '11px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4px'
+      }}
+    >
+      🪄 Remixer
+    </button>
+
+    {/* ✏️ MODIFIER — ouvre directement la modal Filtre */}
+    {item.type === "VIDEO" && (item.url || item.videoUrl) && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEditHistoryItem(item);
+        }}
+        style={{
+          flex: 1,
+          background: '#333',
+          color: '#fff',
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: '6px',
+          padding: '6px 0',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px'
+        }}
+      >
+        ✏️ Modifier
+      </button>
+    )}
+  </div>
+)}
       </div>
     </div>
   );
@@ -3027,8 +4263,8 @@ if (isAuthLoading || isInitializing) {
           gap: '6px'
         }}
       >
-         <span style={{ fontSize: '12px' }}></span> Remasterisé
-      </button>
+<span style={{ fontSize: "12px" }}></span>
+{t("app.mode.remastered", { defaultValue: "Remasterisé" })}      </button>
     );
   }
 
@@ -3050,63 +4286,219 @@ if (isAuthLoading || isInitializing) {
   );
 })}
 </div>
-  <label className="field-label">{mode === "TEXTE" ? "Discussion IA" : "PROMPT CRÉATIF"}</label>
-<textarea 
-  value={prompt} 
-  onChange={(e) => setPrompt(e.target.value)} 
-  placeholder={mode === "TEXTE" ? "Posez votre question..." : "Décrivez votre idée en détail..."} 
-  style={{ height: mode === "TEXTE" ? "150px" : "200px", transition: "height 0.3s ease" }}
-/>
 
-                <div className="action-bar" style={{ display: 'flex', gap: '10px', marginBottom: '-5px' }}>
-  
-  
+<label className="field-label">
+  {mode === "TEXTE"
+    ? t("app.prompt.aiDiscussion", {
+        defaultValue: "Discussion IA"
+      })
+    : t("app.prompt.creative", {
+        defaultValue: "PROMPT CRÉATIF"
+      })}
+</label>
+
+<textarea
+  value={prompt}
+  maxLength={getPromptLimit(mode, (engines.find(e => e.name === selectedModel)?.id || selectedModel || "").toLowerCase(), Boolean(startImage || endImage), Boolean(videoSource))}
+  onChange={(e) => {
+    selectedSuggestionPromptRef.current = null;
+    setPrompt(e.target.value.slice(0, getPromptLimit(mode, (engines.find(model => model.name === selectedModel)?.id || selectedModel || "").toLowerCase(), Boolean(startImage || endImage), Boolean(videoSource))));
+  }}
+  placeholder={
+    mode === "TEXTE"
+      ? t("app.prompt.askQuestion", {
+          defaultValue: "Posez votre question..."
+        })
+      : mode === "VIDEO" && (engines.find(e => e.name === selectedModel)?.id || "").toLowerCase() === "seedance25" && videoSource
+        ? seedance25Operation === "extend"
+          ? t("line1_app_prompt_seedanceExtendSource")
+          : t("line1_app_prompt_seedanceEditSource")
+      : mode === "VIDEO" && ["veo3.1", "veo3.1_fast"].includes((engines.find(e => e.name === selectedModel)?.id || "").toLowerCase()) && videoSource && veoVideoOperation === "extend"
+        ? t("line1_app_prompt_veoExtendSource")
+      : mode === "VIDEO" && ["veo3.1", "veo3.1_fast"].includes((engines.find(e => e.name === selectedModel)?.id || "").toLowerCase()) && videoSource && veoVideoOperation === "edit"
+        ? t("line1_app_prompt_veoEditSource")
+      : mode === "VIDEO" && (engines.find(e => e.name === selectedModel)?.id || "").toLowerCase().includes("minimax_h3") && videoSource
+        ? minimaxH3VideoOperation === "extend" ? t("line1_app_prompt_minimaxExtendSource") : t("line1_app_prompt_minimaxEditSource")
+      : mode === "VIDEO" && (engines.find(e => e.name === selectedModel)?.id || "").toLowerCase() === "pixverse6" && videoSource
+        ? t("line1_app_prompt_pixverseSourceChanges")
+        : t("app.prompt.describeIdea", {
+            defaultValue: t("app.video.describeIdea")
+          })
+  }
+  style={{
+    height: mode === "TEXTE" ? "150px" : "200px",
+    transition: "height 0.3s ease"
+  }}
+/>
+<div style={{ display: "flex", justifyContent: "flex-end", marginTop: 5, marginBottom: 8, color: prompt.length >= getPromptLimit(mode, (engines.find(e => e.name === selectedModel)?.id || selectedModel || "").toLowerCase(), Boolean(startImage || endImage), Boolean(videoSource)) ? "#fca5a5" : "#8b8b98", fontSize: 11 }}>
+  {prompt.length.toLocaleString("fr-FR")} / {getPromptLimit(mode, (engines.find(e => e.name === selectedModel)?.id || selectedModel || "").toLowerCase(), Boolean(startImage || endImage), Boolean(videoSource)).toLocaleString("fr-FR")} {t("line4_prompt_characters", { defaultValue: "caractères" })}
+</div>
+
+{mode === "VIDEO" && (() => {
+  const selectedId = String(engines.find(e => e.name === selectedModel)?.id || selectedModel || "").toLowerCase();
+  const isVeoOperationModel = ["veo3.1", "veo3.1_fast"].includes(selectedId);
+  const isSeedance25OperationModel = selectedId === "seedance25";
+  const isH3OperationModel = selectedId.includes("minimax_h3");
+  const isPixverseEditModel = selectedId === "pixverse6";
+  if (!(isVeoOperationModel || isSeedance25OperationModel || isH3OperationModel || isPixverseEditModel)) return null;
+  const buttonStyle = (active) => ({ flex: 1, minWidth: 0, padding: "9px 8px", borderRadius: 9, border: active ? "1px solid #8b5cf6" : "1px solid rgba(255,255,255,.13)", background: active ? "rgba(139,92,246,.22)" : "rgba(255,255,255,.04)", color: "#f4f4f5", cursor: "pointer", fontSize: 11, fontWeight: 700 });
+  const activeOperation = isVeoOperationModel ? veoVideoOperation : isSeedance25OperationModel ? seedance25Operation : isPixverseEditModel ? "edit" : minimaxH3VideoOperation;
+  return <div style={{ margin: "8px 0 12px", padding: 11, borderRadius: 11, border: "1px solid rgba(168,85,247,.24)", background: "rgba(139,92,246,.055)" }}>
+    <div style={{ color: "#ddd", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>🎬 {t("app.video.existingOperations")}</div>
+    <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+      {!isPixverseEditModel && <button type="button" style={buttonStyle(activeOperation === "extend")} onClick={() => {
+        if (isVeoOperationModel) setVeoVideoOperation("extend");
+        else if (isSeedance25OperationModel) setSeedance25Operation("extend");
+        else setMinimaxH3VideoOperation("extend");
+      }}>⏩ {t("app.video.extend")}</button>}
+      <button type="button" style={buttonStyle(activeOperation === "edit")} onClick={() => {
+        if (isVeoOperationModel) setVeoVideoOperation("edit");
+        else if (isSeedance25OperationModel) setSeedance25Operation("edit");
+        else if (isH3OperationModel) setMinimaxH3VideoOperation("edit");
+        else setPrompt(prev => {
+          const text = prev.trim();
+          if (!text) return "In Video 1, change only [describe the desired modification]. Preserve the same subject, identity, actions, camera movement and duration. Do not change anything else.";
+          if (/^(edit the source video|in video 1|transform the source video)/i.test(text)) return text;
+          return `In Video 1, ${text}. Preserve all elements not explicitly changed, including identity, actions, framing and camera movement.`;
+        });
+      }}>🛠️ {t("app.video.edit")}</button>
+    </div>
+    <div style={{ color: "#b7b7c4", fontSize: 11, lineHeight: 1.5, marginTop: 8 }}>
+      {videoSource ? (activeOperation === "extend" ? t("app.video.extendDescription") : t("app.video.editDescription")) : t("app.video.importSourceFirst")}
+    </div>
+  </div>;
+})()}
+
+{mode === "VIDEO" && (videoSource || (activeItem?.type === "VIDEO" && (activeItem?.url || activeItem?.videoUrl))) && (
+  <div style={{ display: "flex", gap: 8, margin: "4px 0 12px" }}>
+    <button type="button" onClick={() => {
+      setVeoEditVideo(videoSource || activeItem?.url || activeItem?.videoUrl);
+      setSelectedOptionModal(null);
+      setShowEditor(true);
+    }} style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(96,165,250,.4)", background: "rgba(59,130,246,.13)", color: "#eff6ff", cursor: "pointer", fontWeight: 750, fontSize: 12 }}>
+      🎨 {t("app.video.changeAppearance")}
+    </button>
+  </div>
+)}
+
+{mode === "VIDEO" && ["veo3.1", "veo3.1_fast"].includes((engines.find(e => e.name === selectedModel)?.id || "").toLowerCase()) && veoVideoOperation && !videoSource && (
+  <div style={{ color: "#fbbf24", fontSize: 11, margin: "0 0 10px" }}>{t("app.video.addSourceForVeo", { operation: veoVideoOperation === "extend" ? t("app.video.extend") : t("app.video.edit") })}</div>
+)}
+
+{mode === "VIDEO" && ["veo3.1", "veo3.1_fast"].includes((engines.find(e => e.name === selectedModel)?.id || "").toLowerCase()) && videoSource && veoVideoOperation && (
+  <div style={{ marginTop: 9, marginBottom: 12, padding: "12px 13px", borderRadius: 10, background: "rgba(59,130,246,.08)", border: "1px solid rgba(96,165,250,.25)", color: "#dbeafe", fontSize: 12, lineHeight: 1.55 }}>
+    <div style={{ fontWeight: 750, marginBottom: 5 }}>
+      {veoVideoOperation === "extend" ? `🎬 ${t("app.video.extendGuideTitle")} ${(engines.find(e => e.name === selectedModel)?.id || "") === "veo3.1_fast" ? "Veo 3.1 Fast" : "Veo 3.1"}` : `🛠️ ${t("app.video.editGuideTitle")} ${(engines.find(e => e.name === selectedModel)?.id || "") === "veo3.1_fast" ? "Veo 3.1 Fast" : "Veo 3.1"}`}
+    </div>
+    {veoVideoOperation === "extend" ? (
+      <>
+        <div>{t("app.video.extendDescription")} </div>
+        <div style={{ marginTop: 7, color: "#bfdbfe" }}><strong>{t("tutorialUi.promptExample")}</strong> {t("line5_prompt_veo_extend")}</div>
+        <button type="button" onClick={() => setPrompt(t("line5_prompt_veo_extend"))} style={{ marginTop: 9, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(96,165,250,.4)", background: "rgba(59,130,246,.18)", color: "#eff6ff", fontWeight: 650, cursor: "pointer" }}>{t("app.video.useExtendExample")}</button>
+      </>
+    ) : (
+      <>
+        <div>{t("app.video.editDescription")}</div>
+        <div style={{ marginTop: 7, color: "#bfdbfe" }}><strong>{t("tutorialUi.promptExample")}</strong> {t("line5_prompt_veo_edit")}</div>
+        <button type="button" onClick={() => setPrompt(t("line5_prompt_veo_edit"))} style={{ marginTop: 9, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(96,165,250,.4)", background: "rgba(59,130,246,.18)", color: "#eff6ff", fontWeight: 650, cursor: "pointer" }}>{t("app.video.useEditExample")}</button>
+      </>
+    )}
+  </div>
+)}
+
+{mode === "VIDEO" && (engines.find(e => e.name === selectedModel)?.id || "").toLowerCase() === "seedance25" && (
+  <div style={{ marginTop: 9, marginBottom: 12, padding: "12px 13px", borderRadius: 10, background: "rgba(59,130,246,.08)", border: "1px solid rgba(96,165,250,.25)", color: "#dbeafe", fontSize: 12, lineHeight: 1.55 }}>
+    <div style={{ fontWeight: 750, marginBottom: 5 }}>
+      {videoSource ? (seedance25Operation === "extend" ? `🎬 ${t("app.video.extendGuideTitle")}` : `🛠️ ${t("app.video.editGuideTitle")}`) : `🎬 ${t("app.video.extendOrEditGuideTitle")}`}
+    </div>
+    {!videoSource && <div style={{ marginBottom: 7, color: "#bfdbfe" }}>{t("app.video.addSourceSeedance")}</div>}
+    {seedance25Operation === "extend" ? (
+      <>
+        <div>{t("app.video.extendSeedanceHelp")}</div>
+        <div style={{ marginTop: 7, color: "#bfdbfe" }}><strong>{t("tutorialUi.promptExample")}</strong> {t("line5_prompt_seedance_extend")}</div>
+        <button type="button" onClick={() => setPrompt(t("line5_prompt_seedance_extend"))} style={{ marginTop: 9, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(96,165,250,.4)", background: "rgba(59,130,246,.18)", color: "#eff6ff", fontWeight: 650, cursor: "pointer" }}>{t("app.video.useExtendExample")}</button>
+      </>
+    ) : (
+      <>
+        <div>{t("app.video.editSeedanceHelp")}</div>
+        <div style={{ marginTop: 7, color: "#bfdbfe" }}><strong>{t("tutorialUi.promptExample")}</strong> {t("line5_prompt_seedance_edit")}</div>
+        <button type="button" onClick={() => setPrompt(t("line5_prompt_seedance_edit"))} style={{ marginTop: 9, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(96,165,250,.4)", background: "rgba(59,130,246,.18)", color: "#eff6ff", fontWeight: 650, cursor: "pointer" }}>{t("app.video.useEditExample")}</button>
+      </>
+    )}
+  </div>
+)}
+
+<div
+  className="action-bar"
+  style={{
+    display: 'flex',
+    gap: '10px',
+    marginBottom: '-5px'
+  }}
+>
+
   {/* Le bouton Optimiser reste visible en IMAGE et VIDEO */}
   {mode !== "TEXTE" && (
-    <button 
-      className="ai-treat-btn" 
-      onClick={handleOptimize} 
-      disabled={isThinking || !prompt} 
+    <button
+      className="ai-treat-btn"
+      onClick={handleOptimize}
+      disabled={isThinking || !prompt}
       style={{ flex: 1 }}
     >
-      {isThinking ? "⏳ Analyse..." : "✨ Optimiser"}
+      {isThinking
+        ? t("app.optimize.analyzing", {
+            defaultValue: "⏳ Analyse..."
+          })
+        : t("app.optimize.button", {
+            defaultValue: "✨ Optimiser"
+          })}
     </button>
   )}
 
   {/* ✅ On affiche "Charger" seulement si on est en mode IMAGE */}
   {mode === "IMAGE" && (
     <>
-      <input 
-        type="file" 
-        id="file-upload" 
-        style={{ display: 'none' }} 
-        onChange={(e) => handleFileToUrl(e, setStartImage)} // Utilisation de ta fonction existante
-        accept="image/*" 
+      <input
+        type="file"
+        id="file-upload"
+        style={{ display: 'none' }}
+        onChange={(e) => handleFileToUrl(e, setStartImage)}
+        accept="image/*"
       />
-      
+
       {!startImage ? (
-        <button 
-          className="ai-treat-btn" 
-          onClick={() => document.getElementById('file-upload').click()} 
-          style={{ flex: 1, background: '#444' }}
+        <button
+          className="ai-treat-btn"
+       onClick={() => outilsRef.current?.openImport()}
+          style={{
+            flex: 1,
+            background: '#444'
+          }}
         >
-          📁 Charger
+          {t("app.upload.load", {
+            defaultValue: "📁 Charger"
+          })}
         </button>
       ) : (
-        <div style={{
-          flex: 1,
-          height: '42px',
-          borderRadius: '8px',
-          border: '1px solid #a855f7',
-          background: `url(${startImage}) center/cover no-repeat`,
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          paddingRight: '5px'
-        }}>
-          <button 
-            onClick={(e) => { e.stopPropagation(); setStartImage(null); }}
+        <div
+          style={{
+            flex: 1,
+            height: '42px',
+            borderRadius: '8px',
+            border: '1px solid #a855f7',
+            background: `url(${startImage}) center/cover no-repeat`,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            paddingRight: '5px'
+          }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setStartImage(null);
+            }}
             style={{
               background: 'rgba(255, 0, 0, 0.7)',
               color: 'white',
@@ -3125,10 +4517,13 @@ if (isAuthLoading || isInitializing) {
           </button>
         </div>
       )}
-</>
+    </>
   )}
-</div> {/* <--- Cette div ferme "action-bar" */}
-{selectedModel?.toLowerCase().includes("seedance") && (
+</div>
+
+
+{/* --- MESSAGE D'ASTUCE SEEDANCE 2.5 --- */}
+{selectedModel?.toLowerCase().replace(/[^a-z0-9]/g, "").includes("seedance25") && (
   <div style={{
     background: "rgba(59, 130, 246, 0.1)",
     border: "1px solid rgba(59, 130, 246, 0.3)",
@@ -3143,7 +4538,44 @@ if (isAuthLoading || isInitializing) {
   }}>
     <span style={{ fontSize: '1.2rem' }}>🚀</span>
     <span style={{ color: '#fff', fontSize: '0.75rem', lineHeight: '1.4' }}>
-      <strong>Astuce Seedance 2.0 :</strong> Utilisez vos slots pour combiner images et vidéos de référence afin de guider précisément la mise en scène et le style.
+<strong>
+  {t("app.tip.seedance25.title", {
+    defaultValue: "Astuce Seedance 2.5 :"
+  })}
+</strong>{" "}
+{t("app.tip.seedance25.text", {
+  defaultValue:
+    "Profitez de durées entièrement libres de 4 à 30 secondes avec gestion audio intégrée et options d'images de référence."
+})}
+    </span>
+  </div>
+)}
+
+{/* --- MESSAGE D'ASTUCE Seedance 2.0 / 1.5  --- */}
+{selectedModel?.toLowerCase().replace(/[^a-z0-9]/g, "").includes("seedance") && !selectedModel?.toLowerCase().replace(/[^a-z0-9]/g, "").includes("seedance25") && (
+  <div style={{
+    background: "rgba(59, 130, 246, 0.1)",
+    border: "1px solid rgba(59, 130, 246, 0.3)",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    marginBottom: "15px",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    width: "100%",
+    boxSizing: "border-box"
+  }}>
+    <span style={{ fontSize: '1.2rem' }}>🚀</span>
+    <span style={{ color: '#fff', fontSize: '0.75rem', lineHeight: '1.4' }}>
+<strong>
+  {t("app.tip.seedance.title", {
+    defaultValue: "Astuce Seedance :"
+  })}
+</strong>{" "}
+{t("app.tip.seedance.text", {
+  defaultValue:
+    "Utilisez vos slots pour combiner images et vidéos de référence afin de guider précisément la mise en scène et le style."
+})}
     </span>
   </div>
 )}
@@ -3164,7 +4596,15 @@ if (isAuthLoading || isInitializing) {
   }}>
     <span style={{ fontSize: '1.2rem' }}>💃</span>
     <span style={{ color: '#fff', fontSize: '0.75rem', lineHeight: '1.4' }}>
-      <strong>Astuce Kling Motion Control :</strong> Combinez une <strong>Image de personnage</strong> et une <strong>Vidéo source</strong> pour transférer les mouvements et la chorégraphie de la vidéo sur votre personnage.
+<strong>
+  {t("app.tip.kling.title", {
+    defaultValue: "Astuce Kling Motion Control :"
+  })}
+</strong>{" "}
+{t("app.tip.kling.text", {
+  defaultValue:
+    "Combinez une Image de personnage et une Vidéo source pour transférer les mouvements et la chorégraphie de la vidéo sur votre personnage."
+})}
     </span>
   </div>
 )}
@@ -3185,7 +4625,15 @@ if (isAuthLoading || isInitializing) {
   }}>
     <span style={{ fontSize: '1.2rem' }}>🎬</span>
     <span style={{ color: '#fff', fontSize: '0.75rem', lineHeight: '1.4' }}>
-      <strong>Astuce Luma Ray 2 :</strong> Ajoutez une <strong>Vidéo source</strong> pour transformer ou modifier le style et l'ambiance de votre vidéo existante via le prompt.
+<strong>
+  {t("app.tip.luma.title", {
+    defaultValue: "Astuce Luma Ray 2 :"
+  })}
+</strong>{" "}
+{t("app.tip.luma.text", {
+  defaultValue:
+    "Ajoutez une Vidéo source pour transformer ou modifier le style et l'ambiance de votre vidéo existante via le prompt."
+})}
     </span>
   </div>
 )}
@@ -3207,54 +4655,803 @@ if (isAuthLoading || isInitializing) {
   }}>
     <span style={{ fontSize: '1.2rem' }}>✨</span>
     <span style={{ color: '#fff', fontSize: '0.75rem', lineHeight: '1.4' }}>
-<strong>Astuce PixVerse V6 :</strong> Ajoutez une <strong>Vidéo source</strong> uniquement pour <strong>étendre</strong> la durée de votre vidéo existante.    </span>
+<strong>
+  {t("app.tip.pixverse.title", {
+    defaultValue: "Astuce PixVerse V6 :"
+  })}
+</strong>{" "}
+{t("app.tip.pixverse.text", {
+  defaultValue:
+    "Ajoutez une Vidéo source uniquement pour étendre la durée de votre vidéo existante."
+})}
+   </span>
   </div>
 )}
 
-{/* --- ICI COMMENCENT TES SLOTS D'UPLOAD (Image début, Vidéo source, Image fin) --- */}
-
+{/* --- ICI annotations moteurs et (Image début, Vidéo source, Image fin) --- */}
 
 <div className="simple-controls">
   {/* LIGNE 1 : MOTEUR ET RÉSOLUTION */}
   <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-    <div style={{ flex: 1.2 }}>
-      <label className="field-label-tiny">MOTEUR</label>
-  <select 
-  className="artlist-select" 
-  // On trouve l'ID correspondant au nom stocké
-  value={engines.find(e => e.name === selectedModel)?.id || ""} 
-  onChange={(e) => {
-    const engineId = e.target.value;
-    const engine = engines.find(eng => eng.id === engineId);
-    if (engine) {
-      setSelectedModel(engine.name); // On stocke "Hailuo AI"
-    }
-  }}
->
-{engines
-  .filter(e => e.type === mode)
-  .map(e => {
-    // 1. On récupère le prix du plan actuel de l'utilisateur (ex: "24.99")
-    const currentUserPrice = PLAN_TO_PRICE[userPlan?.toLowerCase()] || "0.00";
     
-    // 2. On compare avec le palier "minPriceForLightning" du moteur
-    const userHasAccessToLightning = parseFloat(currentUserPrice) >= parseFloat(e.minPriceForLightning);
+    {/* 🚀 MOTEUR PERSONNALISÉ (SANS LA FLÈCHE AJOUTÉE) */}
+    <div style={{ flex: 1.2, position: 'relative' }}>
+<label className="field-label-tiny">
+  {t("app.formatStyle", { defaultValue: "FORMAT & STYLE" })}
+</label>
 
-    // 3. L'icône est un Éclair seulement si le palier est atteint, sinon c'est un Diamant
-    const costIcon = userHasAccessToLightning ? "⚡" : "💎";
+      {/* BOUTON PRINCIPAL (utilise ta classe CSS d'origine avec sa propre flèche native) */}
+      <div 
+        className="artlist-select" 
+        onClick={() => setIsEngineMenuOpen(!isEngineMenuOpen)}
+        style={{ 
+          cursor: 'pointer', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center' 
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {(() => {
+            const currentEng = engines.find(e => e.name === selectedModel);
+            const currentUserPrice = PLAN_TO_PRICE[userPlan?.toLowerCase()] || "0.00";
+            const costIcon = parseFloat(currentUserPrice) >= parseFloat(currentEng?.minPriceForLightning || 0) ? "⚡" : "💎";
+            return `${currentEng?.icon || "✨"} ${selectedModel} ${costIcon}`;
+          })()}
+        </span>
+      </div>
 
-    return (
-      <option key={e.id} value={e.id}>
-        {e.icon} {e.name} {costIcon}
-      </option>
+      {/* MENU DÉROULANT ÉLARGI */}
+      {isEngineMenuOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          minWidth: '380px',
+          backgroundColor: '#13111c',
+          border: '1px solid #2d2640',
+          borderRadius: '10px',
+          marginTop: '4px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          zIndex: 1000,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
+          padding: '6px'
+        }}>
+          {engines
+            .filter(e => e.type === mode)
+            .map(e => {
+              const currentUserPrice = PLAN_TO_PRICE[userPlan?.toLowerCase()] || "0.00";
+              const userHasAccessToLightning = parseFloat(currentUserPrice) >= parseFloat(e.minPriceForLightning);
+              const costIcon = userHasAccessToLightning ? "⚡" : "💎";
+
+              return (
+                <div 
+                  key={e.id}
+                  onClick={() => {
+                    setSelectedModel(e.name);
+                    setIsEngineMenuOpen(false);
+                  }}
+                  style={{
+                    padding: '12px 14px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    marginBottom: '4px',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    backgroundColor: selectedModel === e.name ? '#251b37' : 'transparent',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    transition: 'background-color 0.15s'
+                  }}
+                  onMouseEnter={(el) => el.currentTarget.style.backgroundColor = '#1d152a'}
+                  onMouseLeave={(el) => el.currentTarget.style.backgroundColor = selectedModel === e.name ? '#251b37' : 'transparent'}
+                >
+                  {/* LIGNE 1 : Icône, Nom, Coût et Badges principaux */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: '600', color: '#fff', fontSize: '13.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {e.icon} {e.name} {costIcon}
+                    </span>
+
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {e.isNew && (
+                        <span style={{ fontSize: '9px', backgroundColor: '#059669', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                          {t("app.badge.new", { defaultValue: "Nouveau" })}
+                        </span>
+                      )}
+                      {e.isTopArena && (
+                        <span style={{ fontSize: '9px', backgroundColor: '#8b5cf6', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                      {t("app.badge.topArena", { defaultValue: "Top 5 de l'Arena" })}      
+                          </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* LIGNE 2 : ANNOTATION */}
+                  {e.annotation && (
+                    <span style={{ 
+                      fontSize: '12px', 
+                      fontFamily: '"Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                      color: '#c4b5fd', 
+                      letterSpacing: '0.2px',
+                      lineHeight: '1.4',
+                      fontWeight: '400'
+                    }}>
+                      {e.annotation}
+                    </span>
+                  )}
+
+                  {/* LIGNE 3 : PETITS BADGES DE FONCTIONNALITÉS */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '3px' }}>
+                    {e.canDualImage && (
+                      <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        {t("app.badge.startEnd", { defaultValue: " Début / Fin" })}
+                      </span>
+                    )}
+                    
+
+{/* BADGES VEO 3.1 */}
+{e.name.toLowerCase().includes("veo 3.1") && (
+  <>
+    {/* 🔊 Audio */}
+    <span style={{
+      fontSize: '10px',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb',
+      padding: '2px 7px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+       Audio
+    </span>
+
+    {/* 🖼️ {t("line3_app_settings_referenceImages")} */}
+    <span style={{
+      fontSize: '10px',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb',
+      padding: '2px 7px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+       {t("line3_app_ui_referenceImagesUpTo3")}
+    </span>
+      {/* ✨ Full HD */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+         720p / 1080p      
+
+      </span>
+
+    {/* ⏱️ Durée */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+         4s / 6s / 8s
+      </span>
+
+    {/* 🎬 Image début / fin */}
+    <span style={{
+      fontSize: '10px',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb',
+      padding: '2px 7px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+       {t("line3_app_ui_startEndFrames") }
+    </span>
+
+    {/* ✏️ Modifier la vidéo */}
+    <span style={{
+      fontSize: '10px',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb',
+      padding: '2px 7px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+       {t("line3_app_ui_editVideo") }
+    </span>
+
+    {/* 🪄 Remixer */}
+    <span style={{
+      fontSize: '10px',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb',
+      padding: '2px 7px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+       Remixer
+    </span>
+
+    {/* ➡️ Étendre */}
+    <span style={{
+      fontSize: '10px',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb',
+      padding: '2px 7px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+       {t("line3_app_ui_extendVideo") }
+    </span>
+  </>
+)}
+
+{/* BADGES KLING 2.6 PRO */}
+{(() => {
+  const klingId = e.id?.toLowerCase() || "";
+  const klingName = e.name?.toLowerCase() || "";
+
+  const isKlingMotionVariant = klingId.includes("kling26_motion") || klingId.includes("kling2.6_motion") || klingName.includes("motion control");
+  const isKling26 = !isKlingMotionVariant && (
+    klingId.includes("kling2.6") ||
+    klingId.includes("kling26") ||
+    klingName.includes("kling 2.6")
+  );
+
+  if (!isKling26) return null;
+
+  return (
+    <>
+      {/* 🔊 Audio natif */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+         Audio natif
+      </span>
+
+      {/* 🖼️ Image → Vidéo */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       {t("line3_app_ui_imageToVideo") }
+      </span>
+
+
+      {/* ✨ Full HD */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       1080p
+      </span>
+
+      {/* ⏱️ Durée */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        5s / 10s
+      </span>
+    </>
+  );
+})()}    
+          {/* BADGES KLING 3.0 */}
+{(() => {
+  const klingId = e.id?.toLowerCase() || "";
+  const klingName = e.name?.toLowerCase() || "";
+
+  const isKling30 =
+    klingId === "kling30" ||
+    klingId === "kling3" ||
+    klingName.includes("kling 3.0");
+
+  if (!isKling30) return null;
+
+  return (
+    <>
+      {/* 🔊 Audio natif */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       Audio natif
+      </span>
+
+      {/* 🖼️ Image → Vidéo */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       {t("line3_app_ui_imageToVideo") }
+      </span>
+
+
+      {/* ✨ 720p / 1080p */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       720p / 1080p
+      </span>
+
+      {/* ⏱️ Durée */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       3s → 15s
+      </span>
+    </>
+  );
+})()}
+{/* BADGES KLING MOTION CONTROL 2.6 */}
+{(() => {
+  const klingId = e.id?.toLowerCase() || "";
+  const klingName = e.name?.toLowerCase() || "";
+
+  const isKlingMotion26 =
+    klingId.includes("kling26_motion") ||
+    klingId.includes("kling2.6_motion") ||
+    (
+      klingName.includes("kling 2.6") &&
+      klingName.includes("motion")
     );
-})}</select>
+
+  if (!isKlingMotion26) return null;
+
+  return (
+    <>
+      {/* 🎥 Vidéo de référence */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       {t("line3_app_ui_videoReference") }
+      </span>
+
+      {/* 🖼️ Image personnage */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        Image personnage
+      </span>
+
+      {/* 🕺 Contrôle du mouvement */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_motionControl") }
+      </span>
+      <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        1080p
+      </span>
+      <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        5s / 10s
+      </span>
+    </>
+  );
+})()}
+{/* BADGES HAILUO 2.3 */}
+{(() => {
+  const hailuoId = e.id?.toLowerCase() || "";
+  const hailuoName = e.name?.toLowerCase() || "";
+
+  const isHailuo23 =
+    hailuoId.includes("hailuo") ||
+    hailuoName.includes("hailuo 2.3") ||
+    hailuoName.includes("hailuo");
+
+  if (!isHailuo23) return null;
+
+  return (
+    <>
+      {/* 🖼️ Image → Vidéo */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_imageToVideo") }
+      </span>
+
+      {/* 🎬 Text → Vidéo */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_textToVideo") }
+      </span>
+
+      {/* HD 768p */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+       768p / 1080p
+      </span>
+
+      {/* ⏱️ 6 secondes */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+         6s
+      </span>
+
+      {/* ⏱️ 10 secondes — 768p uniquement */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+         10s - 768p uniquement
+      </span>
+    </>
+  );
+})()}
+{/* BADGES MINIMAX H3 */}
+{(() => {
+  const h3Id = e.id?.toLowerCase() || "";
+  const h3Name = e.name?.toLowerCase() || "";
+
+const isMinimaxH3 =
+  h3Id.includes("minimax-h3") ||
+  h3Id.includes("minimax_h3") ||
+  h3Id === "minimax_h3" ||
+  h3Name.includes("minimax h3");
+  
+  if (!isMinimaxH3) return null;
+
+  return (
+    <>
+      {/* 🎬 Text → Vidéo */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_textToVideo") }
+      </span>
+
+      {/* 🖼️ Image → Vidéo */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_imageToVideo") }
+      </span>
+
+      {/* 🎞️ First + Last Frame */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        First + Last Frame
+      </span>
+
+      {/* 🖼️ {t("line3_app_settings_referenceImages")} */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_referenceImageCount") }
+      </span>
+
+      {/* 🎥 Vidéo de référence */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_referenceVideoCount") }
+      </span>
+
+      {/* 🔊 Audio de référence */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_referenceAudioCount") }
+      </span>
+
+      {/* 🔊 Audio génératif */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        {t("line3_app_ui_generativeAudio") }
+      </span>
+
+      {/* 🖥️ Résolution */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        768p / 1440p (2K)
+      </span>
+
+      {/* ⏱️ Durée */}
+      <span style={{
+        fontSize: '10px',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb',
+        padding: '2px 7px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        4–15s
+      </span>
+    </>
+  );
+})()}
+
+{/* BADGES COMPLÉMENTAIRES — moteurs dont les fonctionnalités n'étaient pas toutes affichées */}
+{(() => {
+  const id = String(e.id || "").toLowerCase();
+  const badges = [];
+  const add = (...items) => badges.push(...items);
+
+  // Moteurs image
+  if (e.type === "IMAGE" && id === "gpt_image2") {
+    add(t("line4_badge_text_to_image", { defaultValue: "Texte → Image" }), t("line4_badge_image_to_image", { defaultValue: "Image → Image" }), t("line4_badge_up_to_16_refs", { defaultValue: "Jusqu'à 16 références" }), t("line4_badge_adjustable_quality", { defaultValue: "Qualité réglable" }), t("line4_badge_adjustable_moderation", { defaultValue: "Modération réglable" }));
+  } else if (e.type === "IMAGE" && id === "flux2pro") {
+    add(t("line4_badge_text_to_image", { defaultValue: "Texte → Image" }), t("line4_badge_image_to_image", { defaultValue: "Image → Image" }), t("line4_badge_up_to_9_refs", { defaultValue: "Jusqu'à 9 références" }), t("line4_badge_safety_tolerance", { defaultValue: "Tolérance de sécurité 0–5" }));
+  } else if (e.type === "IMAGE" && id === "nano_banana2_lite") {
+    add(t("line4_badge_text_to_image", { defaultValue: "Texte → Image" }), t("line4_badge_image_to_image", { defaultValue: "Image → Image" }), t("line4_badge_up_to_14_images", { defaultValue: "Jusqu'à 14 images" }), t("line4_badge_one_reference_video", { defaultValue: "1 vidéo de référence" }), t("line4_badge_adjustable_reasoning", { defaultValue: "Réflexion réglable" }));
+  }
+
+  // Seedance 2.5 : génération, références multimodales et opérations sur vidéo source.
+  if (id === "seedance25") {
+    add(t("line4_badge_text_to_video", { defaultValue: "Texte → Vidéo" }), t("line4_badge_image_to_video", { defaultValue: "Image → Vidéo" }), t("line4_badge_reference_images", { defaultValue: "Images de référence" }), t("line4_badge_reference_video", { defaultValue: "Vidéo de référence" }), t("line4_badge_reference_audio", { defaultValue: "Audio de référence" }), t("line4_badge_edit_video", { defaultValue: "Modifier la vidéo" }), t("line4_badge_extend_video", { defaultValue: "Étendre la vidéo" }), "480p / 720p / 1080p", t("line4_badge_4_30_seconds", { defaultValue: "4–30s" }));
+  } else if (id === "seedance20") {
+    add(t("line4_badge_text_to_video", { defaultValue: "Texte → Vidéo" }), t("line4_badge_image_to_video", { defaultValue: "Image → Vidéo" }), t("line4_badge_up_to_9_images", { defaultValue: "Jusqu'à 9 images" }), t("line4_badge_up_to_3_videos", { defaultValue: "Jusqu'à 3 vidéos" }), t("line4_badge_up_to_3_audio", { defaultValue: "Jusqu'à 3 audios" }), "480p / 720p / 1080p", t("line4_badge_4_15_seconds", { defaultValue: "4–15s" }));
+  } else if (id === "seedance") {
+    add(t("line4_badge_text_to_video", { defaultValue: "Texte → Vidéo" }), t("line4_badge_image_to_video", { defaultValue: "Image → Vidéo" }), t("line4_badge_start_end_images", { defaultValue: "Image début / fin" }), t("line4_badge_native_audio_lipsync", { defaultValue: "Audio natif & lip-sync" }), "480p / 720p / 1080p", t("line4_badge_4_12_seconds", { defaultValue: "4–12s" }));
+  }
+
+  // PixVerse V6 : capacités déclarées dans la configuration de l'interface.
+  if (id === "pixverse6") {
+    add(t("line4_badge_text_to_video", { defaultValue: "Texte → Vidéo" }), t("line4_badge_image_to_video", { defaultValue: "Image → Vidéo" }), t("line4_badge_audio", { defaultValue: "Audio" }), t("line4_badge_multishot", { defaultValue: "Multi-shot" }), "360p / 540p / 720p / 1080p", t("line4_badge_1_15_seconds", { defaultValue: "1–15s" }));
+  }
+
+  if (!badges.length) return null;
+  return badges.map((label, index) => (
+    <span key={`feature-badge-${id}-${index}`} style={{
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#e5e7eb',
+      padding: '2px 7px', borderRadius: '6px', display: 'flex', alignItems: 'center',
+      gap: '3px', border: '1px solid rgba(255,255,255,0.08)'
+    }}>{label}</span>
+  ));
+})()}
+
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      )}
+      {mode === "VIDEO" && (
+        <button
+          type="button"
+          onClick={() => { setVideoTutorialTab("guide"); setTutorialCopyState(""); setShowVideoTutorial(true); }}
+          style={{
+            marginTop: "7px", width: "190%", padding: "8px 10px", borderRadius: "8px", 
+            border: "1px solid rgba(168,85,247,0.45)", background: "rgba(168,85,247,0.10)",
+            color: "#ddd6fe", fontSize: "12px", fontWeight: 700, cursor: "pointer", textAlign: "left"
+          }}
+        >
+          🎓 {t("line4_tutorial_model_title", { model: selectedModel, defaultValue: `Tutoriel de ${selectedModel} — guide, vidéo et prompts` })}
+        </button>
+      )}
     </div>
     
 {mode !== "TEXTE" && (
 
   <div style={{ flex: 1 }}>
-    <label className="field-label-tiny">RÉSOLUTION</label>
+<label className="field-label-tiny">
+  {t("app.resolution", { defaultValue: "RÉSOLUTION" })}
+</label>
+
     {(() => {
 
       // 🛡️ Définition de isKling26 ici
@@ -3277,7 +5474,11 @@ const isKling26 = (currentModelLower.includes("kling26") || currentModelLower.in
               const selectedRes = e.target.value;
               setResolution(selectedRes);
               if (isHailuo && selectedRes === "512p" && !startImage) {
-                setErrorMsg("La résolution 512p pour Hailuo nécessite une IMAGE DÉBUT.");
+                setErrorMsg(
+  t("app.error.hailuo512Image", {
+    defaultValue: "La résolution 512p pour Hailuo nécessite une IMAGE DÉBUT."
+  })
+);
               }
             }}
           >
@@ -3289,40 +5490,66 @@ const isKling26 = (currentModelLower.includes("kling26") || currentModelLower.in
               const hasLightningPlan = currentUserPrice > 0 && currentUserPrice >= engineReq;
               const p480Icon = hasLightningPlan ? "⚡" : "💎";
               const p512Icon = hasLightningPlan ? "⚡" : "💎";
-              const p540Icon = hasLightningPlan ? "⚡" : "💎";
+              const p360Icon = hasLightningPlan ? "⚡" : "💎";
+               const p540Icon = hasLightningPlan ? "⚡" : "💎";
               const p768Icon = hasLightningPlan ? "⚡" : "💎";
               const hdIcon = hasLightningPlan ? "⚡" : "💎";
               const fhdIcon = (hasLightningPlan && currentUserPrice >= 12.99) ? "⚡" : "💎";
               const currentModelId = selectedModel?.toLowerCase() || "";
-              const isAnySeedance = isSeedance2 || currentModelId.includes("seedance");
+              const normalizedModelId = currentModelId.replace(/[^a-z0-9]/g, "");
+              const isSeedance25 = normalizedModelId.includes("seedance25");
+              const isAnySeedance = normalizedModelId.includes("seedance") && !isSeedance25;
               return (
-                <>
-                  {mode === "VIDEO" && (
+                <>{mode === "VIDEO" && (
                 <>
                   {/* Options 512p et 768p pour Hailuo */}
 {isHailuo && (
     <>
-        <option value="512p"> 512P {p512Icon} </option>
-        <option value="768p"> 768P </option>
+        <option value="768p"> 768P {p512Icon} </option>
     </>
 )}
 
-{/* Option 540p pour Pixverse et Luma */}
-{(isPixverse || isLuma) && (
-    <option value="540p"> 540P {p540Icon} </option>
-)}                  
-                      {/* ✅ S'affiche pour Seedance 2.0 et Seedance 1.5 Pro */}
-                      {isAnySeedance && (
+
+{/* Options SD / SD+ réservées à PixVerse */}
+{isPixverse && (
+    <>
+        <option value="540p">540P {p540Icon}</option>
+        <option value="360p">360P {p360Icon || p540Icon}</option>
+    </>
+)}              
+                      {/* ✅ Uniquement pour Seedance 2.0 et Seedance 1.5 Pro (Exclut Seedance 2.5) */}
+                      {isAnySeedance && !isSeedance25 && (
                         <option value="480p"> 480P {p480Icon} </option>
                       )}
 
-                     {!isHailuo && !isKling26 &&(
+                      {/* Seedance 2.5 : SD, HD et Full HD pris en charge par l'API Runware */}
+                      {isSeedance25 && (
+                        <>
+                          <option value="480p"> SD (480p) {p480Icon} </option>
+                          <option value="720p"> HD (720p) {hdIcon} </option>
+                          <option value="1080p"> FULL HD (1080p) {fhdIcon} </option>
+                        </>
+                      )}
+
+                     {!isHailuo && !isKling26 && !isSeedance25 && !currentModelId.includes("motion") && (
                         <option value="720p"> HD {hdIcon} </option>
                       )}
                     </>
                   )}
-                  <option value="1080p"> FULL HD {fhdIcon} </option>
-                </>
+                  
+                  {/* FULL HD pour les autres moteurs ; Seedance 2.5 possède ses propres options SD/HD/Full HD ci-dessus. */}
+{/* RÉSOLUTION MINIMAX H3 */}
+{normalizedModelId.includes("minimaxh3") && (
+  <>
+    <option value="768p"> 768P {p768Icon} </option>
+    <option value="1440p"> 1440P (2K) {fhdIcon} </option>
+  </>
+)}
+
+{/* FULL HD POUR LES AUTRES MODÈLES */}
+{!normalizedModelId.includes("minimaxh3") && !isSeedance25 && (
+  <option value="1080p"> FULL HD {fhdIcon} </option>
+)}                </>
               );
             })()}
           </select>
@@ -3339,7 +5566,6 @@ const isKling26 = (currentModelLower.includes("kling26") || currentModelLower.in
   </div>
 )}
   </div>
-  
 {/* LIGNE 2 : INPUTS MÉDIAS - IMAGE & VIDÉO TO VIDEO (Conditionnel) */}
 {mode === "VIDEO" && (() => {
   // Recalcul local pour éviter les erreurs de référence "undefined"
@@ -3360,18 +5586,24 @@ const isKlingV3I2V = cleanId.includes("klingv3") || cleanId.includes("kling3") |
 
 // Distinction précise entre Seedance 1.5 (qui prend les 2 images et bloque le V2V) et Seedance 2.0
 const isSeedance15 = cleanId.includes("seedance") && (cleanId.includes("15") || cleanId.includes("v15") || cleanId.includes("pro"));
-const isSeedance2 = cleanId.includes("seedance") && cleanId.includes("2");
+const isSeedance25 = cleanId.includes("seedance25") || cleanId.includes("seedance-2.5");
+const isSeedance2 = cleanId.includes("seedance") && cleanId.includes("2") && !isSeedance25;
 
-const isDualAllowed = (currentEngine?.canDualImage || engineId.includes("lite") || isSeedance15) && !isVeo;
+const isDualAllowed = (currentEngine?.canDualImage || engineId.includes("lite") || isSeedance15 || isSeedance25) && !isVeo;
 
 const isMotion = cleanId.includes("motion") || cleanId.includes("motioncontrol");
-// L'image de début est bloquée si sur Luma/Pixverse ou si Seedance 2 (selon tes règles d'origine)
-const isStartBlocked = Boolean(videoSource) && (cleanId.includes("luma") || cleanId.includes("pixverse"));
+// L'image de début est bloquée si sur Luma/Pixverse ou si Seedance 2
+const hasSeedanceReferences = (isSeedance2 || isSeedance25) && (seedanceReferenceImages.length > 0 || seedanceReferenceVideos.length > 0 || seedanceReferenceAudios.length > 0);
+const hasH3References = engineId.includes("minimax_h3") && (h3ReferenceImages.length > 0 || h3ReferenceVideos.length > 0 || h3ReferenceAudios.length > 0);
+const isStartBlocked = (Boolean(videoSource) && (cleanId.includes("luma") || cleanId.includes("pixverse") || engineId.includes("minimax_h3") || isSeedance2 || isSeedance25)) || hasSeedanceReferences || hasH3References;
 
-// 3. Condition d'autorisation V2V (Bloqué net pour Kling 2.6, Kling 3 et Seedance 1.5, mais LAISSÉ LIBRE pour Seedance 2.0)
+// 3. Condition d'autorisation V2V (Seedance 2 et 2.5 retrouvent leur comportement vidéo)
 const isVideoToVideoAllowed = 
+engineId.includes("veo3.1") ||
+engineId.includes("minimax_h3") ||
   isMotion || 
-  isSeedance2 || // Seedance 2 retrouve son comportement vidéo
+  isSeedance2 || 
+  isSeedance25 ||
   ((engineId.includes("kling") || 
     engineId.includes("pixverse") || 
     engineId.includes("luma")) 
@@ -3381,7 +5613,8 @@ const isVideoToVideoAllowed =
    && !isSeedance15);
       
   return (
-    <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+    <div style={{ display: 'flex', gap: '8px', marginBottom: '15px', flexWrap: 'wrap' }}>
+      <div style={{ width: "100%", color: "#888", fontSize: 10, marginBottom: 1 }}>{t("app.upload.fileLimits")}</div>
 
 {/* 1. SLOT IMAGE DÉBUT */}
 <div 
@@ -3405,20 +5638,50 @@ const isVideoToVideoAllowed =
     filter: isStartBlocked ? 'grayscale(1)' : 'none'
   }}
 >
-  <input 
-    type="file" 
-    id="start-img-input" 
-    hidden 
-    onChange={(e) => handleFileToUrl(e, setStartImage)} 
-    accept="image/*" 
-    disabled={isStartBlocked}
-  />
+<input 
+  type="file" 
+  id="start-img-input" 
+  hidden 
+  onChange={(e) => {
+    handleFileToUrl(e, (url) => {
+      setStartImage(url);
+
+      // Pour Veo 3.1 :
+      // l'image de début devient automatiquement
+      // la première image de référence.
+ if (isVeo) {
+  console.log("🎯 VEO DÉTECTÉ", {
+    selectedModel,
+    currentEngine,
+    engineId,
+    isVeo,
+    url
+  });
+
+  // Conserver le panneau de trois images de référence dans le moteur Veo.
+  // Les emplacements sont retirés uniquement de la fenêtre universelle Filtre/Éclairage IA.
+  setShowReferencePanel(true);
+} else {
+  console.log("❌ VEO NON DÉTECTÉ", {
+    selectedModel,
+    currentEngine,
+    engineId,
+    isVeo
+  });
+}
+    });
+  }}
+  accept="image/*" 
+  disabled={isStartBlocked}
+/>
 
   {!startImage ? (
     <>
       <span style={{fontSize: '1rem'}}>{isStartBlocked ? "🔒" : "🖼️"}</span>
       <span style={{fontSize: '0.62rem', fontWeight: 'bold', color: isStartBlocked ? '#888' : '#fff', marginTop: '2px'}}>
-        {isStartBlocked ? "DÉBUT BLOQUÉ" : "IMAGE DÉBUT"}
+        {isStartBlocked
+  ? t("app.slot.startBlocked", { defaultValue: "DÉBUT BLOQUÉ" })
+  : t("app.slot.startImage", { defaultValue: "IMAGE DÉBUT" })}
       </span>
     </>
   ) : (
@@ -3436,11 +5699,15 @@ const isVideoToVideoAllowed =
 
       {/* Croix rouge pour supprimer l'image de début */}
       <div 
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          setStartImage(null); 
-          setStartImagePreview(null); 
-        }} 
+    onClick={(e) => { 
+  e.stopPropagation(); 
+  setStartImage(null); 
+  setStartImagePreview(null); 
+
+  if (isVeo) {
+    setVeoReferenceImages(prev => prev.slice(1));
+  }
+}}
         style={{
           position: 'absolute', 
           top: '6px', 
@@ -3465,11 +5732,12 @@ const isVideoToVideoAllowed =
 
 
 </div>{/* 2. SLOT VIDÉO SOURCE (VIDEO TO VIDEO - Verrouillé si image active sur PixVerse ou Luma) */}
-   {/* 2. SLOT VIDÉO SOURCE (VIDEO TO VIDEO - Verrouillé si image active sur PixVerse ou Luma) */}
       {(() => {
         const modelLower = selectedModel?.toLowerCase() || "";
+        const selectedEngineId = (engines.find(e => e.name === selectedModel)?.id || "").toLowerCase();
         const isPixverseOrLuma = modelLower.includes("pixverse") || modelLower.includes("luma");
-        const isVideoLockedByImage = isPixverseOrLuma && Boolean(startImage || endImage);
+        const hasSeedance25References = selectedEngineId === "seedance25" && (seedanceReferenceImages.length > 0 || seedanceReferenceVideos.length > 0 || seedanceReferenceAudios.length > 0);
+        const isVideoLockedByImage = (isPixverseOrLuma && Boolean(startImage || endImage)) || hasSeedance25References;
         const canUseVideo = isVideoToVideoAllowed && !isVideoLockedByImage;
 
         // Fonction pour récupérer le coût Luma
@@ -3501,7 +5769,7 @@ const isVideoToVideoAllowed =
               type="file" 
               id="video-source-input" 
               hidden 
-              onChange={(e) => handleFileToUrl(e, setVideoSource)} 
+              onChange={(e) => { handleFileToUrl(e, setVideoSource); e.target.value = ""; }} 
               accept="video/*" 
               disabled={!canUseVideo}
             />
@@ -3509,9 +5777,13 @@ const isVideoToVideoAllowed =
   <>
     <span style={{ fontSize: '1rem' }}>{canUseVideo ? "🎬" : "🔒"}</span>
     <span style={{ fontSize: '0.62rem', fontWeight: 'bold', color: '#888', textAlign: 'center', marginTop: '2px' }}>
-      {isVideoLockedByImage 
-        ? "VIDÉO BLOQUÉE" 
-        : (isVideoToVideoAllowed ? "VIDÉO SOURCE" : "V2V INDISPO.")}
+{isVideoLockedByImage
+  ? t("app.slot.videoBlocked", { defaultValue: "VIDÉO BLOQUÉE" })
+  : (
+      isVideoToVideoAllowed
+        ? t("app.slot.videoSource", { defaultValue: "VIDÉO SOURCE" })
+        : t("app.slot.v2vUnavailable", { defaultValue: "V2V INDISPO." })
+    )}
       {/* AFFICHAGE DU COÛT UNIQUEMENT POUR LUMA (État vide) */}
       {canUseVideo && !isVideoLockedByImage && isVideoToVideoAllowed && modelLower.includes("luma") && (
         <div style={{ color: '#ffd700', fontSize: '0.55rem', marginTop: '1px', fontWeight: 'bold' }}>
@@ -3526,6 +5798,7 @@ const isVideoToVideoAllowed =
     <video 
       key={videoSource} 
       src={videoSource || ""}
+      onLoadedMetadata={(e) => setVideoSourceDuration(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
       style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
       controls 
       autoPlay 
@@ -3535,7 +5808,8 @@ const isVideoToVideoAllowed =
 
     {/* Bouton de suppression */}
     <div 
-      onClick={(e) => { e.stopPropagation(); setVideoSource(null); }} 
+      onClick={(e) => { e.stopPropagation(); setVideoSource(null); setVideoSourceDuration(0); setVeoVideoOperation(null);}} 
+      
       style={{
         position:'absolute', top:'5px', right:'5px', background:'rgba(255,0,0,0.6)', 
         width:'18px', height:'18px', borderRadius:'50%', display:'flex', 
@@ -3560,9 +5834,9 @@ const isVideoToVideoAllowed =
 
   {/* 3. SLOT IMAGE DE FIN (Propre, sans erreur de syntaxe) */}
   {(() => {
-    const isModelSeedance2 = selectedModel?.toLowerCase().includes("seedance 2.0");
+const isModelSeedance2 = cleanId.includes("seedance2"); // Attrape seedance 2.0 et seedance 2.5
     const isKling26Model = cleanId.includes("kling26") || cleanId.includes("26pro");
-    const isEndBlocked = !isDualAllowed || isKling26Model || (!isModelSeedance2 && !!videoSource);
+    const isEndBlocked = !isDualAllowed || isKling26Model || (!!videoSource && !isMotion) || hasSeedanceReferences || hasH3References;
 
     return (
       <div 
@@ -3594,7 +5868,13 @@ const isVideoToVideoAllowed =
           <>
             <span style={{fontSize: '1rem'}}>{!isEndBlocked ? "🏁" : "🔒"}</span>
             <span style={{fontSize: '0.62rem', fontWeight: 'bold', color: '#888', textAlign: 'center', marginTop: '2px'}}>
-              {isKling26Model ? "FIN BLOQUÉE" : (!isDualAllowed ? "FIN INDISPO." : "IMAGE FIN")}
+              {isKling26Model
+  ? t("app.slot.endBlocked", { defaultValue: "FIN BLOQUÉE" })
+  : (
+      !isDualAllowed
+        ? t("app.slot.endUnavailable", { defaultValue: "FIN INDISPO." })
+        : t("app.slot.endImage", { defaultValue: "IMAGE FIN" })
+    )}
             </span>
           </>
         ) : (
@@ -3613,99 +5893,147 @@ const isVideoToVideoAllowed =
 </div>
   );
 })()}
-
 {mode !== "TEXTE" && (
   <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-    {mode === "VIDEO" && (
-      <div style={{ flex: 1 }}>
-        <label className="field-label-tiny">DURÉE</label>
-        
-    <select
-  className="artlist-select" 
-  value={duration} 
-  onChange={(e) => setDuration(e.target.value)}
-  disabled={
-    Boolean(selectedModel?.toLowerCase().includes("hailuo") && (resolution === "Full HD" || resolution === "1080p"))
-  }
->
-  {/* 1. CAS GOOGLE VEO (3 Standard & Lite regroupés) */}
-  {selectedModel?.toLowerCase().includes("veo") ? (
-    <>
-      <option value="4">4 Secondes</option>
-      <option value="6">6 Secondes</option>
-      <option value="8">8 Secondes</option>
-    </>
-  ) : selectedModel?.toLowerCase().includes("seedance 2.0") ? (
-    /* 2. CAS SEEDANCE 2.0 */
-    <>
-      <option value="5">5 Secondes</option>
-      <option value="10">10 Secondes</option>
-      <option value="15">15 Secondes</option>
-    </>
-  ) : (
-    /* 3. CAS GÉNÉRAL (Seedance standard, Hailuo, Luma, Kling, etc.) */
-    <>
-      {/* Option 1 : Durée courte */}
-      <option value={selectedModel?.toLowerCase().includes("seedance") ? "4" : selectedModel?.toLowerCase().includes("hailuo") ? "6" : "5"}>
-        {selectedModel?.toLowerCase().includes("seedance") ? "4 Secondes" : 
-         selectedModel?.toLowerCase().includes("hailuo") ? "6 Secondes" : "5 Secondes"}
-      </option>
-      
-      {/* Option 2 : Durée moyenne (masquée si Hailuo + 1080p) */}
-      {!(selectedModel?.toLowerCase().includes("hailuo") && (resolution === "Full HD" || resolution === "1080p")) && (
-        <option value={selectedModel?.toLowerCase().includes("seedance") ? "12" : selectedModel?.toLowerCase().includes("luma") ? "9" : "10"}>
-          {selectedModel?.toLowerCase().includes("seedance") ? "12 Secondes" : 
-           selectedModel?.toLowerCase().includes("luma") ? "9 Secondes" : "10 Secondes"}
-        </option>
-      )}
+  {mode === "VIDEO" && (
+  <div style={{ flex: 1 }}>
+    <label className="field-label-tiny" style={{ display: 'block', marginBottom: '4px' }}>  {t("app.duration", { defaultValue: "DURÉE" })}
+</label>
 
-      {/* Option 3 : Longue durée spécifique pour Kling (sauf 2.6) */}
-      {selectedModel?.toLowerCase().includes("kling") && !selectedModel?.toLowerCase().includes("2.6") && (
-        <option value="15">15 Secondes</option>
-      )}
-    </>
-  )}
-</select>
-        
-        {/* Rappel visuel dynamique pour Hailuo */}
-        {selectedModel === "Hailuo AI" && (
-          <div style={{ fontSize: '9px', color: '#a855f7', marginTop: '4px', fontWeight: 'bold' }}>
-            {resolution === "Full HD" || resolution === "1080p" 
-              ? "⚠️ MODE PRO : LIMITÉ À 6S" 
-              : "✅ MODE STANDARD : 10S DISPONIBLES"}
+    {(() => {
+      // Détermination dynamique des limites et du pas selon le modèle (selectedModel)
+      const model = selectedModel?.toLowerCase() || "";
+      let minSec = 4;
+      let maxSec = 10;
+      let stepVal = 1; // Par défaut de 1 en 1
+
+      if (model.includes("veo")) {
+        minSec = 4;
+        maxSec = 8;
+        stepVal = 2; // Paliers de 2 en 2 (4s, 6s, 8s)
+      } else if (model.includes("seedance 2.5")) {
+        minSec = 4;
+        maxSec = 30;
+        stepVal = 1;
+      } else if (model.includes("seedance 2.0")) {
+        minSec = 4;
+        maxSec = 15;
+        stepVal = 1;
+      } else if (model.includes("seedance")) {
+        minSec = 4;
+        maxSec = 12;
+        stepVal = 1;
+      } else if (model.includes("hailuo")) {
+        const isHd = resolution === "Full HD" || resolution === "1080p";
+        minSec = 6;
+        maxSec = isHd ? 6 : 10;
+        stepVal = 4;
+      } else if (model.includes("minimax")) {
+        minSec = 4;
+        maxSec = 15;
+        stepVal = 1;
+  } else if (model.includes("kling") && (model.includes("3.0") || model.includes("3"))) {
+        // ✅ Pour Kling 3.0 / v3
+        minSec = 3;
+        maxSec = 15;
+        stepVal = 1; // Remets 5 si tu ne veux que des blocs de 5 en 5
+      } else if (model.includes("kling")) {
+        // ✅ Pour Kling 2.5 et les autres versions de Kling par défaut
+        minSec = 5;
+        maxSec = 10;
+        stepVal = 5; 
+          } else if (model.includes("pixverse")) {
+        // ✅ Pour Kling 2.5 et les autres versions de Kling par défaut
+        minSec = 1;
+        maxSec = 15;
+        stepVal = 1; 
+      }
+
+      const isDisabled = Boolean(model.includes("hailuo") && (resolution === "Full HD" || resolution === "1080p"));
+
+      return (
+        <div style={{ 
+          background: 'rgba(255, 255, 255, 0.03)', 
+          border: '1px solid rgba(255, 255, 255, 0.08)', 
+          borderRadius: '10px', 
+          padding: '0 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          height: '42px',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input 
+              type="range"
+              min={minSec}
+              max={maxSec}
+              step={stepVal}
+              value={duration}
+              disabled={isDisabled}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              style={{
+                width: '100%',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                accentColor: '#a855f7',
+                height: '4px',
+                borderRadius: '2px',
+                opacity: isDisabled ? 0.5 : 1
+              }}
+            />
+            <span style={{ 
+              color: '#d8b4fe', 
+              fontSize: '12px', 
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap',
+              minWidth: '32px',
+              textAlign: 'right'
+            }}>
+              {duration}s
+            </span>
           </div>
-        )}
+        </div>
+      );
+    })()}
+        
+    {/* Rappel visuel dynamique pour Hailuo */}
+    {selectedModel === "Hailuo AI" && (
+      <div style={{ fontSize: '9px', color: '#a855f7', marginTop: '4px', fontWeight: 'bold' }}>
+        {resolution === "Full HD" || resolution === "1080p" 
+          ? t("line1_app_video_hailuoProLimit") 
+          : t("line1_app_video_hailuoStandardLimit")}
       </div>
     )}
+  </div>
+)}
 
     {/* BLOC FORMAT & STYLE (Reste identique) */}
     <div style={{ flex: 1 }}>
-      <label className="field-label-tiny">FORMAT & STYLE</label>
+      <label className="field-label-tiny">{t("app.formatStyle")}</label>
       <div style={{ display: 'flex', gap: '5px' }}>
         <select className="artlist-select" value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
-          <option value="16:9">16:9</option>
-          <option value="1:1">1:1</option>
-          <option value="9:16">9:16</option>
+<option value="16:9">▭ 16:9</option>
+      <option value="1:1">◻ 1:1</option>
+      <option value="9:16">▯ 9:16</option>
         </select>
         <select className="artlist-select" value={selectedStyle} onChange={(e) => setSelectedStyle(e.target.value)}>
           {styles.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
     </div>
-  </div>
-)}
-{/* ✅ SELECTEUR AUDIO IA AVEC MESSAGE EXTÉRIEUR */}
+  </div>)}{
+  
+  /* ✅ SELECTEUR AUDIO IA AVEC MESSAGE EXTÉRIEUR */}
 {mode === "VIDEO" && (() => {
   const currentEngine = engines.find(e => e.name === selectedModel || e.id === selectedModel?.toLowerCase());
   const engineId = currentEngine?.id?.toLowerCase() || "";
-  
-  // ✂️ MODIFICATION ICI : On ajoute la détection de "veo" pour l'audio natif
-  const hasNativeAudio = 
-                         engineId.includes("seedance") ||
-                         engineId.includes("veo"); 
-                      
+  const isHailuo = engineId.includes("hailuo");
+  const isSeedanceAudioToggleModel = engineId.includes("seedance20") || engineId.includes("seedance25");
 
-  const isAudioActive = hasNativeAudio ? true : wantsAudio;
+  // MiniMax H3 produit toujours son audio natif ; Seedance 2.0/2.5 permet de l'activer ou non.
+  const hasNativeAudio = engineId.includes("minimax") || engineId.includes("h3");
+  const isAudioDisabled = isHailuo || (hasNativeAudio && !isSeedanceAudioToggleModel);
+  const isAudioActive = isSeedanceAudioToggleModel ? seedanceAudioEnabled : (hasNativeAudio ? true : (isHailuo ? false : wantsAudio));
 
   return (
     <div style={{ marginBottom: '15px' }}>
@@ -3713,41 +6041,48 @@ const isVideoToVideoAllowed =
         className="audio-toggle-container" 
         style={{
           padding: '12px 16px',
-          background: hasNativeAudio 
+          background: isAudioDisabled 
             ? 'rgba(255, 255, 255, 0.02)' 
             : (isAudioActive ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255, 255, 255, 0.05)'),
           borderRadius: '12px',
           border: '1px solid',
-          borderColor: hasNativeAudio 
+          borderColor: isAudioDisabled 
             ? 'rgba(255, 255, 255, 0.05)' 
             : (isAudioActive ? '#a855f7' : 'rgba(255,255,255,0.1)'),
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          cursor: hasNativeAudio ? 'not-allowed' : 'pointer',
+          // Si c'est MiniMax, on met 'default' ou 'not-allowed' pour indiquer que c'est géré automatiquement
+          cursor: isAudioDisabled || hasNativeAudio ? 'not-allowed' : 'pointer',
           transition: 'all 0.3s ease',
           userSelect: 'none',
-          opacity: hasNativeAudio ? 0.4 : 1 
+          opacity: isAudioDisabled ? 0.4 : 1 
         }} 
-        onClick={() => !hasNativeAudio && setWantsAudio(!wantsAudio)}
+        onClick={() => {
+          if (isAudioDisabled) return;
+          if (isSeedanceAudioToggleModel) setSeedanceAudioEnabled(!seedanceAudioEnabled);
+          else if (!hasNativeAudio) setWantsAudio(!wantsAudio);
+        }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ 
             fontSize: '1.2rem', 
-            filter: hasNativeAudio ? 'grayscale(100%)' : 'none' 
+            filter: isAudioDisabled ? 'grayscale(100%)' : 'none' 
           }}>
             {isAudioActive ? '🔊' : '🔇'}
           </span>
           <div style={{ textAlign: 'left' }}>
             <div style={{ 
-              color: hasNativeAudio ? '#666' : '#fff', 
+              color: isAudioDisabled ? '#666' : '#fff', 
               fontWeight: '600', 
               fontSize: '0.85rem' 
             }}>
-              Audio par IA
+{t("app.audio.ai", { defaultValue: "Audio par IA" })}
             </div>
-            <div style={{ color: '#666', fontSize: '0.7rem' }}>
-              Sound design
+            <div style={{ color: (hasNativeAudio || isSeedanceAudioToggleModel) ? '#a855f7' : '#666', fontSize: '0.7rem' }}>
+              {(hasNativeAudio || isSeedanceAudioToggleModel)
+                ? (isSeedanceAudioToggleModel ? (seedanceAudioEnabled ? t("line1_app_audio_nativeEnabled") : t("line1_app_audio_nativeDisabled")) : t("app.audio.native", { defaultValue: "Inclus nativement" }))
+                : t("app.audio.soundDesign", { defaultValue: "Sound design" })}
             </div>
           </div>
         </div>
@@ -3756,14 +6091,14 @@ const isVideoToVideoAllowed =
         <div style={{
           width: '36px',
           height: '18px',
-          background: hasNativeAudio ? '#222' : (isAudioActive ? '#a855f7' : '#444'),
+          background: isAudioDisabled ? '#222' : (isAudioActive ? '#a855f7' : '#444'),
           borderRadius: '20px',
           position: 'relative'
         }}>
           <div style={{
             width: '14px',
             height: '14px',
-            background: hasNativeAudio ? '#444' : '#fff',
+            background: isAudioDisabled ? '#444' : '#fff',
             borderRadius: '50%',
             position: 'absolute',
             top: '2px',
@@ -3773,7 +6108,7 @@ const isVideoToVideoAllowed =
         </div>
       </div>
 
-      {/* ✅ MESSAGE EXTÉRIEUR (Affiché uniquement si natif) */}
+      {/* ✅ MESSAGE EXTÉRIEUR : Audio inclus */}
       {hasNativeAudio && (
         <div style={{ 
           display: 'flex', 
@@ -3789,7 +6124,32 @@ const isVideoToVideoAllowed =
             fontWeight: 'bold',
             letterSpacing: '0.5px'
           }}>
-            AUDIO INCLUS AVEC CE MOTEUR
+            {t("app.audio.included", {
+  defaultValue: "AUDIO INCLUS AVEC CE MOTEUR"
+})}
+          </span>
+        </div>
+      )}
+
+      {/* ⚠️ MESSAGE EXTÉRIEUR : Hailuo pas d'audio */}
+      {isHailuo && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '5px',
+          marginTop: '6px', 
+          marginLeft: '4px' 
+        }}>
+          <span style={{ fontSize: '10px' }}>⚠️</span>
+          <span style={{ 
+            color: '#eab308', 
+            fontSize: '10px', 
+            fontWeight: 'bold',
+            letterSpacing: '0.5px'
+          }}>
+            {t("app.audio.unavailable", {
+  defaultValue: "AUDIO NON DISPONIBLE POUR CE MOTEUR"
+})}
           </span>
         </div>
       )}
@@ -3826,23 +6186,26 @@ const isVideoToVideoAllowed =
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>{showAsDiamonds ? "💎" : "⚡"}</span> 
                 {/* On affiche la variable 'cost' du useEffect : elle contient déjà le 200 ou le prix Éclair */}
-                COÛT TOTAL : {cost} {showAsDiamonds ? "DIAMANTS" : "ÉCLAIRS"}
+                {t("app.cost.total", { defaultValue: "COÛT TOTAL" })} : {cost}{" "}
+{showAsDiamonds
+  ? t("app.cost.diamonds", { defaultValue: "DIAMANTS" })
+  : t("app.cost.tokens", { defaultValue: "ÉCLAIRS" })}
             </div>
             
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {showAsDiamonds && (resolution === "Full HD" || resolution === "1080p") && (
                     <span style={{fontSize: '10px', opacity: 0.8, fontWeight: 'normal'}}>
-                        (Mode Full HD : Diamants)
+                        ({t("line1_cost_full_hd_diamonds")})
                     </span>
                 )}
                 {needsExtraDiamond && (
                     <span style={{fontSize: '10px', opacity: 0.8, fontWeight: 'normal'}}>
-                        (+1 💎 Image de fin)
+                        (+1 💎 {t("line1_cost_end_image")})
                     </span>
                 )}
                 {mode === "VIDEO" && wantsAudio && (
                     <span style={{fontSize: '10px', opacity: 0.8, fontWeight: 'normal'}}>
-                        (Audio IA)
+                        ({t("line1_cost_ai_audio")})
                     </span>
                 )}
             </div>
@@ -3877,7 +6240,8 @@ const isVideoToVideoAllowed =
   const isHailuo512Invalid = isHailuo && resolution === "512p" && !startImage;
 
   const isSeedance = selectedModel?.toLowerCase().includes("seedance");
-  const isSeedance480Invalid = isSeedance && resolution === "480p" && !startImage;
+  const isSeedance25 = selectedModel?.toLowerCase().replace(/[^a-z0-9]/g, "").includes("seedance25");
+  const isSeedance480Invalid = isSeedance && !isSeedance25 && resolution === "480p" && !startImage;
   // Détection du modèle Motion Control
   const isMotionControl = selectedModel?.toLowerCase().includes("motion");
 
@@ -3911,27 +6275,33 @@ const isVideoToVideoAllowed =
           cursor: isButtonDisabled ? 'not-allowed' : 'pointer',
           filter: (isHailuo512Invalid || isMotionControlInvalid) ? 'grayscale(1)' : 'none'
         }}
-        title={
-          isMotionControlInvalid 
-            ? "Une image de début et une vidéo source sont requises" 
-            : isHailuo512Invalid 
-            ? "Ajoutez une image de début pour utiliser la résolution 512p" 
-            : ""
-        }
+title={
+  isMotionControlInvalid
+    ? t("app.error.motionImages", {
+        defaultValue: t("line3_app_error_startAndSourceRequired")
+      })
+    : isHailuo512Invalid
+    ? t("app.error.hailuo512Title", {
+        defaultValue: t("line3_app_error_startImageFor512")
+      })
+    : ""
+}
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%' }}>
-          {isLoading ? (
-            <>⚡ Génération en cours...</>
-          ) : isMotionControlInvalid ? (
-            <>⚠️ IMAGE + VIDÉO REQUISES</>
-          ) : isHailuo512Invalid ? (
-            <>🖼️ IMAGE REQUISE POUR 512P</>
-          ) : mode === "TEXTE" ? (
-            "🚀 Envoyer"
-          ) : (
+        
+       {isLoading ? (
+  <>{t("app.generate.inProgress", { defaultValue: "⚡ Génération en cours..." })}</>
+) : isMotionControlInvalid ? (
+  <>{t("app.generate.imageVideoRequired", { defaultValue: "⚠️ IMAGE + VIDÉO REQUISES" })}</>
+) : isHailuo512Invalid ? (
+  <>{t("app.generate.imageRequired512", { defaultValue: "🖼️ IMAGE REQUISE POUR 512P" })}</>
+) : mode === "TEXTE" ? (
+  t("app.generate.send", { defaultValue: "🚀 Envoyer" })
+) : (
             <>
               {cost > 0 && (forceDiamonds ? "💎" : "⚡")}
-              GÉNÉRER {cost > 0 ? `(${cost})` : ""}
+              {t("app.generate.button", { defaultValue: "GÉNÉRER" })}{" "}
+{cost > 0 ? `(${cost})` : ""}
             </>
           )}
         </span>
@@ -3958,7 +6328,6 @@ const isVideoToVideoAllowed =
     minHeight: '450px' /* 👈 Empêche tout changement de taille */
   }}
 >
-  {/* ZONE 1 : AFFICHAGE DU RÉSULTAT */}
   
 {/* ZONE 1 : AFFICHAGE DU RÉSULTAT */}
   
@@ -3979,8 +6348,10 @@ const isVideoToVideoAllowed =
     return (
       <div className="loading-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
         <div className="spinner"></div>
-        <div className="loading-text" style={{ marginTop: '12px', color: '#fff' }}>Génération en cours...</div>
-      </div>
+<div className="loading-text" style={{ marginTop: '12px', color: '#fff' }}>
+  {t("app.loading.generation", { defaultValue: "Génération en cours..." })}
+</div>
+    </div>
     );
   }
 
@@ -4009,8 +6380,10 @@ const isVideoToVideoAllowed =
           <img 
             key={defaultMediaSrc}
             src={defaultMediaSrc} 
-            alt="Illustration par défaut" 
-            style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px', pointerEvents: 'none' }} 
+alt={t("app.defaultImageAlt", {
+  defaultValue: "Illustration par défaut"
+})}
+   style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px', pointerEvents: 'none' }} 
           />
         )}
         
@@ -4020,8 +6393,10 @@ const isVideoToVideoAllowed =
           border: '1px solid rgba(255, 255, 255, 0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
         }}>
           <span style={{ color: 'var(--text-gray)', fontSize: '13px', fontWeight: '500' }}>
-            En attente de création...
-          </span>
+{t("app.waitingCreation", {
+  defaultValue: "En attente de création..."
+})}
+    </span>
         </div>
       </div>
     );
@@ -4050,8 +6425,10 @@ const isVideoToVideoAllowed =
             />
           )
         ) : (
-          <div style={{ color: '#666' }}>Aucune sélection</div>
-        )}
+<div style={{ color: '#666' }}>
+  {t("app.noSelection", { defaultValue: "Aucune sélection" })}
+</div>
+   )}
       </div>
     </div>
   );
@@ -4070,24 +6447,47 @@ const isVideoToVideoAllowed =
     boxSizing: 'border-box' 
   }}>
 {!String(activeItem.id || '').startsWith('inspi-') && (
-      <button className="btn-modern btn-remix" onClick={() => handleRemix(activeItem)}>
-        <span>Remixer</span>
-      </button>
-    )}
+  <button
+    className="btn-modern btn-remix"
+    onClick={() => handleRemix(activeItem)}
+  >
+    <span>
+      {t("app.history.remix", { defaultValue: "Remixer" })}
+    </span>
+  </button>
+)}
+{activeItem.type === "VIDEO" &&
+ activeItem.url && (
+  
+<button
+  className="btn-modern btn-remix"
+  onClick={() => handleEditHistoryItem(activeItem)}
+>
+  <span>{t("app.history.editButton")}</span>
+</button>
+)}
 
     {activeItem.type !== "TEXTE" && !String(activeItem.id || '').startsWith('inspi-') && (
       <button className="btn-modern btn-download" onClick={() => handleDownload(activeItem)}>
-        <span>Télécharger</span>
+<span>
+  {t("app.download", { defaultValue: "Télécharger" })}
+</span>
       </button>
     )}
   </div>
 )}
 
+
+
     {/* ZONE 2 : EXPLORER (BAS - INSPIRATIONS DÉPLACÉES ICI) */}
    {(mode === "IMAGE" || mode === "VIDEO") && randomInspirations.length > 0 && (
   <div className="explorer-section" style={{ background: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '15px 15px 18px 15px', borderRadius: '0 0 16px 16px', marginTop: 'auto' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#00bcd4', letterSpacing: '1px' }}>🔍 EXPLORER LES EXEMPLES</span>
+<span style={{ fontSize: '11px', fontWeight: 'bold', color: '#00bcd4', letterSpacing: '1px' }}>
+  {t("app.explorer.title", {
+    defaultValue: "🔍 EXPLORER LES EXEMPLES"
+  })}
+</span>
       <div style={{ display: 'flex', gap: '5px' }}>
          <button className="nav-arrow-mini" onClick={() => handleScrollInspi('left')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px' }}>‹</button>
          <button className="nav-arrow-mini" onClick={() => handleScrollInspi('right')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px' }}>›</button>
@@ -4117,6 +6517,7 @@ const isVideoToVideoAllowed =
 
     // ✅ LE CORRIGÉ : Le clic enregistre le prompt ET fixe le média à l'écran
     onClick={() => {
+      selectedSuggestionPromptRef.current = item.promptKey ? { id: item.id, promptKey: item.promptKey, lastText: item.prompt } : null;
       setPrompt(item.prompt);
       setActiveItem({
         id: `inspi-${item.id}`,
@@ -4157,9 +6558,896 @@ const isVideoToVideoAllowed =
 ))}
           </div>
         </div>
+        
       </div>
     )}
-  </div> 
+    
+  </div>
+
+{/* ZONE IMAGES DE RÉFÉRENCE MINIMAX H3 */}
+{showH3ReferencePanel && (
+  <div
+    style={{
+      width: '97%',
+      marginTop: '1px',
+      padding: '14px',
+      background: 'rgba(17,17,17,0.96)',
+      border: '1px solid rgba(168,85,247,0.35)',
+      borderRadius: '14px',
+      boxSizing: 'border-box'
+    }}
+  >
+
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '12px'
+      }}
+    >
+      <div>
+        <div
+          style={{
+            color: '#fff',
+            fontSize: '13px',
+            fontWeight: '700'
+          }}
+        >
+          🖼️ {t("line3_app_settings_referenceImages")}
+        </div>
+
+        <div
+          style={{
+            color: '#888',
+            fontSize: '10px',
+            marginTop: '3px'
+          }}
+        >
+          {t("line1_app_references_maxImagesH3")}
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+      >
+        <span
+          style={{
+            color: '#aaa',
+            fontSize: '11px',
+            fontWeight: '600'
+          }}
+        >
+          {h3ReferenceImages.length}/9
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setShowH3ReferencePanel(false)}
+          style={{
+            width: '26px',
+            height: '26px',
+            border: 'none',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+
+    {/* 9 SLOTS */}
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '10px',
+        width: '100%'
+      }}
+    >
+      {Array.from({ length: 9 }, (_, slotIndex) => {
+        const image = h3ReferenceImages[slotIndex];
+
+        return (
+          <div
+            key={`h3-reference-slot-${slotIndex}`}
+            style={{
+              position: 'relative',
+              height: '90px',
+              borderRadius: '9px',
+              overflow: 'hidden',
+              border: image
+                ? '1px solid rgba(168,85,247,0.55)'
+                : '1px dashed rgba(255,255,255,0.22)',
+              background: image
+                ? '#080808'
+                : 'rgba(255,255,255,0.025)',
+              boxSizing: 'border-box'
+            }}
+          >
+
+            {image ? (
+              <>
+                <img
+                  src={image}
+                  alt={`Référence H3 ${slotIndex + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '5px',
+                    bottom: '5px',
+                    padding: '2px 6px',
+                    borderRadius: '5px',
+                    background: 'rgba(0,0,0,0.75)',
+                    color: '#fff',
+                    fontSize: '9px',
+                    fontWeight: '700'
+                  }}
+                >
+                  {slotIndex + 1}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setH3ReferenceImages(prev =>
+                      prev.filter((_, i) => i !== slotIndex)
+                    );
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '5px',
+                    right: '5px',
+                    width: '21px',
+                    height: '21px',
+                    border: 'none',
+                    borderRadius: '50%',
+                    background: 'rgba(255,0,0,0.8)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    padding: 0
+                  }}
+                >
+                  ✕
+                </button>
+              </>
+            ) : (
+              <label
+                htmlFor="h3-reference-images-input"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor:
+                    h3ReferenceImages.length < 9
+                      ? 'pointer'
+                      : 'default'
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '22px',
+                    color: '#aaa',
+                    lineHeight: 1
+                  }}
+                >
+                  ＋
+                </span>
+
+                <span
+                  style={{
+                    color: '#aaa',
+                    fontSize: '10px',
+                    marginTop: '5px'
+                  }}
+                >
+                  {t("line1_app_references_referenceImageSlot", { number: slotIndex + 1 })}
+                </span>
+              </label>
+            )}
+
+          </div>
+        );
+      })}
+    </div>
+
+
+{/* INPUT */}
+<input
+  id="h3-reference-images-input"
+  type="file"
+  accept="image/*"
+  multiple
+  hidden
+  onChange={async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+
+    if (!files.length) return;
+
+    const remaining = 9 - h3ReferenceImages.length;
+    if (remaining <= 0) return;
+
+    const selectedFiles = files.slice(0, remaining);
+
+    const totalNow = h3ReferenceImages.length + h3ReferenceVideos.length + h3ReferenceAudios.length + (videoSource && !h3ReferenceVideos.includes(videoSource) ? 1 : 0);
+    const allowedCount = Math.max(0, Math.min(9 - h3ReferenceImages.length, 12 - totalNow));
+    const uploadedUrls = await uploadFilesToPublicUrls(selectedFiles.slice(0, allowedCount));
+    setH3ReferenceImages(prev => [...new Set([...prev, ...uploadedUrls])].slice(0, 9));
+  }}
+/>
+
+    <div
+      style={{
+        marginTop: '10px',
+        color: '#777',
+        fontSize: '10px'
+      }}
+    >
+      {t("line1_app_references_selectedImagesCount", { count: h3ReferenceImages.length })}
+    </div>
+
+  </div>
+)}
+
+
+{/* ZONE VIDÉOS DE RÉFÉRENCE MINIMAX H3 */}
+{mode === "VIDEO" &&
+  (selectedModel || "").toLowerCase().includes("minimax h3") && (
+    <div
+      style={{
+        width: "97%",
+        marginTop: "10px",
+        padding: "14px",
+        background: "rgba(17,17,17,0.96)",
+        border: "1px solid rgba(168,85,247,0.35)",
+        borderRadius: "14px",
+        boxSizing: "border-box"
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "12px"
+        }}
+      >
+        <div>
+          <div style={{ color: "#fff", fontSize: "13px", fontWeight: "700" }}>
+            🎬 {t("line1_app_references_referenceVideos")}
+          </div>
+          <div style={{ color: "#888", fontSize: "10px", marginTop: "3px" }}>
+            {t("line1_app_references_videoFormatsLimit")}
+          </div>
+        </div>
+        <span style={{ color: "#aaa", fontSize: "11px" }}>
+          {h3ReferenceVideos.length}/{videoSource ? 2 : 3}
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: "10px"
+        }}
+      >
+        {Array.from({ length: 3 }, (_, index) => {
+          const video = h3ReferenceVideos[index];
+          const maxRefs = videoSource ? 2 : 3;
+          const slotAvailable = index < maxRefs;
+
+          return (
+            <div
+              key={`h3-video-reference-${index}`}
+              style={{
+                position: "relative",
+                height: "90px",
+                overflow: "hidden",
+                borderRadius: "9px",
+                border: video
+                  ? "1px solid rgba(168,85,247,0.65)"
+                  : "1px dashed rgba(255,255,255,0.22)",
+                background: "rgba(255,255,255,0.025)"
+              }}
+            >
+              {video ? (
+                <>
+                  <video
+                    src={video}
+                    controls
+                    muted
+                    playsInline
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setH3ReferenceVideos(prev =>
+                        prev.filter((_, i) => i !== index)
+                      )
+                    }
+                    style={{
+                      position: "absolute",
+                      top: "4px",
+                      right: "4px",
+                      width: "21px",
+                      height: "21px",
+                      border: "none",
+                      borderRadius: "50%",
+                      background: "rgba(255,0,0,0.85)",
+                      color: "#fff",
+                      cursor: "pointer"
+                    }}
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <label
+                  htmlFor="h3-reference-videos-input"
+                  onClick={e => {
+                    if (!slotAvailable || h3ReferenceVideos.length >= maxRefs) {
+                      e.preventDefault();
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: slotAvailable ? "pointer" : "not-allowed",
+                    color: slotAvailable ? "#aaa" : "#555",
+                    fontSize: "10px"
+                  }}
+                >
+                  <span style={{ fontSize: "22px" }}>＋</span>
+                  {t("line1_app_references_referenceVideoSlot", { number: index + 1 })}
+                </label>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+  <input
+    id="h3-reference-videos-input"
+    type="file"
+    accept="video/mp4,video/quicktime,.mp4,.mov"
+    multiple
+    hidden
+    onChange={async e => {
+      const files = Array.from(e.target.files || []);
+      e.target.value = "";
+
+      if (!files.length) return;
+
+      const maxRefs = videoSource ? 2 : 3;
+      const remaining = Math.max(
+        0,
+        maxRefs - h3ReferenceVideos.length
+      );
+
+      if (remaining <= 0) return;
+
+      const totalNow = h3ReferenceImages.length + h3ReferenceVideos.length + h3ReferenceAudios.length + (videoSource && !h3ReferenceVideos.includes(videoSource) ? 1 : 0);
+      const totalRemaining = Math.max(0, 12 - totalNow);
+      const selectedFiles = files.slice(0, Math.min(remaining, totalRemaining));
+      const newUrls = await uploadFilesToPublicUrls(selectedFiles);
+      setH3ReferenceVideos(prev => {
+        const currentMax = videoSource ? 2 : 3;
+        return [...new Set([...prev, ...newUrls])].slice(0, currentMax);
+      });
+    }}
+  />
+
+
+
+      <div style={{ marginTop: "10px", color: "#777", fontSize: "10px" }}>
+        {t("line3_app_ui_referenceVideoGuidance")}
+      </div>
+    </div>
+  )}
+
+{/* ZONE AUDIO DE RÉFÉRENCE ET DIALOGUE MINIMAX H3 */}
+{mode === "VIDEO" && (selectedModel || "").toLowerCase().includes("minimax h3") && (
+  <div style={{ width: "97%", marginTop: "10px", padding: "14px", background: "rgba(17,17,17,0.96)", border: "1px solid rgba(168,85,247,0.35)", borderRadius: "14px", boxSizing: "border-box" }}>
+    <div style={{ color: "#fff", fontSize: "13px", fontWeight: 700, marginBottom: "8px" }}>🔊 {t("app.audio.referenceDialogue")}</div>
+    <div style={{ color: "#aaa", fontSize: "11px", marginBottom: "10px" }}>{t("app.audio.referenceHelp")}</div>
+    <input type="file" accept="audio/*,.mp3,.wav,.m4a,.aac" multiple onChange={async (e) => {
+      const files = Array.from(e.target.files || []); e.target.value = "";
+      const totalNow = h3ReferenceImages.length + h3ReferenceVideos.length + h3ReferenceAudios.length + (videoSource && !h3ReferenceVideos.includes(videoSource) ? 1 : 0);
+      const allowedCount = Math.max(0, Math.min(3 - h3ReferenceAudios.length, 12 - totalNow));
+      const urls = await uploadFilesToPublicUrls(files.slice(0, allowedCount));
+      setH3ReferenceAudios(prev => [...new Set([...prev, ...urls])].slice(0, 3));
+    }} />
+    {h3ReferenceAudios.map((url, i) => <div key={`h3-audio-${url}`} style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px", color: "#ddd", fontSize: "11px" }}><audio controls src={url} style={{ width: "min(75%, 360px)", height: "32px" }} /><button type="button" onClick={() => setH3ReferenceAudios(prev => prev.filter((_, idx) => idx !== i))}>{t("app.audio.remove")}</button></div>)}
+    <label style={{ display: "block", color: "#ddd", fontSize: "11px", marginTop: "12px", marginBottom: "5px" }}>{t("app.audio.exactDialogue")}</label>
+    <textarea value={h3Dialogue} onChange={e => setH3Dialogue(e.target.value.slice(0, 2000))} maxLength={2000} rows={3} placeholder={t("app.audio.dialogueExample")} style={{ width: "100%", boxSizing: "border-box", resize: "vertical", background: "#090909", color: "#fff", border: "1px solid #333", borderRadius: "8px", padding: "9px" }} />
+    <div style={{ color: "#777", fontSize: "10px", marginTop: "5px" }}>{t("app.audio.referenceLimit")}</div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "8px", marginTop: "10px" }}>
+      <label style={{ color: "#bbb", fontSize: "10px" }}>{t("app.audio.promptExpansion")}<select value={h3PromptExpansion} onChange={e => setH3PromptExpansion(e.target.value)} style={{ display: "block", width: "100%", marginTop: "4px", padding: "7px", background: "#090909", color: "#fff", border: "1px solid #333", borderRadius: "6px" }}><option value="disabled">{t("app.audio.disabledMoreFaithful")}</option><option value="balanced">{t("app.audio.balanced")}</option><option value="quality">{t("app.audio.qualityPriority")}</option></select></label>
+      <label style={{ color: "#bbb", fontSize: "10px" }}>{t("app.audio.seedOptional")}<input type="number" min="0" max="4294967295" value={h3Seed} onChange={e => setH3Seed(e.target.value)} style={{ display: "block", width: "100%", marginTop: "4px", padding: "7px", background: "#090909", color: "#fff", border: "1px solid #333", borderRadius: "6px" }} /></label>
+    </div>
+  </div>
+)}
+
+{/* OPTIONS PIXVERSE V6 — PANNEAU PERSONNALISÉ */}
+{mode === "VIDEO" && (engines.find(e => e.name === selectedModel)?.id || "") === "pixverse6" && (
+  <section style={{ width: "97%", marginTop: 12, padding: 16, background: "linear-gradient(145deg, rgba(26,20,40,.98), rgba(13,16,27,.98))", border: "1px solid rgba(168,85,247,.38)", borderRadius: 16, boxSizing: "border-box", color: "#f4f4f5", boxShadow: "0 8px 24px rgba(0,0,0,.18)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: "rgba(168,85,247,.16)", border: "1px solid rgba(168,85,247,.28)", fontSize: 19 }}>✦</div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 750, letterSpacing: ".1px" }}>PixVerse V6 <span style={{ color: "#c4b5fd", fontWeight: 500, fontSize: 11 }}>{t("app.settings.pixverseAdvanced")}</span></div>
+        <div style={{ color: "#a1a1aa", fontSize: 11, marginTop: 3 }}>{t("app.settings.pixverseDescription")}</div>
+      </div>
+    </div>
+    <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 13px", borderRadius: 11, background: "rgba(255,255,255,.045)", border: "1px solid rgba(255,255,255,.08)", cursor: "pointer", marginBottom: 13 }}>
+      <span><span style={{ display: "block", fontSize: 12, fontWeight: 650 }}>{t("app.settings.multiShot")}</span><span style={{ display: "block", color: "#a1a1aa", fontSize: 10, marginTop: 3 }}>{t("app.settings.multiShotHelp")}</span></span>
+      <input type="checkbox" checked={pixverseMultiClip} onChange={e => setPixverseMultiClip(e.target.checked)} style={{ width: 18, height: 18, accentColor: "#a855f7", flexShrink: 0 }} />
+    </label>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 11 }}>
+      <label style={{ display: "block", color: "#d4d4d8", fontSize: 11, fontWeight: 600 }}>{t("line1_app_settings_visualStyle")}
+        <select value={pixverseStyle} onChange={e => setPixverseStyle(e.target.value)} style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, padding: "10px 11px", borderRadius: 9, background: "#101019", color: "#f4f4f5", border: "1px solid #393344", outlineColor: "#a855f7" }}><option value="">{t("app.settings.automatic")}</option><option value="anime">{t("app.style.anime")}</option><option value="3d_animation">{t("app.style.animation3d")}</option><option value="clay">{t("app.settings.clay")}</option><option value="comic">{t("app.settings.comic")}</option><option value="cyberpunk">{t("app.style.cyberpunk")}</option></select>
+      </label>
+      <label style={{ display: "block", color: "#d4d4d8", fontSize: 11, fontWeight: 600 }}>{t("line3_app_ui_thinkingLevel")}
+        <select value={pixverseThinking} onChange={e => setPixverseThinking(e.target.value)} style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, padding: "10px 11px", borderRadius: 9, background: "#101019", color: "#f4f4f5", border: "1px solid #393344" }}><option value="auto">{t("app.settings.automatic")}</option><option value="enabled">{t("app.settings.enhanced")}</option><option value="disabled">{t("app.settings.fast")}</option></select>
+      </label>
+      <label style={{ display: "block", color: "#d4d4d8", fontSize: 11, fontWeight: 600 }}>{t("app.settings.seedOptional")} 
+        <input type="number" min="0" max="2147483647" value={pixverseSeed} onChange={e => setPixverseSeed(e.target.value)} placeholder={t("app.settings.random")} style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, padding: "10px 11px", borderRadius: 9, background: "#101019", color: "#f4f4f5", border: "1px solid #393344" }} />
+      </label>
+    </div>
+    <label style={{ display: "block", color: "#d4d4d8", fontSize: 11, fontWeight: 600, marginTop: 13 }}>{t("app.settings.negativePromptLabel")} <span style={{ color: "#71717a", fontWeight: 400 }}>{t("app.settings.avoidElements")}</span>
+      <textarea value={pixverseNegativePrompt} onChange={e => setPixverseNegativePrompt(e.target.value.slice(0, 2048))} rows={3} maxLength={2048} placeholder={t("app.settings.negativePromptExample")} style={{ display: "block", width: "100%", boxSizing: "border-box", resize: "vertical", marginTop: 6, padding: "11px 12px", borderRadius: 9, background: "#101019", color: "#f4f4f5", border: "1px solid #393344", lineHeight: 1.45 }} />
+      <span style={{ display: "block", textAlign: "right", color: "#71717a", fontSize: 10, marginTop: 4 }}>{pixverseNegativePrompt.length}/2048</span>
+    </label>
+  </section>
+)}
+
+{/* RÉFÉRENCES MULTIMODALES SEEDANCE 2.0 / 2.5 — PANNEAU PERSONNALISÉ */}
+{mode === "VIDEO" && ["seedance20", "seedance25"].includes((engines.find(e => e.name === selectedModel)?.id || "").toLowerCase()) && (() => {
+  const currentId = (engines.find(e => e.name === selectedModel)?.id || "").toLowerCase();
+  const is25 = currentId === "seedance25";
+  const maxImages = is25 ? 30 : 9;
+  const maxVideos = is25 ? 10 : (videoSource ? 2 : 3);
+  const maxAudios = is25 ? 10 : 3;
+  const totalFiles = seedanceReferenceImages.length + seedanceReferenceVideos.length + seedanceReferenceAudios.length + (videoSource && !seedanceReferenceVideos.includes(videoSource) ? 1 : 0);
+  const uploadList = async (e, kind, max) => {
+    const files = Array.from(e.target.files || []); e.target.value = "";
+    if (!files.length) return;
+    const existing = kind === "image" ? seedanceReferenceImages : kind === "video" ? seedanceReferenceVideos : seedanceReferenceAudios;
+    const totalExisting = seedanceReferenceImages.length + seedanceReferenceVideos.length + seedanceReferenceAudios.length + (videoSource && !seedanceReferenceVideos.includes(videoSource) ? 1 : 0);
+    const totalRemaining = is25 ? Number.POSITIVE_INFINITY : Math.max(0, 12 - totalExisting);
+    const allowedCount = Math.max(0, Math.min(max - existing.length, totalRemaining));
+    if (allowedCount <= 0) return;
+    const urls = await uploadFilesToPublicUrls(files.slice(0, allowedCount));
+    const setter = kind === "image" ? setSeedanceReferenceImages : kind === "video" ? setSeedanceReferenceVideos : setSeedanceReferenceAudios;
+    setter(prev => [...new Set([...prev, ...urls])].slice(0, max));
+  };
+  const fieldCard = { padding: 12, borderRadius: 11, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.08)", minWidth: 0 };
+  const addButton = { display: "inline-flex", alignItems: "center", gap: 7, marginTop: 8, padding: "9px 12px", borderRadius: 8, background: "rgba(59,130,246,.12)", color: "#bfdbfe", border: "1px solid rgba(96,165,250,.35)", fontSize: 11, fontWeight: 650, cursor: "pointer" };
+  const renderList = (label, list, setter, max, accept, kind, description) => (
+    <div style={fieldCard}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ color: "#f4f4f5", fontSize: 12, fontWeight: 650 }}>{label}</div>
+        <span style={{ padding: "3px 7px", borderRadius: 999, background: "rgba(255,255,255,.07)", color: "#cbd5e1", fontSize: 10, whiteSpace: "nowrap" }}>{list.length} / {max}</span>
+      </div>
+      <div style={{ color: "#8b93a5", fontSize: 10, marginTop: 4, lineHeight: 1.4 }}>{description}</div>
+      <label style={{ ...addButton, opacity: is25 && kind !== "image" && Boolean(videoSource) ? .45 : 1 }}>
+        <span style={{ fontSize: 15, lineHeight: 1 }}>＋</span> {t("line1_app_references_addMedia")} {kind === "image" ? t("app.settings.addImages") : kind === "video" ? t("app.settings.addVideos") : t("app.settings.addAudios")}
+        <input type="file" accept={accept} multiple style={{ display: "none" }} disabled={(is25 && kind !== "image" && Boolean(videoSource)) || list.length >= max || (!is25 && totalFiles >= 12)} onChange={e => uploadList(e, kind, max)} />
+      </label>
+      {list.length > 0 && <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+        {list.map((url, i) => <div key={`${kind}-${url}`} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, padding: "7px 8px", borderRadius: 8, background: "rgba(15,23,42,.7)", border: "1px solid rgba(255,255,255,.06)" }}>
+          <span style={{ width: 44, height: 44, position: "relative", display: "grid", placeItems: "center", flexShrink: 0, overflow: "hidden", borderRadius: 7, background: "rgba(96,165,250,.12)", color: "#93c5fd", fontSize: 14 }}>
+            {kind === "image" ? <><span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>▧</span><img src={url} alt={t("line1_app_references_referenceImageSlot", { number: i + 1 })} loading="lazy" onError={event => { event.currentTarget.style.display = "none"; }} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: "#111", zIndex: 1 }} /></> : kind === "video" ? "▶" : "♫"}
+          </span>
+          <span style={{ flex: 1, minWidth: 0, color: "#d4d4d8", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{kind === "image" ? t("app.settings.referenceImage", { number: i + 1 }) : kind === "video" ? t("line1_app_settings_referenceVideo", { number: i + 1 }) : t("app.settings.referenceAudio", { number: i + 1 })}</span>
+          <button type="button" aria-label={t("line4_remove_media", { media: label.toLowerCase(), number: i + 1, defaultValue: `Retirer ${label.toLowerCase()} ${i + 1}` })} onClick={() => setter(prev => prev.filter((_, idx) => idx !== i))} style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 7, background: "rgba(248,113,113,.1)", color: "#fca5a5", border: "1px solid rgba(248,113,113,.18)", cursor: "pointer" }}>×</button>
+        </div>)}
+      </div>}
+    </div>
+  );
+  return <section style={{ width: "97%", marginTop: 12, padding: 16, background: "linear-gradient(145deg, rgba(13,25,43,.98), rgba(13,16,27,.98))", border: "1px solid rgba(59,130,246,.36)", borderRadius: 16, boxSizing: "border-box", color: "#f4f4f5", boxShadow: "0 8px 24px rgba(0,0,0,.18)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: "rgba(59,130,246,.15)", border: "1px solid rgba(96,165,250,.25)", fontSize: 18 }}>🎬</div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 750 }}>{t("line3_app_ui_multimodalReferences")} {is25 ? "2.5" : "2.0"}</div>
+        <div style={{ color: "#93c5fd", fontSize: 10, marginTop: 3 }}>{is25 ? t("line3_app_ui_seedance25Limit") : t("line3_app_ui_seedance20Limit", { count: totalFiles })}</div>
+      </div>
+    </div>
+    <div style={{ padding: "10px 12px", marginBottom: 12, borderRadius: 9, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.07)", color: "#a1a1aa", fontSize: 10, lineHeight: 1.5 }}>
+      {is25 ? t("line3_app_ui_seedance25Notice") : t("line3_app_ui_seedance20Notice")}
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(205px, 1fr))", gap: 10 }}>
+      {renderList(t("line3_app_ui_referenceImages"), seedanceReferenceImages, setSeedanceReferenceImages, maxImages, "image/*", "image", is25 ? t("line3_app_ui_seedanceCharacterObjects") : t("line3_app_ui_seedanceNineImages"))}
+      {renderList(t("line3_app_ui_videoReference"), seedanceReferenceVideos, setSeedanceReferenceVideos, maxVideos, "video/mp4,video/quicktime,.mp4,.mov", "video", is25 ? t("line3_app_ui_seedanceReferenceClips") : t("line3_app_ui_seedanceThreeVideos"))}
+      {renderList(t("line3_app_ui_referenceAudioCount"), seedanceReferenceAudios, setSeedanceReferenceAudios, maxAudios, "audio/*,.mp3,.wav,.m4a,.aac", "audio", t("line3_app_ui_audioAmbience"))}
+    </div>
+    {is25 && <div style={{ marginTop: 12, padding: 12, borderRadius: 11, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.08)" }}>
+      <div style={{ color: "#e4e4e7", fontSize: 11, fontWeight: 650 }}>{t("line3_app_ui_seedanceOperation")} {seedance25Operation === "extend" ? t("line3_app_ui_extend") : t("line3_app_ui_modify")}</div>
+      <div style={{ color: "#cbd5e1", fontSize: 11, lineHeight: 1.5, marginTop: 8 }}>{seedance25Operation === "extend" ? t("line3_app_ui_seedanceExtendHelp") : t("line3_app_ui_seedanceEditHelp")}</div>
+    </div>}
+  </section>;
+})()}
+
+{/* RÉFÉRENCES IMAGE POUR GPT IMAGE 2 / FLUX.2 PRO / NANO BANANA 2 LITE */}
+{mode === "IMAGE" && ["gpt_image2", "flux2pro", "nano_banana2_lite"].includes((engines.find(e => e.name === selectedModel)?.id || "").toLowerCase()) && (() => {
+  const currentEngine = engines.find(e => e.name === selectedModel);
+  const engineId = (currentEngine?.id || "").toLowerCase();
+  const maxRefs = currentEngine?.maxReferenceImages || 9;
+  const remainingRefs = Math.max(0, maxRefs - modelReferenceImages.length);
+  const fieldStyle = { display: "block", width: "100%", boxSizing: "border-box", marginTop: 7, padding: "10px 11px", background: "#0b0b12", color: "#f4f4f5", border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, outline: "none", fontSize: 12 };
+  const labelStyle = { display: "block", color: "#c4c4d0", fontSize: 11, fontWeight: 650, minWidth: 0 };
+  const uploadReferenceFiles = async (filesLike) => {
+    const files = Array.from(filesLike || []).filter(file => file && file.type.startsWith("image/"));
+    if (!files.length || remainingRefs <= 0) return;
+    const urls = await uploadFilesToPublicUrls(files.slice(0, remainingRefs));
+    setModelReferenceImages(prev => [...new Set([...prev, ...urls])].slice(0, maxRefs));
+  };
+  return <section style={{ width: "97%", marginTop: 14, padding: 16, boxSizing: "border-box", color: "#f8fafc", background: "linear-gradient(145deg, rgba(23,19,37,.98), rgba(12,12,18,.98))", border: "1px solid rgba(168,85,247,.32)", borderRadius: 18, boxShadow: "0 12px 36px rgba(0,0,0,.20)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 11, minWidth: 0, flex: 1 }}>
+        <div style={{ width: 42, height: 42, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: 13, background: "linear-gradient(135deg, rgba(168,85,247,.28), rgba(99,102,241,.15))", border: "1px solid rgba(196,181,253,.22)", fontSize: 21 }}>🖼️</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: "-.2px" }}>{t("app.references.imagesTitle")}</div>
+          <div style={{ color: "#aaa7b8", fontSize: 11, lineHeight: 1.55, marginTop: 4 }}>{t("app.references.guideText")}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
+            <span style={{ padding: "4px 8px", borderRadius: 999, background: "rgba(168,85,247,.12)", border: "1px solid rgba(168,85,247,.22)", color: "#d8b4fe", fontSize: 10, fontWeight: 700 }}>{modelReferenceImages.length}/{maxRefs} {t("app.references.images")}</span>
+            <span style={{ padding: "4px 8px", borderRadius: 999, background: "rgba(255,255,255,.045)", border: "1px solid rgba(255,255,255,.08)", color: "#b8b7c5", fontSize: 10 }}>{engineId === "gpt_image2" ? t("app.references.preciseEditing") : engineId === "flux2pro" ? t("app.references.guidedComposition") : t("app.references.multipleReferences")}</span>
+          </div>
+        </div>
+      </div>
+      <button type="button" onClick={() => { setImageTutorialTab("guide"); setShowImageTutorial(true); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 12px", borderRadius: 11, border: "1px solid rgba(196,181,253,.3)", background: "rgba(168,85,247,.13)", color: "#e9d5ff", cursor: "pointer", fontSize: 11, fontWeight: 750, whiteSpace: "nowrap" }}><span>🎓</span> {t("app.references.tutorialButton")} <span>↗</span></button>
+    </div>
+
+    <label htmlFor={`image-reference-upload-${engineId}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 7, marginTop: 15, padding: "22px 14px", borderRadius: 14, border: "1px dashed rgba(196,181,253,.42)", background: "linear-gradient(135deg, rgba(168,85,247,.075), rgba(99,102,241,.045))", cursor: remainingRefs ? "pointer" : "not-allowed", opacity: remainingRefs ? 1 : .55, transition: "border-color .2s, background .2s" }}>
+      <input id={`image-reference-upload-${engineId}`} type="file" accept="image/*" multiple disabled={!remainingRefs} style={{ display: "none" }} onChange={async e => { const files = Array.from(e.target.files || []); e.target.value = ""; await uploadReferenceFiles(files); }} />
+      <span style={{ width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: 13, background: "rgba(168,85,247,.16)", color: "#e9d5ff", fontSize: 22 }}>＋</span>
+      <span style={{ color: "#f4f0ff", fontSize: 12, fontWeight: 750 }}>{remainingRefs ? t("app.references.addImages") : t("app.references.imageLimit")}</span>
+      <span style={{ color: "#a7a4b5", fontSize: 10, lineHeight: 1.5 }}>{remainingRefs ? t("app.references.chooseFiles") : t("app.references.removeToAdd")}</span>
+      <span style={{ color: "#c4b5fd", fontSize: 10, fontWeight: 700 }}>{t("line1_app_references_imageFormatsMaximum", { max: maxRefs })}</span>
+    </label>
+
+    {modelReferenceImages.length > 0 ? <div style={{ marginTop: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 9 }}><span style={{ color: "#e4e4e7", fontSize: 11, fontWeight: 750 }}>{t("app.settings.referencesAdded")}</span><span style={{ color: "#888697", fontSize: 10 }}>{t("app.settings.removeImageHint")}</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))", gap: 9 }}>
+        {modelReferenceImages.map((url, i) => <div key={`image-model-ref-${url}`} style={{ position: "relative", overflow: "hidden", aspectRatio: "1 / 1", borderRadius: 12, border: "1px solid rgba(255,255,255,.12)", background: "#09090f", boxShadow: "0 5px 14px rgba(0,0,0,.18)" }}>
+          <img src={url} alt={t("app.settings.referenceImage", { number: i + 1 })} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <span style={{ position: "absolute", left: 6, bottom: 6, padding: "4px 6px", borderRadius: 6, background: "rgba(0,0,0,.72)", color: "#fff", fontSize: 9, fontWeight: 750 }}>{t("line1_app_references_referenceImageSlot", { number: i + 1 })}</span>
+          <button type="button" aria-label={t("line1_app_references_removeReferenceImage", { number: i + 1 })} onClick={() => setModelReferenceImages(prev => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: 5, right: 5, width: 25, height: 25, display: "grid", placeItems: "center", padding: 0, borderRadius: 8, border: "1px solid rgba(255,255,255,.2)", background: "rgba(8,8,12,.82)", color: "#fff", cursor: "pointer", fontSize: 16 }}>×</button>
+        </div>)}
+      </div>
+    </div> : <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,.025)", color: "#8f8c9d", fontSize: 10, lineHeight: 1.5 }}>{t("app.settings.noImageReferences")}</div>}
+
+    <div style={{ marginTop: 16, paddingTop: 15, borderTop: "1px solid rgba(255,255,255,.08)" }}>
+      <div style={{ color: "#f4f4f5", fontSize: 12, fontWeight: 800, marginBottom: 10 }}>{t("app.settings.engineSettings")}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", gap: 11 }}>
+        <label style={labelStyle}>{t("app.settings.outputFormat")}<select value={imageOutputFormat} onChange={e => setImageOutputFormat(e.target.value)} style={fieldStyle}><option value="JPG">JPG</option><option value="PNG">PNG</option><option value="WEBP">WEBP</option></select></label>
+        <label style={labelStyle}>{t("app.settings.optionalSeed")}<input type="number" min="0" value={imageSeed} onChange={e => setImageSeed(e.target.value)} placeholder={t("app.settings.random")} style={fieldStyle} /></label>
+        {engineId === "gpt_image2" && <><label style={labelStyle}>{t("app.settings.imageQuality")}<select value={gptImageQuality} onChange={e => setGptImageQuality(e.target.value)} style={fieldStyle}><option value="auto">{t("app.settings.automatic")}</option><option value="low">{t("line1_app_settings_imageQualityFastLow")}</option><option value="medium">{t("app.audio.balanced")}</option><option value="high">{t("line1_app_settings_imageQualityHigh")}</option></select></label><label style={labelStyle}>{t("app.settings.moderation")}<select value={gptImageModeration} onChange={e => setGptImageModeration(e.target.value)} style={fieldStyle}><option value="auto">{t("line1_app_settings_moderationStandard")}</option><option value="low">{t("line1_app_settings_moderationLessRestrictive")}</option></select></label></>}
+        {engineId === "flux2pro" && <label style={labelStyle}>{t("app.settings.safetyTolerance")}<select value={fluxSafetyTolerance} onChange={e => setFluxSafetyTolerance(e.target.value)} style={fieldStyle}>{[0,1,2,3,4,5].map(n => <option key={n} value={String(n)}>{n}</option>)}</select></label>}
+        {engineId === "nano_banana2_lite" && <><label style={labelStyle}>{t("app.settings.thinking")}<select value={nanoThinking} onChange={e => setNanoThinking(e.target.value)} style={fieldStyle}><option value="MINIMAL">{t("app.settings.minimalFaster")}</option><option value="HIGH">{t("line1_app_settings_high")}</option></select></label><label style={labelStyle}>{t("app.settings.temperature")}<input type="number" min="0" max="2" step="0.01" value={nanoTemperature} onChange={e => setNanoTemperature(e.target.value)} style={fieldStyle} /></label><label style={labelStyle}>{t("app.settings.topP")}<input type="number" min="0" max="1" step="0.01" value={nanoTopP} onChange={e => setNanoTopP(e.target.value)} style={fieldStyle} /></label><label style={{...labelStyle, gridColumn: "1 / -1"}}>{t("line1_app_settings_systemInstruction")} <span style={{ color: "#888697", fontWeight: 400 }}>({t("line1_app_settings_optional")})</span><textarea rows={3} value={nanoSystemPrompt} onChange={e => setNanoSystemPrompt(e.target.value.slice(0, 50000))} placeholder={t("app.settings.generalInstructions")} style={{...fieldStyle, resize: "vertical", lineHeight: 1.5}} /></label></>}
+      </div>
+    </div>
+
+    {engineId === "nano_banana2_lite" && <div style={{ marginTop: 14, padding: 13, borderRadius: 13, background: "rgba(255,255,255,.025)", border: "1px solid rgba(255,255,255,.07)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 9, background: "rgba(168,85,247,.14)", border: "1px solid rgba(196,181,253,.22)", fontSize: 16 }}>🎞️</span><div><div style={{ color: "#f4f4f5", fontSize: 12, fontWeight: 800 }}>{t("line1_app_settings_referenceVideoTitle")} <span style={{ color: "#a5a1b4", fontWeight: 500 }}>({t("line1_app_settings_oneVideoMaximum")})</span></div><div style={{ color: "#9692a5", fontSize: 10, marginTop: 3 }}>{t("app.settings.referenceVideoNote")}</div></div></div>
+      <input id="nano-banana-reference-video-input" type="file" accept="video/*,.mp4,.mov,.webm" onChange={async e => { const files = Array.from(e.target.files || []); e.target.value = ""; if (!files.length) return; const urls = await uploadFilesToPublicUrls(files.slice(0, 1)); setNanoReferenceVideo(urls[0] || null); }} style={{ display: "none" }} />
+      <label htmlFor="nano-banana-reference-video-input" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 14px", borderRadius: 10, background: "linear-gradient(135deg,#7c3aed,#6d28d9)", border: "1px solid rgba(196,181,253,.35)", color: "#fff", fontSize: 11, fontWeight: 750, cursor: "pointer", boxShadow: "0 4px 14px rgba(109,40,217,.2)" }}><span>＋</span> {t("line1_app_settings_chooseVideo")} <span style={{ opacity: .8 }}>MP4 · MOV · WEBM</span></label>
+      {nanoReferenceVideo && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 9, padding: "10px 12px", borderRadius: 10, background: "rgba(34,197,94,.07)", border: "1px solid rgba(34,197,94,.22)", color: "#bbf7d0", fontSize: 11 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span>✓</span><span><strong>{t("app.settings.videoAdded")}</strong><span style={{ display: "block", color: "#a7f3d0", fontSize: 10, marginTop: 2 }}>{t("app.settings.usedAsVisualReference")}</span></span></span><button type="button" onClick={() => setNanoReferenceVideo(null)} style={{ border: "1px solid rgba(252,165,165,.25)", borderRadius: 8, padding: "6px 9px", background: "rgba(239,68,68,.08)", color: "#fca5a5", cursor: "pointer", fontSize: 10, fontWeight: 750 }}>{t("app.audio.remove")}</button></div>}
+    </div>}
+    <div style={{ marginTop: 12, color: "#8f8c9d", fontSize: 10, lineHeight: 1.5 }}>{t("app.settings.referenceTip")}</div>
+  </section>;
+})()}
+
+{/* ZONE IMAGES DE RÉFÉRENCE VEO */}
+
+{mode === "VIDEO" && isVeoPanelModel && (
+  <div
+    style={{
+      width: '97%',
+      marginTop: '1px',
+      padding: '14px',
+      background: 'rgba(17,17,17,0.96)',
+      border: '1px solid rgba(168,85,247,0.35)',
+      borderRadius: '14px',
+      boxSizing: 'border-box'
+    }}
+  >
+
+    {/* EN-TÊTE */}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '12px'
+      }}
+    >
+      <div>
+        <div
+          style={{
+            color: '#fff',
+            fontSize: '13px',
+            fontWeight: '700'
+          }}
+        >
+          🖼️ {t("line3_app_settings_referenceImages")}
+        </div>
+
+        <div
+          style={{
+            color: '#888',
+            fontSize: '10px',
+            marginTop: '3px'
+          }}
+        >
+          {t("line1_app_references_referenceAppearanceHelp")}
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+      >
+        <span
+          style={{
+            color: '#aaa',
+            fontSize: '11px',
+            fontWeight: '600'
+          }}
+        >
+          {veoReferenceImages.length}/3
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setShowReferencePanel(false)}
+          style={{
+            width: '26px',
+            height: '26px',
+            border: 'none',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+
+{/* LIGNE DES 3 IMAGES DE RÉFÉRENCE */}
+<div
+  style={{
+    display: 'flex',
+    gap: '10px',
+    width: '100%',
+    overflowX: 'auto'
+  }}
+>
+  {[0, 1, 2].map((slotIndex) => {
+    const image = veoReferenceImages[slotIndex];
+
+    return (
+      <div
+        key={`veo-reference-slot-${slotIndex}`}
+        style={{
+          position: 'relative',
+          flex: '0 0 110px',
+          height: '90px',
+          borderRadius: '9px',
+          overflow: 'hidden',
+          border: image
+            ? '1px solid rgba(168,85,247,0.55)'
+            : '1px dashed rgba(255,255,255,0.22)',
+          background: image
+            ? '#080808'
+            : 'rgba(255,255,255,0.025)',
+          boxSizing: 'border-box'
+        }}
+      >
+
+        {image ? (
+          <>
+            {/* IMAGE */}
+            <img
+              src={image}
+              alt={`Référence ${slotIndex + 1}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+
+            {/* NUMÉRO */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '5px',
+                bottom: '5px',
+                padding: '2px 6px',
+                borderRadius: '5px',
+                background: 'rgba(0,0,0,0.75)',
+                color: '#fff',
+                fontSize: '9px',
+                fontWeight: '700'
+              }}
+            >
+              {slotIndex + 1}
+            </div>
+
+            {/* SUPPRIMER */}
+            <button
+              type="button"
+              onClick={() => {
+                setVeoReferenceImages(prev =>
+                  prev.filter((_, i) => i !== slotIndex)
+                );
+              }}
+              style={{
+                position: 'absolute',
+                top: '5px',
+                right: '5px',
+                width: '21px',
+                height: '21px',
+                border: 'none',
+                borderRadius: '50%',
+                background: 'rgba(255,0,0,0.8)',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '10px',
+                padding: 0
+              }}
+            >
+              ✕
+            </button>
+          </>
+        ) : (
+          /* EMPLACEMENT VIDE */
+      <label
+  htmlFor={
+    veoReferenceImages.length < 3
+      ? 'veo-reference-images-input'
+      : undefined
+  }
+  onClick={() => {
+    veoReferenceSlotRef.current = slotIndex;
+    setVeoReferenceSlot(slotIndex);
+  }}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor:
+                veoReferenceImages.length < 3
+                  ? 'pointer'
+                  : 'default'
+            }}
+          >
+            <span
+              style={{
+                fontSize: '22px',
+                color: '#aaa',
+                lineHeight: 1
+              }}
+            >
+              ＋
+            </span>
+
+            <span
+              style={{
+                color: '#aaa',
+                fontSize: '10px',
+                marginTop: '5px'
+              }}
+            >
+              {t("line1_app_references_referenceImageSlot", { number: slotIndex + 1 })}
+            </span>
+          </label>
+        )}
+
+      </div>
+    );
+  })}
+
+    </div>
+
+    {/* INPUT FICHIER */}
+    <input
+      id="veo-reference-images-input"
+      type="file"
+      accept="image/*"
+      multiple
+      hidden
+  onChange={async (e) => {
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!files.length) return;
+
+  try {
+    const url = await handleFileToUrl(files[0]);
+    if (!url) return;
+    const requestedSlot = veoReferenceSlotRef.current ?? veoReferenceSlot;
+    setVeoReferenceImages(prev => {
+      const next = [...prev];
+      const slot = Number.isInteger(requestedSlot) && requestedSlot >= 0 && requestedSlot < 3
+        ? requestedSlot
+        : Math.min(prev.length, 2);
+      if (slot <= next.length) next[slot] = url;
+      else next.push(url);
+      return next.filter(Boolean).slice(0, 3);
+    });
+  } catch (error) {
+    console.error('❌ Impossible de charger l’image de référence Veo :', error);
+  } finally {
+    setVeoReferenceSlot(null);
+    veoReferenceSlotRef.current = null;
+  }
+}}
+    />
+
+    {/* BAS DU PANNEAU */}
+    <div
+      style={{
+        marginTop: '10px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}
+    >
+      <span
+        style={{
+          color: '#777',
+          fontSize: '10px'
+        }}
+      >
+        {veoReferenceImages.length} / 3 image
+        {veoReferenceImages.length > 1 ? 's' : ''} sélectionnée
+        {veoReferenceImages.length > 1 ? 's' : ''}
+      </span>
+
+    </div>
+
+  </div>
+)}
+
 </div> {/* FIN COLONNE DE DROITE */}
         </div> {/* FIN generator-grid */}
       </main>
@@ -4168,6 +7456,7 @@ const isVideoToVideoAllowed =
 </>
 )}
 </div> /* FIN de main-viewport */
+
 {/* MODAL DE CONFIRMATION DESIGN */}
 {itemToDelete && (
   <div style={{
@@ -4179,18 +7468,21 @@ const isVideoToVideoAllowed =
       width: '90%', maxWidth: '400px', padding: '30px', textAlign: 'center',
       border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '20px'
     }}>
-      <h3 style={{ color: '#fff', marginBottom: '15px' }}>Supprimer la création ?</h3>
-      <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginBottom: '25px' }}>
-        Cette action est irréversible.
-      </p>
-      
+    <h3 style={{ color: '#fff', marginBottom: '15px' }}>
+  {t("app.delete.title", {
+    defaultValue: t("line3_app_error_deleteCreation")
+  })}
+</h3>
+
+
       <div style={{ display: 'flex', gap: '12px' }}>
         <button 
           onClick={() => setItemToDelete(null)}
           style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: 'none', cursor: 'pointer' }}
         >
-          Annuler
+{t("app.cancel", { defaultValue: "Annuler" })}
         </button>
+
 <button 
           onClick={() => {
             // On simule un événement pour éviter que e.stopPropagation() dans deleteHistoryItem ne plante
@@ -4204,11 +7496,45 @@ const isVideoToVideoAllowed =
           }}
           style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
         >
-          Supprimer
+{t("app.delete.button", { defaultValue: "Supprimer" })}
         </button>
       </div>
     </div>
   </div>
+)}
+
+{showEditor && (
+  <Filtre
+    mediaSrc={veoEditVideo || videoSource || activeItem?.url || activeItem?.videoUrl}
+    onBack={() => setShowEditor(false)}
+
+    selectedOptionModal={selectedOptionModal}
+    setSelectedOptionModal={setSelectedOptionModal}
+
+    prompt={prompt}
+    setPrompt={setPrompt}
+
+    colorSettings={colorSettings}
+    setColorSettings={setColorSettings}
+
+    handleFileToUrl={handleFileToUrl}
+    handleGenerate={handleGenerate}
+
+    onApply={async (result) => {
+      console.log(
+        '🎨 Vidéo filtrée reçue dans App.jsx :',
+        result
+      );
+
+      if (outilsRef.current?.applyMedia) {
+        await outilsRef.current.applyMedia(result);
+      } else {
+        console.error(
+          '❌ Outils.applyMedia() est introuvable'
+        );
+      }
+    }}
+  />
 )}
 
 <AuthModal 
@@ -4244,6 +7570,7 @@ expiryDate={
     }}
   />
 )}
+
 {showInsufficientFunds && (
   <div style={{
     position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
@@ -4260,24 +7587,36 @@ expiryDate={
       </div>
       
       <h2 style={{ color: '#fff', fontSize: '22px', marginBottom: '15px' }}>
-        {forceDiamonds ? 'Diamants insuffisants' : 'Éclairs insuffisants'}
+        {forceDiamonds
+          ? t("app.insufficient.diamonds", { defaultValue: "Diamants insuffisants" })
+          : t("app.insufficient.tokens", { defaultValue: "Éclairs insuffisants" })}
       </h2>
       
-      <p style={{ color: '#ccc', lineHeight: '1.5', fontSize: '15px' }}>
-        Cette action coûte <strong>{neededAmount} {forceDiamonds ? 'diamants' : 'éclairs'}</strong>.
-      </p>
+ <p style={{ color: '#ccc', lineHeight: '1.5', fontSize: '15px' }}>
+  {t("app.insufficient.cost", {
+    defaultValue: "Cette action coûte"
+  })}{" "}
+  <strong>
+    {neededAmount}{" "}
+    {forceDiamonds
+      ? t("app.cost.diamondsLower", { defaultValue: "diamants" })
+      : t("app.cost.tokensLower", { defaultValue: "éclairs" })}
+  </strong>.
+</p>
 
- {/* MESSAGE PÉDAGOGIQUE ADAPTATIF */}
+      {/* MESSAGE PÉDAGOGIQUE ADAPTATIF */}
       {!forceDiamonds ? (
         <div style={{ marginTop: '15px', padding: '15px', background: 'rgba(168, 85, 247, 0.1)', borderRadius: '12px' }}>
           <p style={{ color: '#aaa', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-            ⚡ Pour obtenir plus d'éclairs, vous pouvez <strong>changer d'abonnement</strong>.<br/><br/>
-            📅 En attendant la recharge du début de mois prochain, vous pouvez aussi acheter des <strong>diamants</strong> pour continuer à créer immédiatement.
+            {t("app.insufficient.tokensHelp", {
+              defaultValue:
+                "⚡ Pour obtenir plus d'éclairs, vous pouvez changer d'abonnement.\n\n📅 En attendant la recharge du début de mois prochain, vous pouvez aussi acheter des diamants pour continuer à créer immédiatement."
+            })}
           </p>
         </div>
       ) : (
         <p style={{ color: '#aaa', fontSize: '14px', marginTop: '15px' }}>
-          Votre solde de diamants est trop faible pour cette opération.
+          {t("line3_app_error_diamondsInsufficient")}
         </p>
       )}
 
@@ -4291,7 +7630,7 @@ expiryDate={
             fontSize: '16px', boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)'
           }}
         >
-          {forceDiamonds ? '🛒 Acheter des diamants' : '🚀 S\'abonner ou Acheter des Diamants'}
+          {forceDiamonds ? t("line3_app_ui_buyDiamonds") : t("line3_app_ui_subscribeOrBuyDiamonds")}
         </button>
 
         {/* BOUTON RETOUR */}
@@ -4299,15 +7638,122 @@ expiryDate={
           onClick={() => setShowInsufficientFunds(false)}
           style={{
             padding: '12px', borderRadius: '12px', border: '1px solid #333',
-          background: 'transparent', color: '#888', cursor: 'pointer', fontSize: '14px'
+            background: 'transparent', color: '#888', cursor: 'pointer', fontSize: '14px'
           }}
         >
-          Rester sur le studio
+          {t("line3_app_ui_stayInStudio")}
         </button>
       </div>
     </div>
   </div>
 )}
+
+{showVideoTutorial && mode === "VIDEO" && (() => {
+  const tutorialEngine = engines.find(e => e.name === selectedModel) || { id: selectedModel?.toLowerCase(), name: selectedModel };
+  const tutorialGuideKey = getVideoTutorialGuideKey(tutorialEngine);
+  const tutorial = getVideoTutorialGuide(tutorialGuideKey, t);
+  const tutorialResourceRaw = VIDEO_TUTORIAL_RESOURCES[String(tutorialEngine.id || "").toLowerCase()] || {};
+  const tutorialResource = { ...tutorialResourceRaw, resourceLabel: tutorialResourceRaw.resourceLabelKey ? t(tutorialResourceRaw.resourceLabelKey) : "", videoTitle: tutorialResourceRaw.videoTitleKey ? t(tutorialResourceRaw.videoTitleKey) : "" };
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${t("tutorialUi.stepByStep")} ${tutorialEngine.name || selectedModel}`}
+      onClick={() => setShowVideoTutorial(false)}
+      style={{ position: "fixed", inset: 0, zIndex: 20000, background: "rgba(3,3,8,0.82)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
+    >
+      <div onClick={e => e.stopPropagation()} style={{ width: "min(900px, 100%)", maxHeight: "92vh", overflowY: "auto", background: "#111018", border: "1px solid rgba(168,85,247,0.45)", borderRadius: "18px", boxShadow: "0 25px 80px rgba(0,0,0,0.65)", color: "#f8fafc" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "14px", padding: "20px 22px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <div style={{ color: "#c4b5fd", fontSize: "11px", fontWeight: 800, letterSpacing: "1.4px", textTransform: "uppercase" }}>{t("tutorialUi.academyVideo")}</div>
+            <h2 style={{ margin: "6px 0 5px", fontSize: "22px", lineHeight: 1.2 }}>{tutorialEngine.icon || "🎬"} {tutorialEngine.name || selectedModel}</h2>
+            <p style={{ margin: 0, color: "#a1a1aa", fontSize: "13px", lineHeight: 1.5 }}>{tutorial.objective}</p>
+          </div>
+          <button type="button" aria-label={t("tutorialUi.closeTutorial")} onClick={() => setShowVideoTutorial(false)} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: "9px", width: "36px", height: "36px", cursor: "pointer", fontSize: "20px", flexShrink: 0 }}>×</button>
+        </div>
+        <div style={{ display: "flex", gap: "8px", padding: "14px 22px 0", flexWrap: "wrap" }}>
+          {[["guide", t("line1_tutorial_tab_guide")], ["video", t("line1_tutorial_tab_resources")], ["prompt", t("line1_tutorial_tab_prompts")]].map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setVideoTutorialTab(key)} style={{ padding: "9px 12px", borderRadius: "9px", border: videoTutorialTab === key ? "1px solid #a855f7" : "1px solid rgba(255,255,255,0.10)", background: videoTutorialTab === key ? "rgba(168,85,247,0.18)" : "rgba(255,255,255,0.04)", color: videoTutorialTab === key ? "#e9d5ff" : "#cbd5e1", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ padding: "18px 22px 24px" }}>
+          {videoTutorialTab === "guide" && (
+            <div>
+              <h3 style={{ fontSize: "16px", margin: "0 0 12px" }}>{t("tutorialUi.featuresTitle")}</h3>
+              <ul style={{ margin: "0 0 18px", paddingLeft: "22px", display: "grid", gap: "9px", color: "#c4b5fd", fontSize: "13px", lineHeight: 1.6 }}>
+                {(tutorial.features || []).map((feature, index) => <li key={`${tutorialEngine.id}-feature-${index}`}>{feature}</li>)}
+              </ul>
+              <h3 style={{ fontSize: "16px", margin: "0 0 12px" }}>{t("tutorialUi.stepByStep")}</h3>
+              <ol style={{ margin: 0, paddingLeft: "22px", display: "grid", gap: "11px", color: "#d4d4d8", fontSize: "14px", lineHeight: 1.6 }}>
+                {tutorial.steps.map((step, index) => <li key={`${tutorialEngine.id}-step-${index}`}>{step}</li>)}
+              </ol>
+              <div style={{ marginTop: "18px", padding: "13px 14px", borderRadius: "11px", background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.20)", color: "#d8b4fe", fontSize: "13px", lineHeight: 1.55 }}>
+                <strong>{t("tutorialUi.tip")}</strong> {t("tutorialUi.modelOptionsMayVary")}
+              </div>
+            </div>
+          )}
+          {videoTutorialTab === "video" && (
+            <div>
+              {tutorialResource.videoId ? (
+                <div>
+                  <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", overflow: "hidden", borderRadius: "12px", background: "#050505", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <iframe src={`https://www.youtube-nocookie.com/embed/${tutorialResource.videoId}`} title={tutorialResource.videoTitle || `${t("tutorialUi.stepByStep")} ${tutorialEngine.name}`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
+                  </div>
+                  <p style={{ color: "#d4d4d8", fontSize: "13px", lineHeight: 1.5 }}>{tutorialResource.videoTitle}</p>
+                </div>
+              ) : (
+                <div style={{ padding: "18px", borderRadius: "12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ fontSize: "28px", marginBottom: "8px" }}>📚</div>
+                  <h3 style={{ margin: "0 0 8px", fontSize: "16px" }}>{t("tutorialUi.resources")}</h3>
+                  <p style={{ color: "#a1a1aa", fontSize: "13px", lineHeight: 1.5 }}>{t("tutorialUi.resourcesPending")}</p>
+                </div>
+              )}
+              {tutorialResource.resourceUrl && <p style={{ marginTop: "14px", fontSize: "13px" }}><a href={tutorialResource.resourceUrl} target="_blank" rel="noreferrer" style={{ color: "#c4b5fd" }}>↗ {tutorialResource.resourceLabel || t("tutorialUi.engineDocs")}</a></p>}
+            </div>
+          )}
+          {videoTutorialTab === "prompt" && (
+            <div>
+              <p style={{ color: "#a1a1aa", fontSize: "13px", lineHeight: 1.5, marginTop: 0 }}>{t("tutorialUi.promptHint")}</p>
+              <textarea readOnly value={tutorial.prompt} style={{ width: "100%", minHeight: "190px", resize: "vertical", boxSizing: "border-box", padding: "14px", borderRadius: "11px", background: "#09090f", border: "1px solid rgba(255,255,255,0.13)", color: "#f4f4f5", fontSize: "13px", lineHeight: 1.6 }} />
+              <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "12px" }}>
+                <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(tutorial.prompt); setTutorialCopyState(t("tutorialUi.copied")); } catch { setTutorialCopyState(t("tutorialUi.copyUnavailable")); } }} style={{ padding: "10px 13px", borderRadius: "9px", border: "1px solid rgba(168,85,247,0.45)", background: "rgba(168,85,247,0.16)", color: "#e9d5ff", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>{t("tutorialUi.copyPrompt")}</button>
+                <button type="button" onClick={() => { setPrompt(tutorial.prompt); setShowVideoTutorial(false); setTutorialCopyState(""); }} style={{ padding: "10px 13px", borderRadius: "9px", border: "none", background: "#7c3aed", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>{t("tutorialUi.usePrompt")}</button>
+              </div>
+              {tutorialCopyState && <p role="status" style={{ color: tutorialCopyState === t("tutorialUi.copied") ? "#86efac" : "#fbbf24", fontSize: "12px", marginBottom: 0 }}>{tutorialCopyState}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})()}
+
+{showImageTutorial && mode === "IMAGE" && (() => {
+  const tutorialEngine = engines.find(e => e.name === selectedModel) || { id: selectedModel?.toLowerCase(), name: selectedModel };
+  const guide = getImageTutorialGuide(String(tutorialEngine.id || "").toLowerCase(), t);
+  return <div role="dialog" aria-modal="true" aria-label={`${t("tutorialUi.stepByStep")} ${tutorialEngine.name || selectedModel}`} onClick={() => setShowImageTutorial(false)} style={{ position: "fixed", inset: 0, zIndex: 20001, background: "rgba(3,3,8,.84)", backdropFilter: "blur(9px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 14 }}>
+    <div onClick={e => e.stopPropagation()} style={{ width: "min(820px, 100%)", maxHeight: "92vh", overflowY: "auto", background: "linear-gradient(145deg,#171321,#0d0d14 60%)", border: "1px solid rgba(168,85,247,.4)", borderRadius: 19, boxShadow: "0 25px 90px rgba(0,0,0,.7)", color: "#f8fafc" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, padding: "20px 22px 17px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+        <div style={{ minWidth: 0 }}><div style={{ color: "#c4b5fd", fontSize: 10, fontWeight: 850, letterSpacing: 1.5 }}>{t("tutorialUi.academyImage")}</div><h2 style={{ margin: "7px 0 6px", fontSize: 22, lineHeight: 1.25 }}>{tutorialEngine.icon || "🖼️"} {tutorialEngine.name || selectedModel}</h2><p style={{ margin: 0, color: "#b4b1c1", fontSize: 12, lineHeight: 1.6 }}>{guide.objective}</p></div>
+        <button type="button" aria-label={t("tutorialUi.closeTutorial")} onClick={() => setShowImageTutorial(false)} style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(255,255,255,.12)", background: "rgba(255,255,255,.06)", color: "#fff", cursor: "pointer", fontSize: 21 }}>×</button>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "14px 22px 0" }}>
+        {[["guide", t("tutorialUi.stepGuide")], ["prompt", t("tutorialUi.promptExample")]].map(([key,label]) => <button key={key} type="button" onClick={() => setImageTutorialTab(key)} style={{ padding: "9px 12px", borderRadius: 10, border: imageTutorialTab === key ? "1px solid rgba(192,132,252,.75)" : "1px solid rgba(255,255,255,.1)", background: imageTutorialTab === key ? "rgba(168,85,247,.18)" : "rgba(255,255,255,.035)", color: imageTutorialTab === key ? "#e9d5ff" : "#c4c4d0", cursor: "pointer", fontSize: 11, fontWeight: 750 }}>{label}</button>)}
+      </div>
+      <div style={{ padding: "19px 22px 23px" }}>
+        {imageTutorialTab === "guide" && <div>
+          <div style={{ padding: 13, borderRadius: 12, background: "rgba(168,85,247,.07)", border: "1px solid rgba(168,85,247,.16)", marginBottom: 17 }}><div style={{ color: "#e9d5ff", fontSize: 12, fontWeight: 800, marginBottom: 9 }}>{t("tutorialUi.aboutEngine")}</div><ul style={{ margin: 0, paddingLeft: 19, display: "grid", gap: 7, color: "#d4d4dc", fontSize: 12, lineHeight: 1.55 }}>{guide.features.map((feature,i) => <li key={`img-feature-${i}`}>{feature}</li>)}</ul></div>
+          <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>{t("tutorialUi.recommendedSteps")}</h3><ol style={{ margin: 0, paddingLeft: 22, display: "grid", gap: 11, color: "#d4d4dc", fontSize: 12, lineHeight: 1.65 }}>{guide.steps.map((step,i) => <li key={`img-step-${i}`}>{step}</li>)}</ol>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 19, padding: 13, borderRadius: 12, background: "rgba(34,197,94,.055)", border: "1px solid rgba(34,197,94,.16)" }}><span style={{ color: "#bbf7d0", fontSize: 11, lineHeight: 1.5 }}>{t("tutorialUi.tip")}</span><button type="button" onClick={() => setImageTutorialTab("prompt")} style={{ padding: "9px 11px", border: 0, borderRadius: 9, background: "#7c3aed", color: "#fff", fontSize: 11, fontWeight: 750, cursor: "pointer" }}>{t("tutorialUi.seeExample")}</button></div>
+        </div>}
+        {imageTutorialTab === "prompt" && <div><p style={{ color: "#a7a4b5", fontSize: 12, lineHeight: 1.6, marginTop: 0 }}>{t("tutorialUi.imagePromptHint")}</p><textarea readOnly value={guide.prompt} style={{ width: "100%", minHeight: 190, resize: "vertical", boxSizing: "border-box", padding: 14, borderRadius: 12, background: "#08080e", border: "1px solid rgba(255,255,255,.13)", color: "#e9d5ff", fontSize: 12, lineHeight: 1.65 }} /><div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 12 }}><button type="button" onClick={async () => { try { await navigator.clipboard.writeText(guide.prompt); setTutorialCopyState(t("tutorialUi.promptCopied")); } catch { setTutorialCopyState(t("tutorialUi.copyUnavailableImage")); } }} style={{ padding: "10px 13px", borderRadius: 10, border: "1px solid rgba(196,181,253,.32)", background: "rgba(168,85,247,.13)", color: "#e9d5ff", cursor: "pointer", fontSize: 11, fontWeight: 750 }}>{t("tutorialUi.copyPrompt")}</button><button type="button" onClick={() => { setPrompt(guide.prompt); setShowImageTutorial(false); setTutorialCopyState(""); }} style={{ padding: "10px 13px", borderRadius: 10, border: 0, background: "#7c3aed", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 750 }}>{t("tutorialUi.usePrompt")}</button></div>{tutorialCopyState && <p role="status" style={{ color: tutorialCopyState === t("tutorialUi.promptCopied") ? "#86efac" : "#fbbf24", fontSize: 11, marginBottom: 0 }}>{tutorialCopyState}</p>}</div>}
+        {guide.resourceUrl && <div style={{ marginTop: 17, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.08)", fontSize: 11 }}><a href={guide.resourceUrl} target="_blank" rel="noreferrer" style={{ color: "#c4b5fd", textDecoration: "none" }}>↗ {guide.resourceLabel}</a></div>}
+      </div>
+    </div>
+  </div>;
+})()}
 
 {showContactModal && (
   <ContactModal 
@@ -4316,8 +7762,9 @@ expiryDate={
   />
 )}
 
-</div> // FIN de app-container
-);
+
+    </div>
+  );
 }
 
 export default App;

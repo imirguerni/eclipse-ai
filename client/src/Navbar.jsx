@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // Rajout de useState
+import React, { useState } from 'react';
 import './Navbar.css';
 import { useTranslation } from 'react-i18next'; 
 import LanguageSelector from './LanguageSelector'; 
@@ -21,27 +21,25 @@ const Navbar = ({
   resetDate,  
   expiryDate,  
   onOpenProfile,
-  onShowHistory    
-  
+  onShowHistory     
 }) => {
 
 const { t } = useTranslation();
-  // --- RAJOUT : ÉTAT POUR LE MENU MOBILE ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // --- CONFIGURATION DYNAMIQUE DES PLANS (TON CODE) ---
 const planConfig = {
-  "legende": { name: "LÉGENDE", color: "#ff4757" },
-  "elite": { name: "ELITE", color: "#ffa502" },
-  "master": { name: "MASTER", color: "#2ed573" },
-  "standard": { name: "STANDARD", color: "#1e90ff" },
-  "essentiel": { name: "ESSENTIEL", color: "#70a1ff" },
-  "debutant": { name: "DÉBUTANT", color: "#a4b0be" }
-};
+    "legende": { name: t('legend'), color: "#ff4757" },
+    "elite": { name: t('elite'), color: "#ffa502" },
+    "master": { name: t('master'), color: "#2ed573" },
+    "standard": { name: t('standard'), color: "#1e90ff" },
+    "essentiel": { name: t('essential'), color: "#70a1ff" },
+    "debutant": { name: t('beginner'), color: "#a4b0be" }
+  };
 
 const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"];
 
-  return (
+
+  return  (
     <nav className="landing-nav">
       {/* --- RAJOUT : CSS RESPONSIVE POUR TOUT ADAPTER --- */}
     <style>{`
@@ -97,10 +95,10 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
         />
 <div className={`nav-links-center ${isMobileMenuOpen ? 'mobile-active' : ''}`}>
           <a href="#generate-section" className="nav-link-item" onClick={(e) => { e.preventDefault(); onStart("IMAGE"); setIsMobileMenuOpen(false); }}>
-          <span className="nav-link-icon">🎨</span> Du texte à l'image
+🎨 {t('text to image')}
         </a>
         <a href="#generate-section" className="nav-link-item" onClick={(e) => { e.preventDefault(); onStart("VIDEO"); setIsMobileMenuOpen(false); }}>
-          <span className="nav-link-icon">🎬</span> De l'image à la vidéo
+🎬 {t('image to video')}
         </a>
         
 {/* BLOC CHIRURGICAL : Menu déroulant avec pont invisible pour le curseur */}
@@ -125,7 +123,7 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
               paddingBottom: '10px' 
             }}
           >
-            <span className="nav-link-icon">💬</span> Production (bientot) ▾
+       💬 {t('production soon')} ▾
           </span>
             
             <div 
@@ -155,13 +153,13 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
     fontWeight: '500', display: 'flex', alignItems: 'center', gap: '8px', userSelect: 'none'
   }}
 >
-  🚀 API & Module Développeur
+🚀 {t('api developer')}
 </div>
                 <div style={{
                   color: '#475569', padding: '10px 16px', fontSize: '12px', 
                   borderTop: '1px solid rgba(255,255,255,0.05)', userSelect: 'none'
                 }}>
-                  ⚙️ Autres outils (Bientôt)
+              ⚙️ {t('other tools soon')}
                 </div>
               </div>
             </div>
@@ -176,13 +174,13 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
     e.preventDefault(); 
     setIsMobileMenuOpen(false); 
     if (!user) {
-      onStart(); // 🔐 Ouvre la modale de connexion si pas connecté
+      onStart(); 
     } else if (onShowHistory) {
-      onShowHistory(); // ✅ Ouvre l'historique si connecté
+      onShowHistory(); 
     }
   }}
 >
-  Mes Historiques
+  {t('history')}
 </span>
         
         {/* L'espaceur est ici sur Tarifs pour repousser proprement le bloc de droite (LÉGENDE / Connexion) */}
@@ -191,8 +189,9 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
           className="nav-link-item" 
           style={{ marginRight: '15px' }} 
           onClick={(e) => { e.preventDefault(); if (typeof onShowPricing === 'function') onShowPricing(); setIsMobileMenuOpen(false); }}
-        >
-          Tarifs
+>
+  {t('pricing')}
+
         </a>
       </div>
 
@@ -255,12 +254,12 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
   }}
   style={{ cursor: 'pointer' }}
 >
-  💎 Tarification</div>
+  💎 {t('pricing')}</div>
   
 {/* langue */}
 
 <div className="dropdown-item" onClick={() => { setShowDropdown(false); onOpenProfile(); }}>
-  👤 Mon Compte
+👤 {t('my account')}
 </div> 
 
 <div style={{ 
@@ -296,12 +295,12 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
     <div style={{ fontSize: '18px', filter: 'drop-shadow(0 0 5px rgba(234, 179, 8, 0.4))' }}>⚡</div>
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <span style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', fontWeight: '900', letterSpacing: '0.5px' }}>
-        Reset Éclairs
+{t('reset lightning')}
       </span>
       <span style={{ fontSize: '12px', color: '#ffffff', fontWeight: '500' }}>
-        {user?.tokensResetDate?.seconds 
-  ? new Date(user.tokensResetDate.seconds * 1000).toLocaleDateString('fr-FR') 
-  : "Sous 30 jours"}
+   {user?.tokensResetDate?.seconds
+? new Date(user.tokensResetDate.seconds * 1000).toLocaleDateString()
+: t('under 30 days')}
       </span>
     </div>
   </div>
@@ -314,13 +313,13 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
   <div style={{ fontSize: '18px', filter: 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.4))' }}>💎</div>
   <div style={{ display: 'flex', flexDirection: 'column' }}>
     <span style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', fontWeight: '900', letterSpacing: '0.5px' }}>
-      Validité Diamants
+      {t('diamond validity')}
     </span>
 <span style={{ fontSize: '12px', color: '#ffffff', fontWeight: '500' }}>
   {/* On utilise packExpiryDate car c'est le nom exact dans ta base Firebase */}
-  {user?.packExpiryDate?.seconds 
+ {user?.packExpiryDate?.seconds 
     ? new Date(user.packExpiryDate.seconds * 1000).toLocaleDateString('fr-FR') 
-    : "Valable 1 an"}
+    : t('valid 1 year')}
 </span>
   </div>
 </div>
@@ -328,7 +327,7 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
 {/* --- FIN DU BLOC --- */}
 
                  <div className="dropdown-divider"></div>
-                  <div className="dropdown-item logout" onClick={(e) => { e.stopPropagation(); onLogout(); setShowDropdown(false); }}>🚪 Déconnexion</div>
+                  <div className="dropdown-item logout" onClick={(e) => { e.stopPropagation(); onLogout(); setShowDropdown(false); }}>🚪 {t('logout')}</div>
                 </div>
               )}
             </div> 

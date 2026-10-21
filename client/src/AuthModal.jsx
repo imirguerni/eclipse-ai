@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import './AuthModal.css'; 
-import { useNavigate } from 'react-router-dom';
-import { auth, googleProvider } from './firebase'; 
-import { updateProfile } from 'firebase/auth'; 
-import { 
-
+import './AuthModal.css';
+import { auth, googleProvider } from './firebase';
+import { updateProfile } from 'firebase/auth';
+import {
   signInWithPopup,
-  browserPopupRedirectResolver,
   signInWithRedirect,
   OAuthProvider,
   signInWithEmailAndPassword,
@@ -14,262 +11,357 @@ import {
   sendPasswordResetEmail,
   signOut
 } from 'firebase/auth';
+import { useTranslation } from 'react-i18next';
 
-const AuthModal = ({ isOpen, onClose, onSuccess, onShowTerms, onShowPrivacy }) => {  const [successMessage, setSuccessMessage] = useState('');
+const AuthModal = ({ isOpen, onClose, onSuccess, onShowTerms, onShowPrivacy }) => {
+  const { t } = useTranslation();
+
+  const [successMessage, setSuccessMessage] = useState('');
   const [view, setView] = useState('methods');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(''); // Pour stocker le message court
+  const [error, setError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // NOUVEAU : État pour l'œil
+  const [showPassword, setShowPassword] = useState(false);
   const isAppleEnabled = false;
-const [otpCode, setOtpCode] = useState('');
-const [userId, setUserId] = useState('');
-
-
+  const [otpCode, setOtpCode] = useState('');
+  const [userId, setUserId] = useState('');
 
   if (!isOpen) return null;
 
-  // --- LOGIQUE GOOGLE ---// --- LOGIQUE GOOGLE CORRIGÉE ---
-const handleGoogleLogin = async () => {
-  setError("");
+  // --- LOGIQUE GOOGLE ---
+  const handleGoogleLogin = async () => {
+    setError('');
 
-  try {
-    // Utilisation de Popup au lieu de Redirect
-    const result = await signInWithPopup(auth, googleProvider);
-    
-    // Le résultat contient maintenant l'utilisateur
-    const user = result.user;
-    console.log("✅ Utilisateur Google connecté :", user.email);
-
-    // Si tu as une fonction pour créer le profil en base (comme tu l'as codé avant)
-    // await createUserProfile(user); 
-
-    onClose(); // Ferme la modale
-
-    if (onSuccess) {
-      onSuccess(user);
-    }
-
-  } catch (error) {
-    console.error("❌ Erreur Google :", error.code);
-    // Erreur fréquente : popup bloqué par le navigateur
-    if (error.code === 'auth/popup-blocked') {
-      setError("Autorisez les popups pour vous connecter");
-    } else {
-      setError("Erreur lors de la connexion avec Google");
-    }
-  }
-};
-
-  // --- LOGIQUE APPLE ---
-  const handleAppleLogin = async () => {
-    setError("");
-    const appleProvider = new OAuthProvider('apple.com');
     try {
-      await signInWithPopup(auth, appleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+
+      const user = result.user;
+      console.log('✅ Utilisateur Google connecté :', user.email);
+
       onClose();
-      if (onSuccess) onSuccess();
+
+      if (onSuccess) {
+        onSuccess(user);
+      }
+
     } catch (error) {
-      console.error("Erreur Apple:", error.code);
-      setError("Erreur connexion Apple");
+      console.error('❌ Erreur Google :', error.code);
+
+      if (error.code === 'auth/popup-blocked') {
+        setError(t('allow popups login'));
+      } else {
+        setError(t('google login error'));
+      }
     }
   };
 
- // --- LOGIQUE RÉCUPÉRATION ---
+  // --- LOGIQUE APPLE ---
+  const handleAppleLogin = async () => {
+    setError('');
+
+    const appleProvider = new OAuthProvider('apple.com');
+
+    try {
+      await signInWithPopup(auth, appleProvider);
+
+      onClose();
+
+      if (onSuccess) onSuccess();
+
+    } catch (error) {
+      console.error('Erreur Apple:', error.code);
+      setError(t('apple login error'));
+    }
+  };
+
+  // --- LOGIQUE RÉCUPÉRATION ---
   const handleForgotPassword = async (e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    setError("");
-    setSuccessMessage(""); // On réinitialise
 
-    if (!email || email.trim() === "") {
-      setError("Saisissez votre e-mail");
+    setError('');
+    setSuccessMessage('');
+
+    if (!email || email.trim() === '') {
+      setError(t('enter email'));
       return;
     }
 
     try {
       await sendPasswordResetEmail(auth, email.trim());
-      // On affiche le message de succès (il restera là tant qu'on ne change pas de vue)
-      setSuccessMessage("Lien envoyé à " + email);
+
+      setSuccessMessage(`${t('link sent to')} ${email}`);
 
       setTimeout(() => {
-        setSuccessMessage(""); // On vide le message
-        setView('auth-form');  // On bascule sur la connexion
+        setSuccessMessage('');
+        setView('auth-form');
       }, 2000);
-      
+
     } catch (err) {
-      console.error("Erreur Firebase:", err.code);
+      console.error('Erreur Firebase:', err.code);
+
       if (err.code === 'auth/user-not-found') {
-        setError("Compte inexistant");
+        setError(t('account not found'));
       } else {
-        setError("Vérifiez votre mail");
+        setError(t('check email'));
       }
     }
   };
-// --- LOGIQUE EMAIL (CONNEXION/INSCRIPTION) ---
+
+  // --- LOGIQUE EMAIL (CONNEXION/INSCRIPTION) ---
   const handleEmailAuth = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
+
     try {
       let userCredential;
+
       if (isRegistering) {
-        userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-        
+        userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email.trim(),
+          password
+        );
+
         await updateProfile(userCredential.user, {
           displayName: email.split('@')[0],
-          photoURL: "https://api.dicebear.com/7.x/bottts/svg?seed=" + email.trim()
+          photoURL:
+            'https://api.dicebear.com/7.x/bottts/svg?seed=' +
+            email.trim()
         });
+
       } else {
-        userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+        userCredential = await signInWithEmailAndPassword(
+          auth,
+          email.trim(),
+          password
+        );
       }
 
       const firebaseUser = userCredential.user;
       const tempUid = firebaseUser.uid;
 
-      // 🔒 SÉCURITÉ : On déconnecte immédiatement Firebase pour empêcher le F5
+      // Sécurité : déconnexion immédiate avant la vérification OTP
       await signOut(auth);
 
-      // 🚀 ON ENVOIE LE EMAIL ET LE USERID AU BACKEND
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: email.trim(),
-          userId: tempUid 
-        })
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/send-otp`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            userId: tempUid
+          })
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de l'envoi du code OTP");
+        throw new Error(
+          data.error || t('otp sending error')
+        );
       }
 
       setUserId(data.userId);
       setView('otp-verify');
-      setSuccessMessage("Un code de vérification vous a été envoyé par e-mail.");
+      setSuccessMessage(t('verification code sent'));
 
     } catch (err) {
       console.error(err);
+
       if (err.code === 'auth/email-already-in-use') {
-        setError("Cet e-mail est déjà associé à un compte.");
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
-        setError("Adresse e-mail ou mot de passe incorrect.");
+        setError(t('email already in use'));
+
+      } else if (
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/user-not-found'
+      ) {
+        setError(t('invalid email password'));
+
       } else if (err.code === 'auth/invalid-email') {
-        setError("Le format de l'adresse e-mail est invalide.");
+        setError(t('invalid email format'));
+
       } else if (err.code === 'auth/weak-password') {
-        setError("Le mot de passe doit contenir au moins 6 caractères.");
+        setError(t('weak password'));
+
       } else if (err.message) {
         setError(err.message);
+
       } else {
-        setError("Une erreur est survenue. Veuillez réessayer.");
+        setError(t('unexpected error'));
       }
     }
   };
-  
+
+  // --- VÉRIFICATION OTP ---
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    setError("");
-    try {
-      // 1. On récupère l'état de la case à cocher "Se souvenir de ce navigateur"
-      const rememberDevice = document.getElementById('rememberDevice')?.checked || false;
+    setError('');
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId, 
-          code: otpCode.trim(), 
-          rememberDevice // 👈 On transmet l'info au backend
-        })
-      });
+    try {
+      const rememberDevice =
+        document.getElementById('rememberDevice')?.checked || false;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/verify-otp`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId,
+            code: otpCode.trim(),
+            rememberDevice
+          })
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Code invalide");
+        throw new Error(data.error || t('invalid code'));
       }
 
-      // 2. Si le backend renvoie un jeton de confiance, on le stocke dans le navigateur pour 30 jours
       if (data.trustedToken) {
-        localStorage.setItem('ovortex_trusted_device', data.trustedToken);
+        localStorage.setItem(
+          'ovortex_trusted_device',
+          data.trustedToken
+        );
       }
 
-      // ✅ Le code OTP est valide : on reconnecte l'utilisateur officiellement sur Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
       const user = userCredential.user;
 
       onClose();
+
       if (onSuccess) onSuccess(user);
 
     } catch (err) {
       console.error(err);
-      setError(err.message || "Erreur lors de la validation du code");
+      setError(err.message || t('code validation error'));
     }
   };
-  
-return (
-  <div className="auth-overlay notranslate" translate="no">
-    <div className="auth-card">
-      {/* On cache la croix de fermeture pendant la vérification OTP pour bloquer l'accès non vérifié */}
-      {view !== 'otp-verify' && (
-        <button className="auth-close-btn" onClick={onClose}>✕</button>
-      )}
 
-      <h2 className="auth-title">Ovortex</h2>
+  return (
+    <div className="auth-overlay notranslate" translate="no">
+      <div className="auth-card">
+
+        {view !== 'otp-verify' && (
+          <button
+            className="auth-close-btn"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        )}
+
+        <h2 className="auth-title">Ovortex</h2>
 
         {/* --- VUE 1 : MÉTHODES --- */}
         {view === 'methods' && (
           <div className="auth-methods">
-            <button className="method-btn google" onClick={handleGoogleLogin}>
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" />
-              Continuer avec Google
+
+            <button
+              className="method-btn google"
+              onClick={handleGoogleLogin}
+            >
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="G"
+              />
+              {t('continue google')}
             </button>
-            
+
             {isAppleEnabled && (
-              <button className="method-btn dark" onClick={handleAppleLogin}>
-                <i className="fab fa-apple"></i> Continuer avec Apple
+              <button
+                className="method-btn dark"
+                onClick={handleAppleLogin}
+              >
+                <i className="fab fa-apple"></i>
+                {t('continue apple')}
               </button>
             )}
 
-            <div className="auth-divider">OU</div>
+            <div className="auth-divider">
+              {t('or')}
+            </div>
 
-            {/* AFFICHAGE ERREUR MÉTHODES SOCIALES */}
-            {error && <p style={{ color: '#ff4d4d', fontSize: '13px', marginBottom: '10px', textAlign: 'center' }}>{error}</p>}
+            {error && (
+              <p
+                style={{
+                  color: '#ff4d4d',
+                  fontSize: '13px',
+                  marginBottom: '10px',
+                  textAlign: 'center'
+                }}
+              >
+                {error}
+              </p>
+            )}
 
-            <button className="method-btn dark" onClick={() => { setView('auth-form'); setError(""); }}>
-              <i className="far fa-envelope"></i> Continuer avec l'e-mail
+            <button
+              className="method-btn dark"
+              onClick={() => {
+                setView('auth-form');
+                setError('');
+              }}
+            >
+              <i className="far fa-envelope"></i>
+              {t('continue email')}
             </button>
           </div>
         )}
 
         {/* --- VUE 2 : FORMULAIRE --- */}
         {view === 'auth-form' && (
-          <form onSubmit={handleEmailAuth} className="email-form">
-            <input 
-              type="email" 
-              placeholder="Votre e-mail" 
+          <form
+            onSubmit={handleEmailAuth}
+            className="email-form"
+          >
+
+            <input
+              type="email"
+              placeholder={t('your email')}
               className="auth-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required 
+              required
             />
-            
-            {/* CONTENEUR DU MOT DE PASSE AVEC L'OEIL */}
-            <div style={{ position: 'relative', width: '100%' }}>
-              <input 
-                type={showPassword ? "text" : "password"} 
-                placeholder="Mot de passe" 
+
+            <div
+              style={{
+                position: 'relative',
+                width: '100%'
+              }}
+            >
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder={t('password')}
                 className="auth-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required 
-                style={{ width: '100%', paddingRight: '40px' }}
+                required
+                style={{
+                  width: '100%',
+                  paddingRight: '40px'
+                }}
               />
-              <span 
+
+              <span
                 onClick={() => setShowPassword(!showPassword)}
                 style={{
                   position: 'absolute',
@@ -286,199 +378,388 @@ return (
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </span>
             </div>
-            
+
             {!isRegistering && (
-              <p 
-                className="forgot-password-link" 
-                onClick={() => { setView('forgot-password'); setError(""); }}
-                style={{ fontSize: '12px', color: '#888', cursor: 'pointer', textAlign: 'right', marginTop: '-5px', marginBottom: '10px' }}
+              <p
+                className="forgot-password-link"
+                onClick={() => {
+                  setView('forgot-password');
+                  setError('');
+                }}
+                style={{
+                  fontSize: '12px',
+                  color: '#888',
+                  cursor: 'pointer',
+                  textAlign: 'right',
+                  marginTop: '-5px',
+                  marginBottom: '10px'
+                }}
               >
-                Mot de passe oublié ?
+                {t('forgot password')}
               </p>
             )}
 
-            {/* AFFICHAGE ERREUR COURTE ICI */}
             {error && (
-              <p style={{ color: '#ff4d4d', fontSize: '13px', marginBottom: '10px', textAlign: 'center', fontWeight: '500' }}>
+              <p
+                style={{
+                  color: '#ff4d4d',
+                  fontSize: '13px',
+                  marginBottom: '10px',
+                  textAlign: 'center',
+                  fontWeight: '500'
+                }}
+              >
                 ⚠️ {error}
               </p>
             )}
 
-            <button type="submit" className="submit-btn">
-              {isRegistering ? "Créer mon compte" : "Se connecter"}
+            <button
+              type="submit"
+              className="submit-btn"
+            >
+              {isRegistering
+                ? t('create my account')
+                : t('login')}
             </button>
 
-    <p className="switch-auth-mode">
-              {isRegistering ? "Déjà un compte ?" : "Nouveau ici ?"}
-              <span 
-                style={{ color: '#a855f7', cursor: 'pointer', marginLeft: '5px' }} 
-                onClick={() => { setIsRegistering(!isRegistering); setError(""); }}
+            <p className="switch-auth-mode">
+              {isRegistering
+                ? t('already have account')
+                : t('new here')}
+
+              <span
+                style={{
+                  color: '#a855f7',
+                  cursor: 'pointer',
+                  marginLeft: '5px'
+                }}
+                onClick={() => {
+                  setIsRegistering(!isRegistering);
+                  setError('');
+                }}
               >
-                {isRegistering ? " Se connecter" : " Créer un compte"}
+                {isRegistering
+                  ? t('login')
+                  : t('create account')}
               </span>
             </p>
-            
-            {/* Conteneur avec espace en haut ET en bas */}
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '1px', marginBottom: '20px' }}>
-              <button 
-                type="button" 
-                className="back-btn" 
-                onClick={() => { setView('methods'); setError(""); }} 
-                style={{ 
-                  background: 'rgba(255, 255, 255, 0.05)', 
-                  border: '1px solid rgba(255, 255, 255, 0.1)', 
-                  color: '#94a3b8', 
-                  cursor: 'pointer', 
-                  width: '100%', 
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                width: '100%',
+                marginTop: '1px',
+                marginBottom: '20px'
+              }}
+            >
+              <button
+                type="button"
+                className="back-btn"
+                onClick={() => {
+                  setView('methods');
+                  setError('');
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  width: '100%',
                   padding: '10px',
                   borderRadius: '12px',
                   fontSize: '13px',
                   fontWeight: '500',
                   transition: '0.2s'
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.color = '#94a3b8'; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background =
+                    'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.color = '#94a3b8';
+                }}
               >
-                ← Retour
+                ← {t('back')}
               </button>
             </div>
           </form>
         )}
-{/* --- VUE 3 : FORMULAIRE MOT DE PASSE OUBLIÉ --- */}
+
+        {/* --- VUE 3 : MOT DE PASSE OUBLIÉ --- */}
         {view === 'forgot-password' && (
-          <form onSubmit={handleForgotPassword} className="email-form">
-            <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '10px', textAlign: 'center' }}>
-              Réinitialiser le mot de passe
+          <form
+            onSubmit={handleForgotPassword}
+            className="email-form"
+          >
+
+            <h3
+              style={{
+                fontSize: '16px',
+                color: '#fff',
+                marginBottom: '10px',
+                textAlign: 'center'
+              }}
+            >
+              {t('reset password')}
             </h3>
-            
-            <p style={{ fontSize: '13px', color: '#888', marginBottom: '15px', textAlign: 'center' }}>
-              Entrez votre e-mail pour recevoir un lien de récupération.
+
+            <p
+              style={{
+                fontSize: '13px',
+                color: '#888',
+                marginBottom: '15px',
+                textAlign: 'center'
+              }}
+            >
+              {t('reset password description')}
             </p>
 
-            <input 
-              type="email" 
-              placeholder="Votre e-mail" 
+            <input
+              type="email"
+              placeholder={t('your email')}
               className="auth-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required 
+              required
             />
 
             {error && (
-              <p style={{ color: '#ff4d4d', fontSize: '13px', marginBottom: '10px', textAlign: 'center' }}>
+              <p
+                style={{
+                  color: '#ff4d4d',
+                  fontSize: '13px',
+                  marginBottom: '10px',
+                  textAlign: 'center'
+                }}
+              >
                 ⚠️ {error}
               </p>
             )}
 
             {successMessage && (
-              <p style={{ 
-                color: '#10b981', 
-                background: 'rgba(16, 185, 129, 0.1)', 
-                fontSize: '13px', 
-                padding: '10px',
-                borderRadius: '8px',
-                marginBottom: '15px', 
-                textAlign: 'center',
-                border: '1px solid rgba(16, 185, 129, 0.2)',
-                fontWeight: '500'
-              }}>
+              <p
+                style={{
+                  color: '#10b981',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  fontSize: '13px',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  marginBottom: '15px',
+                  textAlign: 'center',
+                  border:
+                    '1px solid rgba(16, 185, 129, 0.2)',
+                  fontWeight: '500'
+                }}
+              >
                 ✅ {successMessage}
               </p>
             )}
 
-            <button type="submit" className="submit-btn" style={{ marginTop: '10px' }}>
-              Envoyer le lien
+            <button
+              type="submit"
+              className="submit-btn"
+              style={{ marginTop: '10px' }}
+            >
+              {t('send link')}
             </button>
-            
-            <button type="button" className="back-btn" onClick={() => { setView('auth-form'); setError(""); setSuccessMessage(""); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: '100%', marginTop: '10px' }}>
-              ← Retour à la connexion
+
+            <button
+              type="button"
+              className="back-btn"
+              onClick={() => {
+                setView('auth-form');
+                setError('');
+                setSuccessMessage('');
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#666',
+                cursor: 'pointer',
+                width: '100%',
+                marginTop: '10px'
+              }}
+            >
+              ← {t('back to login')}
             </button>
           </form>
         )}
-{/* --- VUE 4 : SAISIE DU CODE OTP --- */}
+
+        {/* --- VUE 4 : OTP --- */}
         {view === 'otp-verify' && (
-          <form onSubmit={handleVerifyOtp} className="email-form">
-            <h3 style={{ fontSize: '16px', color: '#fff', marginBottom: '10px', textAlign: 'center' }}>
-              Double Authentification
+          <form
+            onSubmit={handleVerifyOtp}
+            className="email-form"
+          >
+
+            <h3
+              style={{
+                fontSize: '16px',
+                color: '#fff',
+                marginBottom: '10px',
+                textAlign: 'center'
+              }}
+            >
+              {t('otp title')}
             </h3>
-            
-            <p style={{ fontSize: '13px', color: '#888', marginBottom: '15px', textAlign: 'center' }}>
-              Entrez le code à 6 chiffres reçu par e-mail.
+
+            <p
+              style={{
+                fontSize: '13px',
+                color: '#888',
+                marginBottom: '15px',
+                textAlign: 'center'
+              }}
+            >
+              {t('otp subtitle')}
             </p>
 
-            <input 
-              type="text" 
+            <input
+              type="text"
               maxLength="6"
-              placeholder="123456" 
+              placeholder="123456"
               className="auth-input"
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value)}
-              required 
-              style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '18px' }}
+              required
+              style={{
+                textAlign: 'center',
+                letterSpacing: '4px',
+                fontSize: '18px'
+              }}
             />
 
-            {/* CASE À COCHER : SE SOUVENIR DE CE NAVIGATEUR (30 JOURS) */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#ccc', margin: '15px 0 5px 0', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-              <input 
-                type="checkbox" 
-                id="rememberDevice" 
-                style={{ accentColor: '#a855f7', width: '16px', height: '16px', cursor: 'pointer' }}
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '13px',
+                color: '#ccc',
+                margin: '15px 0 5px 0',
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%'
+              }}
+            >
+              <input
+                type="checkbox"
+                id="rememberDevice"
+                style={{
+                  accentColor: '#a855f7',
+                  width: '16px',
+                  height: '16px',
+                  cursor: 'pointer'
+                }}
               />
-              Se souvenir de ce navigateur pendant 30 jours
+
+              {t('remember device')}
             </label>
 
             {error && (
-              <p style={{ color: '#ff4d4d', fontSize: '13px', marginBottom: '10px', textAlign: 'center' }}>
+              <p
+                style={{
+                  color: '#ff4d4d',
+                  fontSize: '13px',
+                  marginBottom: '10px',
+                  textAlign: 'center'
+                }}
+              >
                 ⚠️ {error}
               </p>
             )}
 
             {successMessage && (
-              <p style={{ 
-                color: '#10b981', 
-                background: 'rgba(16, 185, 129, 0.1)', 
-                fontSize: '13px', 
-                padding: '10px',
-                borderRadius: '8px',
-                marginBottom: '15px', 
-                textAlign: 'center',
-                border: '1px solid rgba(16, 185, 129, 0.2)'
-              }}>
+              <p
+                style={{
+                  color: '#10b981',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  fontSize: '13px',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  marginBottom: '15px',
+                  textAlign: 'center',
+                  border:
+                    '1px solid rgba(16, 185, 129, 0.2)'
+                }}
+              >
                 ✅ {successMessage}
               </p>
             )}
 
-            <button type="submit" className="submit-btn" style={{ marginTop: '10px' }}>
-              Valider le code
-            </button>
-            
-            <button 
-              type="button" 
-              className="back-btn" 
-              onClick={async () => { 
-                try {
-                  await signOut(auth); 
-                } catch (err) {
-                  console.error("Erreur déconnexion :", err);
-                }
-                setView('auth-form'); 
-                setError(""); 
-                setSuccessMessage(""); 
-                setOtpCode(""); 
-              }} 
-              style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', width: '100%', marginTop: '10px' }}
+            <button
+              type="submit"
+              className="submit-btn"
+              style={{ marginTop: '10px' }}
             >
-              ← Retour
+              {t('validate code')}
+            </button>
+
+            <button
+              type="button"
+              className="back-btn"
+              onClick={async () => {
+                try {
+                  await signOut(auth);
+                } catch (err) {
+                  console.error(
+                    'Erreur déconnexion :',
+                    err
+                  );
+                }
+
+                setView('auth-form');
+                setError('');
+                setSuccessMessage('');
+                setOtpCode('');
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#666',
+                cursor: 'pointer',
+                width: '100%',
+                marginTop: '10px'
+              }}
+            >
+              ← {t('back')}
             </button>
           </form>
         )}
 
         <p className="auth-legal">
-           En continuant, vous acceptez les 
-           <span className="terms-link" onClick={onShowTerms} style={{ cursor: 'pointer', color: '#a855f7' }}> Conditions d'utilisation</span>
-           {' et la '}
-           <span className="privacy-link" onClick={onShowPrivacy} style={{ cursor: 'pointer', color: '#a855f7' }}> Politique de Confidentialité</span>
+          {t('by continuing you accept')}
+
+          <span
+            className="terms-link"
+            onClick={onShowTerms}
+            style={{
+              cursor: 'pointer',
+              color: '#a855f7'
+            }}
+          >
+            {' '}
+            {t('terms of use')}
+          </span>
+
+          {` ${t('and')} `}
+
+          <span
+            className="privacy-link"
+            onClick={onShowPrivacy}
+            style={{
+              cursor: 'pointer',
+              color: '#a855f7'
+            }}
+          >
+            {t('privacy policy')}
+          </span>
         </p>
+
       </div>
     </div>
   );

@@ -1,0 +1,182 @@
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 7.0-c000 1.000000, 0000/00/00-00:00:00        ">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/"
+   crs:PresetType="Normal"
+   crs:Cluster=""
+   crs:UUID="25C7677D92D6416D9BB2BACF3A9526CD"
+   crs:SupportsAmount2="True"
+   crs:SupportsAmount="True"
+   crs:SupportsColor="True"
+   crs:SupportsMonochrome="True"
+   crs:SupportsHighDynamicRange="True"
+   crs:SupportsNormalDynamicRange="True"
+   crs:SupportsSceneReferred="True"
+   crs:SupportsOutputReferred="True"
+   crs:RequiresRGBTables="False"
+   crs:CameraModelRestriction=""
+   crs:Copyright=""
+   crs:ContactInfo=""
+   crs:Version="17.1"
+   crs:ProcessVersion="15.4"
+   crs:Contrast2012="-20"
+   crs:Highlights2012="0"
+   crs:Shadows2012="+15"
+   crs:Whites2012="0"
+   crs:Blacks2012="+25"
+   crs:Texture="0"
+   crs:Clarity2012="0"
+   crs:Dehaze="0"
+   crs:Vibrance="0"
+   crs:Saturation="0"
+   crs:ParametricShadows="-5"
+   crs:ParametricDarks="0"
+   crs:ParametricLights="0"
+   crs:ParametricHighlights="+5"
+   crs:ParametricShadowSplit="10"
+   crs:ParametricMidtoneSplit="35"
+   crs:ParametricHighlightSplit="75"
+   crs:Sharpness="0"
+   crs:LuminanceSmoothing="0"
+   crs:ColorNoiseReduction="25"
+   crs:ColorNoiseReductionDetail="50"
+   crs:ColorNoiseReductionSmoothness="50"
+   crs:HueAdjustmentRed="+7"
+   crs:HueAdjustmentOrange="+10"
+   crs:HueAdjustmentYellow="+25"
+   crs:HueAdjustmentGreen="+32"
+   crs:HueAdjustmentAqua="+2"
+   crs:HueAdjustmentBlue="-2"
+   crs:HueAdjustmentPurple="+10"
+   crs:HueAdjustmentMagenta="0"
+   crs:SaturationAdjustmentRed="-13"
+   crs:SaturationAdjustmentOrange="-2"
+   crs:SaturationAdjustmentYellow="-25"
+   crs:SaturationAdjustmentGreen="-32"
+   crs:SaturationAdjustmentAqua="-20"
+   crs:SaturationAdjustmentBlue="-12"
+   crs:SaturationAdjustmentPurple="-25"
+   crs:SaturationAdjustmentMagenta="-17"
+   crs:LuminanceAdjustmentRed="+2"
+   crs:LuminanceAdjustmentOrange="0"
+   crs:LuminanceAdjustmentYellow="-7"
+   crs:LuminanceAdjustmentGreen="-10"
+   crs:LuminanceAdjustmentAqua="+7"
+   crs:LuminanceAdjustmentBlue="-5"
+   crs:LuminanceAdjustmentPurple="+15"
+   crs:LuminanceAdjustmentMagenta="+5"
+   crs:SplitToningShadowHue="93"
+   crs:SplitToningShadowSaturation="0"
+   crs:SplitToningHighlightHue="50"
+   crs:SplitToningHighlightSaturation="0"
+   crs:SplitToningBalance="0"
+   crs:ColorGradeMidtoneHue="0"
+   crs:ColorGradeMidtoneSat="0"
+   crs:ColorGradeShadowLum="0"
+   crs:ColorGradeMidtoneLum="0"
+   crs:ColorGradeHighlightLum="0"
+   crs:ColorGradeBlending="100"
+   crs:ColorGradeGlobalHue="0"
+   crs:ColorGradeGlobalSat="0"
+   crs:ColorGradeGlobalLum="0"
+   crs:GrainAmount="30"
+   crs:GrainSize="50"
+   crs:GrainFrequency="40"
+   crs:PostCropVignetteAmount="0"
+   crs:ShadowTint="0"
+   crs:RedHue="+7"
+   crs:RedSaturation="-5"
+   crs:GreenHue="0"
+   crs:GreenSaturation="-10"
+   crs:BlueHue="-5"
+   crs:BlueSaturation="0"
+   crs:CurveRefineSaturation="100"
+   crs:OverrideLookVignette="False"
+   crs:ToneCurveName2012="Custom"
+   crs:HasSettings="True">
+   <crs:Name>
+    <rdf:Alt>
+     <rdf:li xml:lang="x-default">Cinestill 50D</rdf:li>
+    </rdf:Alt>
+   </crs:Name>
+   <crs:ShortName>
+    <rdf:Alt>
+     <rdf:li xml:lang="x-default"/>
+    </rdf:Alt>
+   </crs:ShortName>
+   <crs:SortName>
+    <rdf:Alt>
+     <rdf:li xml:lang="x-default"/>
+    </rdf:Alt>
+   </crs:SortName>
+   <crs:Group>
+    <rdf:Alt>
+     <rdf:li xml:lang="x-default">TCP Classic ECN2 2025</rdf:li>
+    </rdf:Alt>
+   </crs:Group>
+   <crs:Description>
+    <rdf:Alt>
+     <rdf:li xml:lang="x-default"/>
+    </rdf:Alt>
+   </crs:Description>
+   <crs:ToneCurvePV2012>
+    <rdf:Seq>
+     <rdf:li>0, 11</rdf:li>
+     <rdf:li>29, 23</rdf:li>
+     <rdf:li>65, 62</rdf:li>
+     <rdf:li>125, 125</rdf:li>
+     <rdf:li>215, 218</rdf:li>
+     <rdf:li>255, 238</rdf:li>
+    </rdf:Seq>
+   </crs:ToneCurvePV2012>
+   <crs:ToneCurvePV2012Red>
+    <rdf:Seq>
+     <rdf:li>0, 0</rdf:li>
+     <rdf:li>17, 10</rdf:li>
+     <rdf:li>77, 69</rdf:li>
+     <rdf:li>128, 136</rdf:li>
+     <rdf:li>185, 195</rdf:li>
+     <rdf:li>255, 255</rdf:li>
+    </rdf:Seq>
+   </crs:ToneCurvePV2012Red>
+   <crs:ToneCurvePV2012Green>
+    <rdf:Seq>
+     <rdf:li>0, 0</rdf:li>
+     <rdf:li>17, 8</rdf:li>
+     <rdf:li>79, 70</rdf:li>
+     <rdf:li>131, 135</rdf:li>
+     <rdf:li>185, 192</rdf:li>
+     <rdf:li>255, 255</rdf:li>
+    </rdf:Seq>
+   </crs:ToneCurvePV2012Green>
+   <crs:ToneCurvePV2012Blue>
+    <rdf:Seq>
+     <rdf:li>0, 0</rdf:li>
+     <rdf:li>17, 11</rdf:li>
+     <rdf:li>78, 70</rdf:li>
+     <rdf:li>132, 136</rdf:li>
+     <rdf:li>186, 192</rdf:li>
+     <rdf:li>255, 255</rdf:li>
+    </rdf:Seq>
+   </crs:ToneCurvePV2012Blue>
+   <crs:PointColors>
+    <rdf:Seq>
+     <rdf:li>-1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000, -1.000000</rdf:li>
+    </rdf:Seq>
+   </crs:PointColors>
+   <crs:Look>
+    <rdf:Description
+     crs:Name="CineStill 50D"
+     crs:Amount="1"
+     crs:UUID="8732DD05B3394383964C15AEAD208E09"
+     crs:Stubbed="true">
+    <crs:Group>
+     <rdf:Alt>
+      <rdf:li xml:lang="x-default">Classic ECN2 2025</rdf:li>
+     </rdf:Alt>
+    </crs:Group>
+    </rdf:Description>
+   </crs:Look>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>

@@ -1,15 +1,66 @@
 require('dotenv').config();
+console.log(
+    "🔑 RUNWARE_API_KEY :",
+    process.env.RUNWARE_API_KEY ? "PRÉSENTE" : "ABSENTE"
+);
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const { fal } = require("@fal-ai/client");
+
+// ============================================================
+// RUNWARE
+// ============================================================
+
+let runwareClient = null;
+
+async function loadRunwareSDK() {
+    try {
+        // Chargement dynamique du SDK Runware
+        const sdk = await import("@runware/sdk");
+
+        if (typeof sdk.createClient === "function") {
+            return sdk.createClient;
+        }
+
+        if (typeof sdk.default?.createClient === "function") {
+            return sdk.default.createClient;
+        }
+
+        throw new Error("createClient introuvable dans @runware/sdk");
+
+    } catch (error) {
+        console.error("❌ Impossible de charger @runware/sdk :", error);
+        throw error;
+    }
+}
+
+async function getRunwareClient() {
+    if (!runwareClient) {
+        const createClient = await loadRunwareSDK();
+
+        runwareClient = await createClient({
+            apiKey: process.env.RUNWARE_API_KEY,
+            transport: "websocket"
+        });
+
+        await runwareClient.connect();
+
+        console.log("✅ Runware connecté");
+    }
+
+    return runwareClient;
+}
+
+
 const rateLimit = require("express-rate-limit");
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const helmet = require('helmet');
 const hpp = require('hpp');
 const { db, auth } = require('./firebaseAdmin');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
+const { spawn } = require('child_process');
 
 console.log("✅ Firebase Admin initialisé avec succès");
 // En haut de votre fichier principal (ex: server/index.js)
@@ -107,7 +158,6 @@ async function verifyRecaptcha(token) {
         return true;
     }
 }
-
 
 // 🛡️ MIDDLEWARE D'AUTHENTIFICATION :
 const authenticateUser = async (req, res, next) => {
@@ -285,7 +335,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
                     });
                 }
 if (type === 'subscription') {
-    const creditsByPlan = { essentiel: 300, standard: 700, master: 1200, elite: 2500, legende: 8000 };
+    const creditsByPlan = { essentiel: 3000, standard: 7000, master: 12000, elite: 25000, legende: 80000 };
     const baseCredits = creditsByPlan[planId.toLowerCase()] || 0;
     
     // On récupère l'intervalle envoyé depuis le front (ex: 'year' ou 'month')
@@ -461,7 +511,124 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         return res.status(500).json({ error: "Erreur serveur lors de l'upload." });
     }
 });
+// ==========================================
+// CONVERSION VIDÉO WEBM → MP4 H.264
+// ==========================================
 
+app.post('/api/convert-video', async (req, res) => {
+    console.log('🚨 ROUTE CONVERT-VIDEO APPELÉE');
+console.log('📦 BODY REÇU :', req.body);
+    try {
+        const { url } = req.body;
+
+        if (!url) {
+            return res.status(400).json({
+                error: "Aucune URL vidéo reçue."
+            });
+        }
+
+        console.log("🎬 Demande de conversion vidéo :", url);
+
+        const fileName = path.basename(new URL(url).pathname);
+        const inputPath = path.join(uploadDir, fileName);
+
+        if (!fs.existsSync(inputPath)) {
+            console.error("❌ Fichier source introuvable :", inputPath);
+
+            return res.status(404).json({
+                error: "Fichier vidéo source introuvable."
+            });
+        }
+
+        const baseName = path.parse(fileName).name;
+        const outputFileName = `${baseName}-mp4-${Date.now()}.mp4`;
+        const outputPath = path.join(uploadDir, outputFileName);
+
+        console.log("📥 Source :", inputPath);
+        console.log("📤 Destination :", outputPath);
+
+        const ffmpeg = spawn(ffmpegPath, [
+            '-y',
+            '-i', inputPath,
+
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-crf', '20',
+            '-pix_fmt', 'yuv420p',
+
+            '-c:a', 'aac',
+            '-b:a', '128k',
+
+            '-movflags', '+faststart',
+
+            outputPath
+        ]);
+
+        let stderr = '';
+
+        ffmpeg.stderr.on('data', (data) => {
+            const message = data.toString();
+            stderr += message;
+
+            if (
+                message.includes('frame=') ||
+                message.includes('time=') ||
+                message.includes('speed=')
+            ) {
+                process.stdout.write(`🎞️ ${message}`);
+            }
+        });
+
+        ffmpeg.on('error', (error) => {
+            console.error("❌ Impossible de lancer FFmpeg :", error);
+
+            return res.status(500).json({
+                error: "Impossible de lancer FFmpeg."
+            });
+        });
+
+        ffmpeg.on('close', (code) => {
+            if (code !== 0) {
+                console.error("❌ FFmpeg a échoué. Code :", code);
+                console.error(stderr);
+
+                return res.status(500).json({
+                    error: "La conversion MP4 a échoué."
+                });
+            }
+
+            if (!fs.existsSync(outputPath)) {
+                console.error("❌ Le fichier MP4 n'a pas été créé.");
+
+                return res.status(500).json({
+                    error: "Le fichier MP4 n'a pas été créé."
+                });
+            }
+
+            const protocol = req.protocol;
+            const host = req.get('host');
+
+            const fileUrl =
+                `${protocol}://${host}/uploads/${outputFileName}`;
+
+            console.log("✅ Conversion MP4 terminée :", fileUrl);
+
+            return res.json({
+                url: fileUrl,
+                fileName: outputFileName,
+                type: 'VIDEO',
+                mimeType: 'video/mp4'
+            });
+        });
+
+    } catch (error) {
+        console.error("❌ Erreur conversion vidéo :", error);
+
+        return res.status(500).json({
+            error: "Erreur serveur lors de la conversion vidéo."
+        });
+    }
+});
 /*
 // ==========================================
 
@@ -527,11 +694,11 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || "whsec_xxxxxxxxxxxx"
 
 // --- CONFIGURATION DES ABONNEMENTS ---
 const CREDITS_PER_MONTH = {
-    essentiel: 300,
-    standard: 700,
-    master: 1200,
-    elite: 2500,
-    legende: 8000
+    essentiel: 3000,
+    standard: 7000,
+    master: 12000,
+    elite: 25000,
+    legende: 80000
 };
 const STRIPE_PRICE_IDS = {
  // --- PLAN ESSENTIEL ---
@@ -619,8 +786,8 @@ app.post('/create-checkout-session', limiter, authenticateUser, async (req, res)
         if (amount >= 6000) totalPrice = isSubscriber ? 99.99 : 149.99;
         else if (amount >= 3000) totalPrice = isSubscriber ? 54.99 : 89.99;
         else if (amount >= 1500) totalPrice = isSubscriber ? 29.99 : 49.99;
-        else if (amount >= 600)  totalPrice = isSubscriber ? 12.99 : 24.99;
-        else if (amount >= 300)  totalPrice = isSubscriber ? 7.99 : 14.99;
+        else if (amount >= 6000)  totalPrice = isSubscriber ? 12.99 : 24.99;
+        else if (amount >= 3000)  totalPrice = isSubscriber ? 7.99 : 14.99;
         else                     totalPrice = isSubscriber ? 2.99 : 5.99;
 
         const session = await stripe.checkout.sessions.create({
@@ -806,14 +973,21 @@ app.post('/generate-image', limiter, authenticateUser, async (req, res) => {
     
 const { 
     prompt, 
+    width,
     height,
-    engineId, 
-    cost, 
-    costType, 
+    engineId,
+    cost,
+    costType,
     aspect_ratio,
+    resolution,
+    seed,
+    referenceImages,
+    referenceVideos,
+    outputFormat,
+    outputQuality,
+    providerSettings,
+    settings,
     recaptchaToken,
-
-    // 🖼️ Image de référence envoyée par le frontend
     startImage,
     start_image_url,
     image_url,
@@ -862,6 +1036,14 @@ if (!prompt || !engineId) {
         });
     }
 
+
+    // Refuser immédiatement les identifiants qui ne correspondent pas aux moteurs image exposés par le frontend.
+    // Cette validation précède le débit de crédits : un moteur invalide ne peut pas provoquer de débit.
+    const supportedImageEngineIds = new Set(["gpt_image2", "flux2pro", "nano_banana2_lite"]);
+    if (!supportedImageEngineIds.has(engineId)) {
+        return res.status(400).json({ error: `Moteur image non pris en charge : ${String(engineId).slice(0, 100)}` });
+    }
+
     // 🔒 SÉCURITÉ : Calcul ou validation du coût côté serveur (on ne fait pas confiance au req.body.cost)
     // Adapte cette ligne selon la structure exacte de ton dictionnaire de prix d'images
 // 1. Récupérer le plan de l'utilisateur (par exemple depuis sa base de données ou req.user, ici on met "0.00" par défaut ou on récupère son pack)
@@ -871,33 +1053,58 @@ if (!prompt || !engineId) {
     const initialUserDoc = await userRef.get();
     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};
 
-    const userPlanKey = userData.plan || "0.00"; 
+    const rawUserPlan = String(userData.userPlan || userData.plan || "debutant").toLowerCase();
+    const imagePlanToPrice = { debutant: "0.00", essentiel: "12.99", standard: "24.99", master: "34.99", elite: "59.99", legende: "159.99" };
+    const userPlanKey = imagePlanToPrice[rawUserPlan] || (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
     const userPricingTable = PRICING_DATA[userPlanKey] || PRICING_DATA["0.00"];
 
-    // 🔧 CORRECTION : Conversion de l'ID Fal complet en clé de ton dictionnaire
-    let engineShortKey = engineId;
-    if (engineId.includes("flux") || engineId.includes("schnell") || engineId.includes("dev")) {
-        engineShortKey = "flux";
+    // Tarification serveur dédiée aux trois moteurs image récents.
+    // Les clés doivent correspondre à celles de pricingConfig.js : ne pas rabattre ces modèles sur l'ancien tarif FLUX.
+    const rawReferenceImage =
+        startImage || start_image_url || image_url || uploadedImage || null;
+    const requestedReferenceImages = Array.isArray(referenceImages) ? referenceImages : [];
+    const requestedReferenceVideos = Array.isArray(referenceVideos) ? referenceVideos : [];
+    const hasReferenceImage = requestedReferenceImages.some(v => typeof v === "string" && v.trim()) ||
+        (typeof rawReferenceImage === "string" && rawReferenceImage.trim().length > 0);
+    const hasReferenceVideo = engineId === "nano_banana2_lite" &&
+        requestedReferenceVideos.some(v => typeof v === "string" && v.trim());
+
+    const safeAspectForPricing = ["16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "4:5", "5:4", "21:9"].includes(aspect_ratio)
+        ? aspect_ratio
+        : "1:1";
+    const requestedWidth = Number.parseInt(width, 10);
+    const requestedHeight = Number.parseInt(height, 10);
+    const pricingDimensions = {
+        "16:9": [1280, 720], "9:16": [720, 1280], "1:1": [1024, 1024],
+        "4:3": [1152, 864], "3:4": [864, 1152], "3:2": [1264, 848],
+        "2:3": [848, 1264], "4:5": [928, 1152], "5:4": [1152, 928], "21:9": [1584, 672]
+    };
+    let [pricingWidth, pricingHeight] = pricingDimensions[safeAspectForPricing];
+    if (Number.isFinite(requestedWidth) && requestedWidth > 0 && Number.isFinite(requestedHeight) && requestedHeight > 0) {
+        pricingWidth = requestedWidth;
+        pricingHeight = requestedHeight;
     }
 
-    // Récupération de l'objet de prix pour ce moteur (ex: { pro: 4, dev: 3, schnell: 1 })
-    const enginePricing = userPricingTable?.[engineShortKey] || userPricingTable?.[engineId];
-
-    // Extraction du coût spécifique selon la variante (schnell, dev, pro)
     let officialCost;
-    if (typeof enginePricing === 'object' && enginePricing !== null) {
-        if (engineId.includes("schnell")) officialCost = enginePricing.schnell;
-        else if (engineId.includes("dev")) officialCost = enginePricing.dev;
-        else if (engineId.includes("pro")) officialCost = enginePricing.pro;
-        else officialCost = Object.values(enginePricing)[0]; // Valeur par défaut de secours
-    } else {
-        officialCost = enginePricing;
+    if (engineId === "gpt_image2") {
+        const modelPricing = userPricingTable?.gptImage2;
+        officialCost = modelPricing?.[hasReferenceImage ? "referenceToImage" : "textToImage"];
+    } else if (engineId === "flux2pro") {
+        const megapixels = (pricingWidth * pricingHeight) / 1_000_000;
+        const sizeKey = megapixels <= 1.5 ? "mp1" : megapixels <= 3 ? "mp2" : "mp4";
+        officialCost = userPricingTable?.flux2pro?.[sizeKey];
+    } else if (engineId === "nano_banana2_lite") {
+        officialCost = userPricingTable?.nanoBanana2Lite?.[(hasReferenceImage || hasReferenceVideo) ? "reference1k" : "k1"];
     }
 
-    if (officialCost === undefined || !Number.isFinite(Number(officialCost))) {
-        console.error(`❌ Tarif serveur introuvable pour le plan ${userPlanKey} et le moteur : ${engineId}`);
+    if (officialCost === undefined || officialCost === null || !Number.isFinite(Number(officialCost)) || Number(officialCost) <= 0) {
+        console.error(`❌ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {
+            expectedPricingKey: engineId === "gpt_image2" ? "gptImage2" : engineId === "flux2pro" ? "flux2pro" : "nanoBanana2Lite",
+            hasReferenceImage,
+            hasReferenceVideo
+        });
         return res.status(400).json({
-            error: "Tarification serveur introuvable pour ce moteur."
+            error: "Tarification serveur introuvable pour ce moteur. Vérifiez les tarifs dans pricingConfig.js."
         });
     }
 
@@ -972,6 +1179,8 @@ try {
                 cost: finalCost, 
                 field: fieldToDecrement,
                 status: "processing",
+                provider: "runware",
+                engine: engineId,
                 createdAt: FieldValue.serverTimestamp()
             });
 
@@ -984,162 +1193,203 @@ try {
     // ⚡ Le débit est réellement validé en BDD à partir d'ICI
     creditsDebited = true;
 
-    // 🧪 CRASH DE TEST : Placé APRÈS la transaction réussie
 
-    let finalImageUrl;
-    const isGoogleImg =
-        engineId.includes("google") ||
-        engineId.includes("imagen");
+// ⚡ Le débit est réellement validé en BDD à partir d'ICI
+creditsDebited = true;
 
-        if (isGoogleImg) {
-            const response = await ai.models.generateImages({
-                model: "imagen-3.0-fast-generate-001",
-                prompt: prompt,
-                config: {
-                    numberOfImages: 1,
-                    aspectRatio: aspect_ratio || "1:1"
-                }
-            });
-            const generatedImage = 
-                response.generatedImages?.[0];
-
-            if (!generatedImage?.image?.imageBytes) {
-
-                throw new Error("Réponse Google vide.");
-            }
-            finalImageUrl =
-                `data:image/png;base64,${generatedImage.image.imageBytes}`;
-        } else {
-      let falImageSize = "landscape_4_3";
-
-if (aspect_ratio === "16:9") {
-    falImageSize = "landscape_16_9";
-}
-else if (aspect_ratio === "9:16") {
-    falImageSize = "portrait_16_9";
-}
-else if (aspect_ratio === "1:1") {
-    falImageSize = "square";
-}
-
-console.log("📐 Format image envoyé à Fal :", falImageSize);
-
-// 1. Nettoyez le prompt des termes indésirables ou non supportés par les API externes
-const cleanedPrompt = prompt
-    .replace(/photoréaliste|réalisme extrême|qualité cinéma hollywoodien|8k|textures de peau détaillées|éclairage volumétrique|HDR/gi, '')
-    .replace(/,\s*,/g, ',')
-    .trim();
-
-// 2. Utilisez "cleanedPrompt" dans l'objet envoyé à Fal
 // ============================================================
-// 🖼️ GESTION IMAGE DE RÉFÉRENCE / FLUX
+// ANCIEN SYSTÈME GOOGLE IMAGEN
+// CONSERVÉ POUR RETOUR EN ARRIÈRE
 // ============================================================
 
+/*
+const isGoogleImg =
+    engineId.includes("google") ||
+    engineId.includes("imagen");
 
-let falEngineId = engineId;
-let falInput = {
-    prompt: cleanedPrompt,
-    image_size: falImageSize
+if (isGoogleImg) {
+    const response = await ai.models.generateImages({
+        model: "imagen-3.0-fast-generate-001",
+        prompt: prompt,
+        config: {
+            numberOfImages: 1,
+            aspectRatio: aspect_ratio || "1:1"
+        }
+    });
+
+    const generatedImage =
+        response.generatedImages?.[0];
+
+    if (!generatedImage?.image?.imageBytes) {
+        throw new Error("Réponse Google vide.");
+    }
+
+    finalImageUrl =
+        `data:image/png;base64,${generatedImage.image.imageBytes}`;
+}
+*/
+
+// ============================================================
+// RUNWARE — GPT IMAGE 2 / FLUX.2 PRO / NANO BANANA 2 LITE
+// Fal est réservé à Seedance 1.5 Pro dans la route vidéo.
+// ============================================================
+const imageModelMap = {
+    gpt_image2: "openai:gpt-image@2",
+    flux2pro: "bfl:5@1",
+    nano_banana2_lite: "google:nano-banana@2-lite"
+};
+const runwareImageModel = imageModelMap[engineId];
+if (!runwareImageModel) {
+    throw new Error(`Modèle image non pris en charge par Runware : ${engineId}`);
+}
+
+const toPublicMediaUrl = (url) => {
+    if (typeof url !== "string" || !url.trim()) return null;
+    if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
+        return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com");
+    }
+    return url;
 };
 
-// ------------------------------------------------------------
-// FLUX DEV + IMAGE
-// ------------------------------------------------------------
-if (
-    referenceImage &&
-    engineId.includes("flux/dev")
-) {
-    falEngineId = "fal-ai/flux/dev/image-to-image";
+const referenceImageList = [...new Set([
+    ...(Array.isArray(referenceImages) ? referenceImages : []),
+    referenceImage
+].filter(url => typeof url === "string" && url.trim()).map(toPublicMediaUrl).filter(Boolean))];
+// Nano Banana 2 Lite accepte au maximum une vidéo de référence.
+const referenceVideoList = engineId === "nano_banana2_lite"
+    ? [...new Set(
+        (Array.isArray(referenceVideos) ? referenceVideos : [])
+            .filter(url => typeof url === "string" && url.trim())
+            .map(toPublicMediaUrl).filter(Boolean)
+      )].slice(0, 1)
+    : [];
 
-    falInput = {
-        prompt: cleanedPrompt,
-        image_url: referenceImage,
-        image_size: falImageSize,
-        strength: 0.65
+const safeAspect = ["16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "4:5", "5:4", "21:9"].includes(aspect_ratio) ? aspect_ratio : "1:1";
+const dimensionsByAspect = {
+    "16:9": [1536, 864], "9:16": [864, 1536], "1:1": [1024, 1024],
+    "4:3": [1152, 864], "3:4": [864, 1152], "21:9": [1536, 656]
+};
+let [safeWidth, safeHeight] = dimensionsByAspect[safeAspect];
+const parsedWidth = parseInt(width, 10);
+const parsedHeight = parseInt(height, 10);
+if (Number.isFinite(parsedWidth) && Number.isFinite(parsedHeight)) {
+    safeWidth = parsedWidth;
+    safeHeight = parsedHeight;
+}
+if (engineId === "nano_banana2_lite") {
+    const nanoDimensions = { "16:9": [1376,768], "9:16": [768,1376], "1:1": [1024,1024], "4:3": [1200,896], "3:4": [896,1200], "3:2": [1264,848], "2:3": [848,1264], "4:5": [928,1152], "5:4": [1152,928], "21:9": [1584,672] };
+    [safeWidth, safeHeight] = nanoDimensions[safeAspect] || nanoDimensions["1:1"];
+}
+const clampDimension = (value, min, max) => Math.max(min, Math.min(max, Math.round(value / 16) * 16));
+if (engineId === "flux2pro") {
+    safeWidth = clampDimension(safeWidth, 256, 2048);
+    safeHeight = clampDimension(safeHeight, 256, 2048);
+} else {
+    safeWidth = clampDimension(safeWidth, 16, 3840);
+    safeHeight = clampDimension(safeHeight, 16, 3840);
+}
+
+const runwareImageRequest = {
+    taskType: "imageInference",
+    model: runwareImageModel,
+    positivePrompt: String(prompt || "").trim(),
+    width: safeWidth,
+    height: safeHeight,
+    outputType: "URL",
+    outputFormat: ["JPG", "PNG", "WEBP"].includes(String(outputFormat || "").toUpperCase()) ? String(outputFormat).toUpperCase() : "JPG",
+    outputQuality: Math.max(20, Math.min(99, parseInt(outputQuality, 10) || 95)),
+    includeCost: true,
+    ...(Number.isInteger(Number(seed)) && Number(seed) >= 0 && String(seed).trim() !== "" && (engineId !== "nano_banana2_lite" || Number(seed) <= 2147483647) ? { seed: Number(seed) } : {})
+};
+// Nano Banana 2 Lite exige soit width/height, soit referenceImages + resolution=1K (pas les deux).
+if (engineId === "nano_banana2_lite" && referenceImageList.length > 0) {
+    delete runwareImageRequest.width;
+    delete runwareImageRequest.height;
+    runwareImageRequest.resolution = "1K";
+}
+if (engineId === "gpt_image2") {
+    runwareImageRequest.providerSettings = { openai: {
+        quality: ["auto", "high", "medium", "low"].includes(providerSettings?.openai?.quality) ? providerSettings.openai.quality : "auto",
+        moderation: ["auto", "low"].includes(providerSettings?.openai?.moderation) ? providerSettings.openai.moderation : "auto"
+    }};
+}
+if (engineId === "flux2pro") {
+    const rawSafetyTolerance = providerSettings?.bfl?.safetyTolerance;
+    const parsedSafetyTolerance = rawSafetyTolerance !== "" && rawSafetyTolerance != null
+        ? Number(rawSafetyTolerance)
+        : 2;
+    runwareImageRequest.providerSettings = { bfl: {
+        // 0 est une valeur valide : ne pas la remplacer par 2 avec un opérateur ||.
+        safetyTolerance: Number.isFinite(parsedSafetyTolerance)
+            ? Math.max(0, Math.min(5, Math.round(parsedSafetyTolerance)))
+            : 2
+    }};
+}
+if (engineId === "nano_banana2_lite") {
+    const temperature = Number(settings?.temperature);
+    const topP = Number(settings?.topP);
+    runwareImageRequest.settings = {
+        thinking: ["MINIMAL", "HIGH"].includes(settings?.thinking) ? settings.thinking : "MINIMAL",
+        temperature: Number.isFinite(temperature) ? Math.max(0, Math.min(2, temperature)) : 1,
+        topP: Number.isFinite(topP) ? Math.max(0, Math.min(1, topP)) : 0.95,
+        ...(typeof settings?.systemPrompt === "string" && settings.systemPrompt.trim() ? { systemPrompt: settings.systemPrompt.trim().slice(0, 50000) } : {})
     };
-
-    console.log("🖼️ Flux Dev → IMAGE-TO-IMAGE avec Prompt");
 }
-
-// ------------------------------------------------------------
-// FLUX SCHNELL + IMAGE
-// ------------------------------------------------------------
-else if (
-    referenceImage &&
-    engineId.includes("flux/schnell")
-) {
-    falEngineId = "fal-ai/flux/schnell/image-to-image";
-
-    falInput = {
-        prompt: cleanedPrompt,
-        image_url: referenceImage,
-        image_size: falImageSize,
-        strength: 0.65
+if (referenceImageList.length) {
+    const maxImages = engineId === "gpt_image2" ? 16 : engineId === "nano_banana2_lite" ? 14 : 9;
+    runwareImageRequest.inputs = { referenceImages: referenceImageList.slice(0, maxImages) };
+}
+if (engineId === "nano_banana2_lite" && referenceVideoList.length) {
+    // La vidéo doit être une URL publique accessible par Runware.
+    // Elle est transmise dans inputs.referenceVideos, séparément des images de référence.
+    runwareImageRequest.inputs = {
+        ...(runwareImageRequest.inputs || {}),
+        referenceVideos: referenceVideoList
     };
-
-    console.log("🖼️ Flux Schnell → IMAGE-TO-IMAGE avec Prompt");
 }
 
-// ------------------------------------------------------------
-// FLUX PRO + IMAGE
-// ------------------------------------------------------------
-else if (
-    referenceImage &&
-    engineId.includes("flux-pro")
-) {
-    // ✅ Pour Flux Pro v1.1, on utilise l'endpoint principal avec l'image et le prompt combinés
-    falEngineId = "fal-ai/flux-pro/v1.1";
+console.log("🎨 [RUNWARE IMAGE] Modèle :", runwareImageModel);
+console.log("🖼️ [RUNWARE IMAGE] Références image :", referenceImageList.length);
+console.log("🎞️ [RUNWARE IMAGE] Références vidéo :", referenceVideoList.length);
+console.log("📦 [RUNWARE IMAGE] Requête :", JSON.stringify(runwareImageRequest, null, 2));
 
-    falInput = {
-        prompt: cleanedPrompt,
-        image_url: referenceImage,
-        image_size: falImageSize
-    };
-
-    console.log("🖼️ Flux Pro v1.1 → PROMPT + IMAGE");
+const runware = await getRunwareClient();
+const [imageResult] = await runware.run(runwareImageRequest);
+finalImageUrl = imageResult.imageURL || imageResult.imageDataURI || null;
+if (!finalImageUrl && imageResult.imageBase64Data) {
+    finalImageUrl = `data:image/png;base64,${imageResult.imageBase64Data}`;
 }
-
-// ------------------------------------------------------------
-// GÉNÉRATION NORMALE SANS IMAGE
-// ------------------------------------------------------------
-else {
-    console.log("📝 Flux → TEXT-TO-IMAGE");
-}
-
-console.log("🚀 Modèle Fal utilisé :", falEngineId);
-console.log("📦 Input Fal :", JSON.stringify({
-    ...falInput,
-    image_url: referenceImage ? "[IMAGE]" : undefined
-}, null, 2));
-
-const result = await fal.subscribe(falEngineId, {
-    input: falInput,
-    logs: true
-});
-
-console.log("📦 REPONSE COMPLETE FAL :", JSON.stringify(result, null, 2));
-
-finalImageUrl = result.data?.images?.[0]?.url 
-             || result.images?.[0]?.url;
 
 if (!finalImageUrl) {
-    throw new Error("Fal.ai vide.");
+    throw new Error("Runware n'a retourné aucune URL d'image.");
 }
-        }
-// ✅ Marque la génération comme terminée
-        generationFinished = true; 
 
- await lockRef.update({
-            status: "completed",
-            completedAt: FieldValue.serverTimestamp(),
-            imageUrl: finalImageUrl,
-            prompt: prompt 
-        });
+await lockRef.update({
+    status: "completed",
+    provider: "runware",
+    engine: engineId,
+    completedAt: FieldValue.serverTimestamp(),
+    imageUrl: finalImageUrl,
+    url: finalImageUrl,
+    prompt: prompt
+});
 
-        console.log("📤 REPONSE ENVOYEE AU FRONT :", finalImageUrl);
-        res.json({
-            imageUrl: finalImageUrl
-        });
+if (userId && typeof finalImageUrl === "string" && /^https?:\/\//i.test(finalImageUrl)) {
+    await db.collection("users").doc(userId).collection("generations").add({
+        imageUrl: finalImageUrl,
+        url: finalImageUrl,
+        prompt: prompt || "",
+        description: prompt || "",
+        engine: engineId,
+        provider: "runware",
+        type: "IMAGE",
+        createdAt: FieldValue.serverTimestamp()
+    });
+}
+
+generationFinished = true;
+console.log("📤 REPONSE IMAGE RUNWARE ENVOYEE AU FRONT :", finalImageUrl);
+return res.json({ success: true, imageUrl: finalImageUrl, url: finalImageUrl, imageUUID: imageResult.imageUUID, taskUUID: imageResult.taskUUID, cost: imageResult.cost });
     } 
     
     catch (error) {
@@ -1183,7 +1433,10 @@ app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
     // - le débit des crédits
     // - Fal.ai
     // - Google Veo
-
+console.log(
+    "🖼️ [DEBUG] REFERENCE IMAGES REÇUES PAR LE SERVEUR :",
+    JSON.stringify(req.body.referenceImages || [], null, 2)
+);
     if (SECURITY_TEST_MODE) {
         console.log("");
         console.log("🛡️ ========================================");
@@ -1433,7 +1686,8 @@ req.on('close', () => {
                 cost: requiredCost,
                 field: usedWallet, // "tokens", "packTokens" ou "hybrid"
                 status: "processing",
-                provider: "fal",
+                provider: engineId === "seedance" ? "fal" : "runware",
+                engine: engineId,
                 createdAt: Timestamp.now(),
                 lastCheck: Timestamp.now()
             });
@@ -1452,8 +1706,1084 @@ req.on('close', () => {
 
         // Le débit est validé à 100%
         creditsDebited = true;
-    
 
+        // Finalisation commune des moteurs Runware : ferme le verrou et enregistre l'historique.
+        const completeRunwareVideo = async (result, modelName = engineId) => {
+            const generatedVideoUrl = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
+            if (!generatedVideoUrl) throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
+            const isPersistableUrl = typeof generatedVideoUrl === "string" && /^https?:\/\//i.test(generatedVideoUrl);
+            const lockUpdate = {
+                status: "completed",
+                provider: "runware",
+                engine: modelName,
+                prompt: prompt || req.body.prompt || "",
+                description: prompt || req.body.prompt || "",
+                completedAt: FieldValue.serverTimestamp()
+            };
+            if (isPersistableUrl) {
+                lockUpdate.videoUrl = generatedVideoUrl;
+                lockUpdate.url = generatedVideoUrl;
+            }
+            await lockRef.update(lockUpdate);
+            if (userId && isPersistableUrl) {
+                await db.collection("users").doc(userId).collection("generations").add({
+                    videoUrl: generatedVideoUrl,
+                    url: generatedVideoUrl,
+                    prompt: prompt || req.body.prompt || "",
+                    description: prompt || req.body.prompt || "",
+                    engine: modelName,
+                    provider: "runware",
+                    type: "VIDEO",
+                    createdAt: FieldValue.serverTimestamp()
+                });
+            }
+            generationFinished = true;
+            return res.json({
+                success: true,
+                status: "completed",
+                videoURL: generatedVideoUrl,
+                videoUrl: generatedVideoUrl,
+                url: generatedVideoUrl,
+                videoUUID: result?.videoUUID,
+                taskUUID: result?.taskUUID,
+                cost: result?.cost
+            });
+        };
+
+    // ============================================================
+    // ============================================================
+// 🎬 RUNWARE — GOOGLE VEO 3.1
+// ============================================================
+// Modes pris en charge :
+// - Text to Video
+// - Image to Video
+// - First + Last Frame
+// - Reference Images
+// - Video Extend
+// - Video Edit
+// - Audio
+// ============================================================
+
+if (engineId.toLowerCase().includes("veo3.1")) {
+
+    console.log("🎬 [RUNWARE] Veo 3.1 détecté");
+
+    try {
+
+        const runware = await getRunwareClient();
+
+        // --------------------------------------------------------
+        // DONNÉES ENTRANTES
+        // --------------------------------------------------------
+
+        const requestedResolution =
+            String(req.body.resolution || "").trim();
+
+        const requestedAspectRatio =
+            String(aspect_ratio || req.body.aspect_ratio || "16:9")
+                .trim();
+
+        const veoVideoSource =
+            videoSource ||
+            req.body.video_url ||
+            req.body.videoSource ||
+            null;
+
+        const veoStartImage =
+            startImage ||
+            start_image_url ||
+            image_url ||
+            null;
+
+        const veoEndImage =
+            end_image_url ||
+            null;
+
+        const veoReferenceImages =
+            Array.isArray(req.body.referenceImages)
+                ? req.body.referenceImages
+                    .filter(Boolean)
+                    .slice(0, 3)
+                : [];
+console.log(
+    "🖼️ [DEBUG] REFERENCE IMAGES REÇUES PAR LE SERVEUR :",
+    JSON.stringify(veoReferenceImages, null, 2)
+);
+        const requestedOperation =
+            String(
+                req.body.videoOperation ||
+                req.body.operation ||
+                ""
+            ).toLowerCase();
+
+        // --------------------------------------------------------
+        // DÉTECTION DU MODE
+        // --------------------------------------------------------
+
+        let veoOperation = "text-to-video";
+
+        if (veoVideoSource) {
+
+            if (
+                requestedOperation === "edit" ||
+                requestedOperation === "video-edit"
+            ) {
+                veoOperation = "edit";
+            } else {
+                veoOperation = "extend";
+            }
+
+        } else if (veoReferenceImages.length > 0) {
+
+            veoOperation = "reference-to-video";
+
+        } else if (veoStartImage || veoEndImage) {
+
+            veoOperation = "image-to-video";
+        }
+
+        console.log(
+            `🎬 [RUNWARE] Mode Veo 3.1 : ${veoOperation}`
+        );
+
+        // --------------------------------------------------------
+        // AUDIO
+        // --------------------------------------------------------
+
+        const generateAudio =
+            enable_audio !== false;
+
+        // --------------------------------------------------------
+        // DURÉE
+        // --------------------------------------------------------
+
+        let safeDuration =
+            parseInt(duration, 10);
+
+        if (veoVideoSource) {
+
+            // Runware impose 7 secondes
+            // lorsqu'une vidéo source est utilisée.
+            safeDuration = 7;
+
+        } else if (veoReferenceImages.length > 0) {
+
+            // Runware impose 8 secondes
+            // avec des images de référence.
+            safeDuration = 8;
+
+        } else {
+
+            if (![4, 6, 7, 8].includes(safeDuration)) {
+                safeDuration = 4;
+            }
+        }
+
+        // --------------------------------------------------------
+        // REQUÊTE RUNWARE DE BASE
+        // --------------------------------------------------------
+
+   const isVeoFast =
+    engineId.toLowerCase().includes("veo3.1_fast") ||
+    engineId.toLowerCase().includes("veo3.1-fast");
+
+const runwareModel =
+    isVeoFast
+        ? "google:3@3"
+        : "google:3@2";
+
+console.log(
+    `🤖 [RUNWARE] Modèle Veo sélectionné : ${runwareModel}`
+);
+
+const runwareRequest = {
+    taskType: "videoInference",
+    model: runwareModel,
+
+            positivePrompt:
+                String(prompt || "").trim(),
+
+            duration: safeDuration,
+
+            providerSettings: {
+                google: {
+                    enhancePrompt: true,
+                    generateAudio
+                }
+            }
+        };
+
+        // ========================================================
+        // 1️⃣ VIDEO → VIDEO
+        // ========================================================
+        // Extension ou modification d'une vidéo existante.
+        //
+        // IMPORTANT :
+        // Avec inputs.video :
+        // - durée = 7 secondes
+        // - pas de width
+        // - pas de height
+        // - pas de resolution
+        // - pas de referenceImages
+        // ========================================================
+
+        if (veoVideoSource) {
+
+            runwareRequest.duration = 7;
+
+            runwareRequest.inputs = {
+                video: veoVideoSource
+            };
+
+            console.log(
+                `🎬 [RUNWARE] Vidéo source détectée — mode : ${veoOperation}`
+            );
+
+        }
+
+        // ========================================================
+        // 2️⃣ REFERENCE IMAGES → VIDEO
+        // ========================================================
+        // Jusqu'à 3 images de référence.
+        //
+        // IMPORTANT :
+        // Runware impose 8 secondes avec referenceImages.
+        // ========================================================
+
+        else if (veoReferenceImages.length > 0) {
+
+            runwareRequest.duration = 8;
+
+            // Dimensions selon résolution + format
+            const safeResolution =
+                requestedResolution === "1080p" ||
+                requestedResolution === "Full HD"
+                    ? "1080p"
+                    : "720p";
+
+            if (requestedAspectRatio === "9:16") {
+
+                runwareRequest.width =
+                    safeResolution === "1080p"
+                        ? 1080
+                        : 720;
+
+                runwareRequest.height =
+                    safeResolution === "1080p"
+                        ? 1920
+                        : 1280;
+
+            } else {
+
+                runwareRequest.width =
+                    safeResolution === "1080p"
+                        ? 1920
+                        : 1280;
+
+                runwareRequest.height =
+                    safeResolution === "1080p"
+                        ? 1080
+                        : 720;
+            }
+
+            runwareRequest.inputs = {
+                referenceImages:
+                    veoReferenceImages
+            };
+
+            console.log(
+                `🖼️ [RUNWARE] ${veoReferenceImages.length} image(s) de référence`
+            );
+        }
+
+        // ========================================================
+        // 3️⃣ IMAGE → VIDEO
+        // ========================================================
+        // Première image seule
+        // OU première + dernière image.
+        // ========================================================
+
+        else if (veoStartImage || veoEndImage) {
+
+            const safeResolution =
+                requestedResolution === "1080p" ||
+                requestedResolution === "Full HD"
+                    ? "1080p"
+                    : "720p";
+
+            // ----------------------------------------------------
+            // DIMENSIONS
+            // ----------------------------------------------------
+
+            if (requestedAspectRatio === "9:16") {
+
+                runwareRequest.width =
+                    safeResolution === "1080p"
+                        ? 1080
+                        : 720;
+
+                runwareRequest.height =
+                    safeResolution === "1080p"
+                        ? 1920
+                        : 1280;
+
+            } else {
+
+                runwareRequest.width =
+                    safeResolution === "1080p"
+                        ? 1920
+                        : 1280;
+
+                runwareRequest.height =
+                    safeResolution === "1080p"
+                        ? 1080
+                        : 720;
+            }
+
+            // ----------------------------------------------------
+            // FIRST / LAST FRAME
+            // ----------------------------------------------------
+
+            const frameImages = [];
+
+            if (veoStartImage) {
+
+                frameImages.push({
+                    image: veoStartImage,
+                    frame: "first"
+                });
+            }
+
+            if (veoEndImage) {
+
+                frameImages.push({
+                    image: veoEndImage,
+                    frame: "last"
+                });
+            }
+
+            runwareRequest.inputs = {
+                frameImages
+            };
+
+            console.log(
+                `🖼️ [RUNWARE] ${frameImages.length} frame(s) configurée(s)`
+            );
+        }
+
+        // ========================================================
+        // 4️⃣ TEXT → VIDEO
+        // ========================================================
+        // Aucun input image/vidéo.
+        // width + height définissent le format.
+        // ========================================================
+
+        else {
+
+            const safeResolution =
+                requestedResolution === "1080p" ||
+                requestedResolution === "Full HD"
+                    ? "1080p"
+                    : "720p";
+
+            if (requestedAspectRatio === "9:16") {
+
+                runwareRequest.width =
+                    safeResolution === "1080p"
+                        ? 1080
+                        : 720;
+
+                runwareRequest.height =
+                    safeResolution === "1080p"
+                        ? 1920
+                        : 1280;
+
+            } else {
+
+                runwareRequest.width =
+                    safeResolution === "1080p"
+                        ? 1920
+                        : 1280;
+
+                runwareRequest.height =
+                    safeResolution === "1080p"
+                        ? 1080
+                        : 720;
+            }
+
+            console.log(
+                "📝 [RUNWARE] Mode Text to Video"
+            );
+        }
+
+        // --------------------------------------------------------
+        // LOG FINAL
+        // --------------------------------------------------------
+
+        console.log(
+            "🚀 [RUNWARE] Requête Veo 3.1 :",
+            JSON.stringify(
+                {
+                    taskType:
+                        runwareRequest.taskType,
+
+                    model:
+                        runwareRequest.model,
+
+                    operation:
+                        veoOperation,
+
+                    duration:
+                        runwareRequest.duration,
+
+                    width:
+                        runwareRequest.width || null,
+
+                    height:
+                        runwareRequest.height || null,
+
+                    generateAudio,
+
+                    hasVideoSource:
+                        Boolean(veoVideoSource),
+
+                    hasStartImage:
+                        Boolean(veoStartImage),
+
+                    hasEndImage:
+                        Boolean(veoEndImage),
+
+                    referenceImages:
+                        veoReferenceImages.length
+                },
+                null,
+                2
+            )
+        );
+
+        // --------------------------------------------------------
+        // SSE — DÉMARRAGE
+        // --------------------------------------------------------
+
+        res.write(
+            `data: ${JSON.stringify({
+                percent: 10,
+
+                message:
+                    veoOperation === "edit"
+                        ? "Veo 3.1 : modification de la vidéo..."
+                        : veoOperation === "extend"
+                            ? "Veo 3.1 : extension de la vidéo..."
+                            : "Veo 3.1 : génération en cours..."
+            })}\n\n`
+        );
+
+        // --------------------------------------------------------
+        // APPEL RUNWARE
+        // --------------------------------------------------------
+
+        const [result] =
+            await runware.run(runwareRequest);
+
+        console.log(
+            "✅ [RUNWARE] Réponse Veo 3.1 :",
+            JSON.stringify(result, null, 2)
+        );
+
+        // --------------------------------------------------------
+        // URL VIDÉO
+        // --------------------------------------------------------
+
+        const generatedVideoUrl =
+            result?.videoURL;
+
+        if (!generatedVideoUrl) {
+
+            throw new Error(
+                "Runware n'a pas retourné de videoURL."
+            );
+        }
+
+        // --------------------------------------------------------
+        // GÉNÉRATION TERMINÉE
+        // --------------------------------------------------------
+
+        generationFinished = true;
+
+        await lockRef.update({
+
+            status: "completed",
+
+            provider: "runware",
+
+            operation: veoOperation,
+
+            videoUrl:
+                generatedVideoUrl,
+
+            url:
+                generatedVideoUrl,
+
+            prompt:
+                prompt || "",
+
+            engine:
+                engineId,
+
+            completedAt:
+                FieldValue.serverTimestamp()
+        });
+
+        // --------------------------------------------------------
+        // HISTORIQUE UTILISATEUR
+        // --------------------------------------------------------
+
+        try {
+
+            await db
+                .collection("users")
+                .doc(userId)
+                .collection("generations")
+                .add({
+
+                    videoUrl:
+                        generatedVideoUrl,
+
+                    prompt:
+                        prompt || "",
+
+                    engine:
+                        engineId,
+
+                    provider:
+                        "runware",
+
+                    operation:
+                        veoOperation,
+
+                    createdAt:
+                        FieldValue.serverTimestamp()
+                });
+
+            console.log(
+                "💾 Vidéo Runware ajoutée à l'historique."
+            );
+
+        } catch (historyError) {
+
+            console.error(
+                "⚠️ Erreur historique Runware :",
+                historyError.message
+            );
+        }
+
+        // --------------------------------------------------------
+        // LIBÉRATION DU LOCK
+        // --------------------------------------------------------
+
+        await lockRef
+            .delete()
+            .catch(() => {});
+
+        // --------------------------------------------------------
+        // RÉPONSE FRONTEND
+        // --------------------------------------------------------
+
+        res.write(
+            `data: ${JSON.stringify({
+
+                videoUrl:
+                    generatedVideoUrl,
+
+                percent:
+                    100,
+
+                status:
+                    "completed",
+
+                operation:
+                    veoOperation,
+
+                message:
+                    veoOperation === "edit"
+                        ? "Veo 3.1 : vidéo modifiée !"
+                        : veoOperation === "extend"
+                            ? "Veo 3.1 : vidéo étendue !"
+                            : "Veo 3.1 : vidéo prête !"
+
+            })}\n\n`
+        );
+
+        res.end();
+
+        return;
+
+    } catch (runwareError) {
+
+        console.error(
+            "❌ [RUNWARE] Erreur Veo 3.1 :",
+            runwareError
+        );
+
+        throw runwareError;
+    }
+}
+// ============================================================
+// KLING 2.6 MOTION CONTROL — RUNWARE
+// ============================================================
+if (
+    engineId.toLowerCase() === "kling26_motion" ||
+    engineId.toLowerCase() === "kling2.6_motion" ||
+    engineId.toLowerCase() === "kling-2.6-motion"
+) {
+
+    console.log(
+        "🎬 [RUNWARE] Kling 2.6 Motion Control détecté"
+    );
+
+    const runwareModel =
+        "klingai:kling-video@2.6-pro";
+
+    // ========================================================
+    // IMAGE PERSONNAGE
+    // ========================================================
+
+    const motionImage =
+        startImage ||
+        image_url ||
+        req.body.start_image_url ||
+        req.body.startImage ||
+        null;
+
+    // ========================================================
+    // VIDÉO DE MOUVEMENT
+    // ========================================================
+
+    const motionVideo =
+        video ||
+        video_url ||
+        req.body.video_url ||
+        req.body.videoSource ||
+        null;
+
+    // ========================================================
+    // VALIDATION
+    // ========================================================
+
+    if (!motionImage) {
+
+        throw new Error(
+            "Kling 2.6 Motion Control requiert une image du personnage."
+        );
+    }
+
+    if (!motionVideo) {
+
+        throw new Error(
+            "Kling 2.6 Motion Control requiert une vidéo de mouvement."
+        );
+    }
+
+    // ========================================================
+    // ORIENTATION
+    // ========================================================
+
+    const requestedOrientation =
+        String(
+            req.body.character_orientation ||
+            req.body.characterOrientation ||
+            "video"
+        ).toLowerCase();
+
+    const orientation =
+        requestedOrientation === "image"
+            ? "image"
+            : "video";
+
+    // ========================================================
+    // SON ORIGINAL
+    // ========================================================
+
+    const keepOriginalSound =
+        req.body.keep_original_sound !== undefined
+            ? Boolean(
+                req.body.keep_original_sound
+            )
+            : req.body.enable_audio !== undefined
+                ? Boolean(
+                    req.body.enable_audio
+                )
+                : true;
+
+    // ========================================================
+    // REQUÊTE RUNWARE
+    // ========================================================
+
+  const klingMotionRequest = {
+
+    taskType:
+        "videoInference",
+
+    model:
+        "klingai:kling-video@2.6-pro",
+
+    positivePrompt:
+        String(
+            prompt ||
+            req.body.prompt ||
+            ""
+        ).trim(),
+
+    inputs: {
+
+        referenceImages: [
+            motionImage
+        ],
+
+        referenceVideos: [
+            motionVideo
+        ]
+
+    },
+
+    providerSettings: {
+
+        klingai: {
+
+            characterOrientation:
+                orientation,
+
+            keepOriginalSound:
+                keepOriginalSound
+
+        }
+
+    }
+
+};
+
+    console.log(
+        "=============================================="
+    );
+
+    console.log(
+        "🎬 KLING 2.6 MOTION CONTROL — RUNWARE"
+    );
+
+    console.log(
+        "=============================================="
+    );
+
+    console.log(
+        "🖼️ Image personnage :",
+        motionImage
+    );
+
+    console.log(
+        "🎥 Vidéo mouvement :",
+        motionVideo
+    );
+
+    console.log(
+        "🧭 Orientation :",
+        orientation
+    );
+
+    console.log(
+        "🔊 Son original :",
+        keepOriginalSound
+    );
+
+    console.log(
+        "🤖 Modèle :",
+        runwareModel
+    );
+
+    console.log(
+        "📦 Requête Runware :",
+        JSON.stringify(
+            klingMotionRequest,
+            null,
+            2
+        )
+    );
+
+    console.log(
+        "=============================================="
+    );
+
+    // ========================================================
+    // APPEL RUNWARE
+    // ========================================================
+
+    const [result] =
+        await runware.run(
+            klingMotionRequest
+        );
+
+    console.log(
+        "✅ [KLING 2.6 MOTION] Génération terminée"
+    );
+
+    return await completeRunwareVideo(result, engineId);
+}
+// ============================================================
+// KLING 2.6 PRO — RUNWARE
+// ============================================================
+if (
+    engineId.toLowerCase() === "kling2.6" ||
+    engineId.toLowerCase() === "kling2.6_pro" ||
+    engineId.toLowerCase() === "kling2.6-pro"
+) {
+
+    console.log("🎬 [RUNWARE] Kling 2.6 Pro détecté");
+
+    const runwareModel =
+        "klingai:kling-video@2.6-pro";
+
+    console.log(
+        `🤖 [RUNWARE] Modèle Kling sélectionné : ${runwareModel}`
+    );
+
+    // ========================================================
+    // IDENTIFICATION DES SOURCES
+    // ========================================================
+
+    const imageInput =
+        startImage ||
+        image_url ||
+        null;
+
+    const videoInput =
+        video ||
+        video_url ||
+        null;
+
+    const hasImage =
+        Boolean(imageInput);
+
+    const hasVideo =
+        Boolean(videoInput);
+
+    // ========================================================
+    // DURÉE KLING 2.6
+    // ========================================================
+
+    const safeKlingDuration =
+        parseInt(duration, 10) === 10
+            ? 10
+            : 5;
+
+    // ========================================================
+    // VIDEO → VIDEO
+    // ========================================================
+    // Runware interdit duration + sound avec referenceVideos.
+    // On ne met donc PAS width/height non plus.
+    // ========================================================
+
+    if (hasVideo) {
+
+        const klingRequest = {
+
+            taskType:
+                "videoInference",
+
+            model:
+                runwareModel,
+
+            positivePrompt:
+                String(prompt || "").trim(),
+
+            inputs: {
+
+                referenceVideos: [
+                    videoInput
+                ]
+
+            },
+
+            providerSettings: {
+
+                klingai: {
+
+                    characterOrientation:
+                        "video"
+
+                }
+
+            }
+
+        };
+
+        console.log(
+            "🎥 [KLING 2.6] Mode VIDEO → VIDEO"
+        );
+
+        console.log(
+            "🎬 [KLING 2.6] Requête Runware :",
+            JSON.stringify(
+                klingRequest,
+                null,
+                2
+            )
+        );
+
+        const [result] =
+            await runware.run(
+                klingRequest
+            );
+
+        console.log(
+            "✅ [KLING 2.6] Video → Video terminée"
+        );
+
+        return await completeRunwareVideo(result, engineId);
+    }
+
+    // ========================================================
+    // IMAGE → VIDEO
+    // ========================================================
+    // Une image = premier frame.
+    // frameImages est obligatoire pour ce workflow.
+    // ========================================================
+
+    if (hasImage) {
+
+        const klingRequest = {
+
+            taskType:
+                "videoInference",
+
+            model:
+                runwareModel,
+
+            positivePrompt:
+                String(prompt || "").trim(),
+
+            duration:
+                safeKlingDuration,
+
+            inputs: {
+
+                frameImages: [
+                    imageInput
+                ]
+
+            },
+
+            providerSettings: {
+
+                klingai: {
+
+                    sound:
+                        enable_audio !== false
+
+                }
+
+            }
+
+        };
+
+        console.log(
+            "🖼️ [KLING 2.6] Mode IMAGE → VIDEO"
+        );
+
+        console.log(
+            "🔊 [KLING 2.6] Audio natif :",
+            enable_audio !== false
+                ? "OUI"
+                : "NON"
+        );
+
+        console.log(
+            "🎬 [KLING 2.6] Requête Runware :",
+            JSON.stringify(
+                klingRequest,
+                null,
+                2
+            )
+        );
+
+        const [result] =
+            await runware.run(
+                klingRequest
+            );
+
+        console.log(
+            "✅ [KLING 2.6] Image → Video terminée"
+        );
+
+        return await completeRunwareVideo(result, engineId);
+    }
+
+    // ========================================================
+    // TEXT → VIDEO
+    // ========================================================
+
+    const klingRequest = {
+
+        taskType:
+            "videoInference",
+
+        model:
+            runwareModel,
+
+        positivePrompt:
+            String(prompt || "").trim(),
+
+        duration:
+            safeKlingDuration,
+
+        width:
+            1920,
+
+        height:
+            1080,
+
+        providerSettings: {
+
+            klingai: {
+
+                sound:
+                    enable_audio !== false
+
+            }
+
+        }
+
+    };
+
+    console.log(
+        "📝 [KLING 2.6] Mode TEXT → VIDEO"
+    );
+
+    console.log(
+        "🔊 [KLING 2.6] Audio natif :",
+        enable_audio !== false
+            ? "OUI"
+            : "NON"
+    );
+
+    console.log(
+        "🎬 [KLING 2.6] Requête Runware :",
+        JSON.stringify(
+            klingRequest,
+            null,
+            2
+        )
+    );
+
+    const [result] =
+        await runware.run(
+            klingRequest
+        );
+
+    console.log(
+        "✅ [KLING 2.6] Text → Video terminée"
+    );
+
+    return await completeRunwareVideo(result, engineId);
+}
 /*
 ============================================================
 ANCIEN CODE GOOGLE VEO / VERTEX AI
@@ -2011,16 +3341,16 @@ else {
 */
 
 
-// --- TOUS LES AUTRES MOTEURS PASSENT PAR FAL.AI ---
+// --- ROUTAGE DES MOTEURS VIDÉO RESTANTS ---
 
 console.log("ETAPE 1 : entrée traitement vidéo");
-console.log(`🎨 Lancement via Fal.ai pour le moteur : ${engineId}`);
+console.log(`🎬 Routage du moteur : ${engineId}`);
 
 let targetEngineId = req.body.modelEndpoint || engineId;
 let finalInput = { prompt, aspect_ratio: aspect_ratio || "16:9", resolution: req.body.resolution || "720p" };
 
 
-// 🛠️ CORRECTION NGROK : Remplacement de localhost par l'URL publique ngrok pour Fal.ai
+// 🛠️ CONVERSION URL LOCALE → URL PUBLIQUE DU SERVEUR
 const localVideoUrl = req.body.video_url || req.body.videoSource || req.body.videoUrl;
 if (localVideoUrl && localVideoUrl.includes('localhost:5000')) {
 const ngrokBaseUrl = process.env.PUBLIC_API_URL || 'https://eclipse-ai.onrender.com';
@@ -2046,287 +3376,79 @@ if (validImg) {
 // Image début + Image fin
 // ============================================================
 if (
+
+
     engineId === "kling30" ||
-    engineId.includes("kling-video/v3") ||
-    engineId.includes("kling3")
+    engineId === "kling3" ||
+    engineId.includes("kling-video/v3")
 ) {
-    console.log("🚀 KLING 3.0 : configuration du payload Fal.ai");
+
+    console.log("🚀 KLING 3.0 : configuration RUNWARE");
 
     // ========================================================
-    // 1. RÉCUPÉRATION IMAGE DE DÉBUT
+    // 0. SÉCURITÉ : MOTION CONTROL EST TRAITÉ PLUS BAS
     // ========================================================
+
+    if (
+        engineId.toLowerCase().includes("motion")
+    ) {
+        throw new Error(
+            "Kling 3.0 Motion Control doit utiliser son bloc dédié."
+        );
+    }
+
+    // ========================================================
+    // 1. RÉCUPÉRATION DES IMAGES
+    // ========================================================
+
     const sourceStartImage =
         req.body.start_image_url ||
         req.body.image_url ||
         req.body.startImage ||
-        image_urls?.[0] ||
+        (Array.isArray(image_urls) ? image_urls[0] : null) ||
         null;
 
-    // ========================================================
-    // 2. RÉCUPÉRATION IMAGE DE FIN
-    // ========================================================
     const sourceEndImage =
         req.body.end_image_url ||
         req.body.tail_image_url ||
+        req.body.endImage ||
         null;
 
     // ========================================================
-    // 3. CONVERSION localhost -> URL PUBLIQUE
-    //    Utilisée uniquement pour récupérer le fichier
-    //    AVANT son upload vers Fal Storage.
+    // 2. DÉTECTION RÉSOLUTION
     // ========================================================
-    const toPublicUrl = (url) => {
-        if (!url || typeof url !== "string") {
-            return null;
-        }
 
-        url = url.trim();
+    const requestedResolution =
+        String(
+            req.body.resolution ||
+            resolution ||
+            "720p"
+        ).toLowerCase().replace(/\s/g, "");
 
-        if (url.includes("localhost:5000")) {
-            return url.replace(
-                "http://localhost:5000",
-                "https://eclipse-ai.onrender.com"
-            );
-        }
+    const is1080p =
+        requestedResolution === "1080p" ||
+        requestedResolution === "fhd" ||
+        requestedResolution === "fullhd";
 
-        return url;
-    };
+    const klingModel =
+        is1080p
+            ? "klingai:kling-video@3-pro"
+            : "klingai:kling-video@3-standard";
 
-    const publicStartImage =
-        toPublicUrl(sourceStartImage);
-
-    const publicEndImage =
-        toPublicUrl(sourceEndImage);
+    const klingTier =
+        is1080p
+            ? "PRO / 1080p"
+            : "STANDARD / 720p";
 
     // ========================================================
-    // 4. FONCTION UPLOAD VERS FAL STORAGE
+    // 3. DURÉE
     // ========================================================
-    const uploadImageToFal = async (url, name) => {
 
-        if (!url) {
-            return null;
-        }
-
-        console.log("");
-        console.log("==============================================");
-        console.log(`☁️ FAL STORAGE — ${name}`);
-        console.log("==============================================");
-        console.log("➡️ Source :", url);
-
-        try {
-
-            // ------------------------------------------------
-            // Télécharger l'image depuis ton serveur
-            // ------------------------------------------------
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error(
-                    `Impossible de récupérer l'image : HTTP ${response.status}`
-                );
-            }
-
-            const contentType =
-                response.headers.get("content-type") ||
-                "image/png";
-
-            const buffer =
-                Buffer.from(
-                    await response.arrayBuffer()
-                );
-
-            console.log(
-                "➡️ Content-Type :",
-                contentType
-            );
-
-            console.log(
-                "➡️ Taille :",
-                buffer.length,
-                "octets"
-            );
-
-            if (!buffer.length) {
-                throw new Error(
-                    "Le fichier téléchargé est vide."
-                );
-            }
-
-            if (
-                !contentType
-                    .toLowerCase()
-                    .startsWith("image/")
-            ) {
-                throw new Error(
-                    `Type de fichier invalide : ${contentType}`
-                );
-            }
-
-            // ------------------------------------------------
-            // Détermination de l'extension
-            // ------------------------------------------------
-            let extension = ".png";
-
-            if (
-                contentType.includes("jpeg") ||
-                contentType.includes("jpg")
-            ) {
-                extension = ".jpg";
-            } else if (
-                contentType.includes("webp")
-            ) {
-                extension = ".webp";
-            }
-
-            const fileName =
-                `${name.replace(/\s+/g, "_").toLowerCase()}${extension}`;
-
-            // ------------------------------------------------
-            // Création du File
-            // ------------------------------------------------
-            const file = new File(
-                [buffer],
-                fileName,
-                {
-                    type: contentType
-                }
-            );
-
-            console.log(
-                "➡️ Fichier créé :",
-                fileName
-            );
-
-            // ------------------------------------------------
-            // Upload vers Fal Storage
-            // ------------------------------------------------
-            const falUrl =
-                await fal.storage.upload(file);
-
-            if (
-                !falUrl ||
-                typeof falUrl !== "string"
-            ) {
-                throw new Error(
-                    "Fal Storage n'a pas retourné une URL valide."
-                );
-            }
-
-            console.log(
-                "✅ Upload Fal Storage réussi"
-            );
-
-            console.log(
-                "☁️ URL Fal :",
-                falUrl
-            );
-
-            console.log("==============================================");
-
-            return falUrl;
-
-        } catch (error) {
-
-            console.error("");
-            console.error(
-                `❌ ÉCHEC UPLOAD FAL STORAGE — ${name}`
-            );
-
-            console.error(
-                "Message :",
-                error?.message
-            );
-
-            console.error(
-                "Name :",
-                error?.name
-            );
-
-            console.error(
-                "Stack :",
-                error?.stack
-            );
-
-            console.error("==============================================");
-
-            throw new Error(
-                `Impossible d'uploader ${name} vers Fal Storage : ${error.message}`
-            );
-        }
-    };
-
-    // ========================================================
-    // 5. UPLOAD IMAGE DÉBUT VERS FAL
-    // ========================================================
-    let falStartImage = null;
-
-    if (publicStartImage) {
-
-        falStartImage =
-            await uploadImageToFal(
-                publicStartImage,
-                "KLING_START_IMAGE"
-            );
-
-    }
-
-    // ========================================================
-    // 6. UPLOAD IMAGE FIN VERS FAL
-    // ========================================================
-    let falEndImage = null;
-
-    if (publicEndImage) {
-
-        falEndImage =
-            await uploadImageToFal(
-                publicEndImage,
-                "KLING_END_IMAGE"
-            );
-
-    }
-
-    // ========================================================
-    // 7. DÉTECTION STANDARD / PRO
-    // ========================================================
-    const requestedEndpoint =
-        typeof req.body.modelEndpoint === "string"
-            ? req.body.modelEndpoint.trim()
-            : "";
-
-    const isPro =
-        engineId.includes("pro") ||
-        requestedEndpoint.includes("/pro/") ||
-        requestedEndpoint.includes(
-            "kling-video/v3/pro"
-        );
-
-    const tierPath =
-        isPro
-            ? "pro"
-            : "standard";
-
-    // ========================================================
-    // 8. CHOIX DE L'ENDPOINT
-    // ========================================================
-    if (falStartImage) {
-
-        targetEngineId =
-            requestedEndpoint ||
-            `fal-ai/kling-video/v3/${tierPath}/image-to-video`;
-
-    } else {
-
-        targetEngineId =
-            requestedEndpoint ||
-            `fal-ai/kling-video/v3/${tierPath}/text-to-video`;
-    }
-
-    // ========================================================
-    // 9. DURÉE
-    // ========================================================
     const requestedDuration =
         parseInt(
-            req.body.duration || duration,
+            req.body.duration ||
+            duration ||
+            5,
             10
         );
 
@@ -2338,8 +3460,9 @@ if (
             : 5;
 
     // ========================================================
-    // 10. PROMPT
+    // 4. PROMPT
     // ========================================================
+
     const klingPrompt =
         String(
             prompt ||
@@ -2348,67 +3471,181 @@ if (
         ).trim();
 
     if (!klingPrompt) {
-
         throw new Error(
             "Kling 3.0 : le prompt est vide."
         );
     }
 
     // ========================================================
-    // 11. PAYLOAD KLING
+    // 5. AUDIO
     // ========================================================
-    finalInput = {
 
-        prompt: klingPrompt,
+    const generateAudio =
+        req.body.generate_audio !== undefined
+            ? Boolean(req.body.generate_audio)
+            : req.body.enable_audio !== undefined
+                ? Boolean(req.body.enable_audio)
+                : false;
 
-        duration: klingDuration,
+    // ========================================================
+    // 6. PAYLOAD RUNWARE
+    // ========================================================
 
-        negative_prompt:
-            typeof req.body.negative_prompt === "string" &&
-            req.body.negative_prompt.trim()
-                ? req.body.negative_prompt.trim()
-                : "blur, distort, and low quality",
+    const klingRequest = {
 
-        generate_audio:
-            req.body.generate_audio ??
-            req.body.enable_audio ??
-            false
+        taskType:
+            "videoInference",
+
+        model:
+            klingModel,
+
+        positivePrompt:
+            klingPrompt,
+
+        duration:
+            klingDuration,
+
+        includeCost:
+            true,
+
+        providerSettings: {
+
+            klingai: {
+
+                sound:
+                    generateAudio
+
+            }
+
+        }
+
     };
 
     // ========================================================
-    // 12. IMAGE DÉBUT = URL FAL STORAGE
+    // 7. IMAGE-TO-VIDEO
     // ========================================================
-    if (falStartImage) {
 
-        finalInput.start_image_url =
-            falStartImage;
+    if (sourceStartImage) {
 
-        console.log(
-            "🖼️ KLING — IMAGE DÉBUT FAL :",
-            falStartImage
-        );
+        const frameImages = [
+            sourceStartImage
+        ];
+
+        // Deux images = première + dernière image
+        if (sourceEndImage) {
+
+            frameImages.push(
+                sourceEndImage
+            );
+        }
+
+        klingRequest.inputs = {
+
+            frameImages:
+                frameImages
+
+        };
+
+ 
+
+        // IMPORTANT :
+        // La documentation Runware indique que duration
+        // est disponible pour Kling 3.0 mais que les
+        // paramètres doivent respecter les dépendances
+        // du mode image. On vérifie donc le mode image
+        // séparément avant génération.
+
+        klingRequest.duration =
+            klingDuration;
+
     }
 
     // ========================================================
-    // 13. IMAGE FIN = URL FAL STORAGE
+    // 8. TEXT-TO-VIDEO
     // ========================================================
-    if (falEndImage) {
 
-        finalInput.end_image_url =
-            falEndImage;
+    else {
 
-        console.log(
-            "🖼️ KLING — IMAGE FIN FAL :",
-            falEndImage
-        );
+        const requestedAspect =
+            String(
+                req.body.aspect_ratio ||
+                aspect_ratio ||
+                "16:9"
+            );
+
+        let width;
+        let height;
+
+        if (requestedAspect === "9:16") {
+
+            width =
+                is1080p
+                    ? 1080
+                    : 720;
+
+            height =
+                is1080p
+                    ? 1920
+                    : 1280;
+
+        } else if (requestedAspect === "1:1") {
+
+            width =
+                is1080p
+                    ? 1440
+                    : 960;
+
+            height =
+                is1080p
+                    ? 1440
+                    : 960;
+
+        } else {
+
+            width =
+                is1080p
+                    ? 1920
+                    : 1280;
+
+            height =
+                is1080p
+                    ? 1080
+                    : 720;
+        }
+
+        klingRequest.width =
+            width;
+
+        klingRequest.height =
+            height;
+
+        klingRequest.duration =
+            klingDuration;
     }
 
     // ========================================================
-    // 14. VÉRIFICATION FINALE
+    // 9. NEGATIVE PROMPT
     // ========================================================
+
+    const negativePrompt =
+        typeof req.body.negative_prompt === "string" &&
+        req.body.negative_prompt.trim()
+            ? req.body.negative_prompt.trim()
+            : null;
+
+    if (negativePrompt) {
+
+        klingRequest.negativePrompt =
+            negativePrompt;
+    }
+
+    // ========================================================
+    // 10. LOG
+    // ========================================================
+
     console.log("");
     console.log("==============================================");
-    console.log("🎬 KLING 3.0 CONFIGURATION");
+    console.log("🎬 KLING 3.0 — RUNWARE");
     console.log("==============================================");
 
     console.log(
@@ -2417,206 +3654,92 @@ if (
     );
 
     console.log(
-        "➡️ Endpoint :",
-        targetEngineId
+        "➡️ Modèle :",
+        klingModel
     );
 
     console.log(
         "➡️ Niveau :",
-        tierPath
+        klingTier
+    );
+
+    console.log(
+        "➡️ Mode :",
+        sourceStartImage
+            ? (
+                sourceEndImage
+                    ? "IMAGE → VIDEO / FIRST + LAST"
+                    : "IMAGE → VIDEO"
+            )
+            : "TEXT → VIDEO"
     );
 
     console.log(
         "➡️ Durée :",
-        klingDuration
+        klingDuration,
+        "secondes"
+    );
+
+    console.log(
+        "➡️ Audio :",
+        generateAudio
     );
 
     console.log(
         "➡️ Image début :",
-        falStartImage
-            ? "✅ FAL STORAGE"
-            : "❌ NON"
+        sourceStartImage || "❌ aucune"
     );
 
     console.log(
         "➡️ Image fin :",
-        falEndImage
-            ? "✅ FAL STORAGE"
-            : "❌ NON"
-    );
-
-    console.log("==============================================");
-
-    console.log(
-        "📦 PAYLOAD FINAL KLING"
+        sourceEndImage || "❌ aucune"
     );
 
     console.log(
+        "📦 Requête Runware :",
         JSON.stringify(
-            finalInput,
+            klingRequest,
             null,
             2
         )
     );
 
     console.log("==============================================");
-    console.log(
-        "🚀 ENVOI VERS FAL.AI / KLING"
-    );
-    console.log("==============================================");
 
     // ========================================================
-    // 15. APPEL KLING
+    // 11. APPEL RUNWARE
     // ========================================================
-    let falResult;
 
     try {
 
-        falResult =
-            await fal.subscribe(
-                targetEngineId,
-                {
-                    input: finalInput,
-
-                    logs: true,
-
-                    onQueueUpdate:
-                        (update) => {
-
-                            console.log(
-                                "📡 KLING QUEUE UPDATE :",
-                                JSON.stringify(
-                                    update,
-                                    null,
-                                    2
-                                )
-                            );
-
-                            if (
-                                update.status ===
-                                "IN_PROGRESS"
-                            ) {
-
-                                res.write(
-                                    `event: progress\ndata: ${JSON.stringify(update)}\n\n`
-                                );
-                            }
-                        }
-                }
+        const [result] =
+            await runware.run(
+                klingRequest
             );
 
-        // ====================================================
-        // SUCCÈS
-        // ====================================================
-        console.log("");
-        console.log("==============================================");
         console.log(
-            "✅ KLING 3.0 : GÉNÉRATION TERMINÉE"
+            "✅ [KLING 3.0] Génération terminée"
         );
-        console.log("==============================================");
 
         console.log(
+            "📦 Résultat :",
             JSON.stringify(
-                falResult,
+                result,
                 null,
                 2
             )
         );
 
-        console.log("==============================================");
+        return await completeRunwareVideo(result, engineId);
 
-    } catch (falError) {
-
-        // ====================================================
-        // ERREUR FAL / KLING
-        // ====================================================
-        console.error("");
-        console.error("==============================================");
-        console.error(
-            "❌ ERREUR KLING 3.0 / FAL.AI"
-        );
-        console.error("==============================================");
+    } catch (error) {
 
         console.error(
-            "➡️ Message :",
-            falError?.message
+            "❌ [KLING 3.0 / RUNWARE]",
+            error
         );
 
-        console.error(
-            "➡️ Name :",
-            falError?.name
-        );
-
-        console.error(
-            "➡️ Status :",
-            falError?.status
-        );
-
-        console.error(
-            "➡️ StatusCode :",
-            falError?.statusCode
-        );
-
-        console.error(
-            "➡️ Body :",
-            falError?.body
-        );
-
-        console.error(
-            "➡️ Request ID :",
-            falError?.requestId
-        );
-
-        console.error(
-            "➡️ Details :",
-            falError?.details
-        );
-
-        try {
-
-            console.error(
-                "➡️ Erreur complète :",
-                JSON.stringify(
-                    falError,
-                    Object.getOwnPropertyNames(
-                        falError
-                    ),
-                    2
-                )
-            );
-
-        } catch (jsonError) {
-
-            console.error(
-                "Impossible de sérialiser l'erreur :",
-                jsonError.message
-            );
-        }
-
-        console.error("");
-        console.error(
-            "📦 PAYLOAD KLING REFUSÉ :"
-        );
-
-        console.error(
-            JSON.stringify(
-                finalInput,
-                null,
-                2
-            )
-        );
-
-        console.error("");
-        console.error(
-            "🎯 ENDPOINT :",
-            targetEngineId
-        );
-
-        console.error("==============================================");
-
-        // Laisse ton catch principal gérer
-        // le remboursement des crédits.
-        throw falError;
+        throw error;
     }
 }
 
@@ -2624,544 +3747,189 @@ if (
 // 2. KLING MOTION CONTROL — STANDARD / PRO
 // ============================================================
 
-else if (
-    engineId.includes("kling") &&
-    engineId.includes("motion")
-) {
+else if (engineId.includes("kling") && engineId.includes("motion")) {
+    // Ce cas doit être traité par le bloc Kling Motion Control Runware situé plus haut.
+    throw new Error("Kling Motion Control non traité par son gestionnaire Runware.");
+}
 
-    console.log("🚀 ETAPE KLING MOTION CONTROL : configuration");
+// ============================================================
+// 3. KLING 2.6 PRO (Strictement isolé des versions 3)
+// ============================================================
+else if (engineId.includes("kling26") || (engineId.includes("kling") && !engineId.includes("v3") && !engineId.includes("30"))) {
+    // Les versions Kling 2.6 doivent avoir été interceptées par les branches Runware plus haut.
+    throw new Error("Kling 2.6 non traité par son gestionnaire Runware.");
+}
 
-    // --------------------------------------------------------
-    // DÉPENDANCES
-    // --------------------------------------------------------
-
-    const fs = require("fs");
-    const path = require("path");
-
-    // --------------------------------------------------------
-    // DÉTECTION PRO / STANDARD
-    // --------------------------------------------------------
-
-    const requestedEndpoint = String(
-        req.body.modelEndpoint || ""
-    ).toLowerCase();
-
-    const isPro =
-        engineId.toLowerCase().includes("pro") ||
-        requestedEndpoint.includes("/pro/");
-
-    // --------------------------------------------------------
-    // ENDPOINT FAL.AI KLING 2.6 MOTION CONTROL
-    // --------------------------------------------------------
-
-    targetEngineId = isPro
-        ? "fal-ai/kling-video/v2.6/pro/motion-control"
-        : "fal-ai/kling-video/v2.6/standard/motion-control";
-
-    console.log("🎬 Kling Motion Control sélectionné :", {
-        version: "2.6",
-        mode: isPro ? "PRO" : "STANDARD",
-        endpoint: targetEngineId
-    });
+// ============================================================
+// HAILUO 2.3 — RUNWARE
+// Text-to-Video + Image-to-Video
+// ============================================================
+else if (engineId.includes("hailuo")) {
+    console.log("🚀 HAILUO 2.3 : configuration RUNWARE");
 
     // ========================================================
-    // IMAGE DU PERSONNAGE
+    // 1. IMAGE DE DÉPART
     // ========================================================
 
-    const sourceCharacterImage =
-        req.body.start_image_url ||
-        req.body.image_url ||
+    const hailuoImg =
+        validImg ||
         req.body.startImage ||
-        (Array.isArray(image_urls) ? image_urls[0] : null) ||
-        null;
+        req.body.start_image ||
+        req.body.image_url ||
+        req.body.start_image_url ||
+        (Array.isArray(image_urls) ? image_urls[0] : null);
+
+    const cleanHailuoImg =
+        (
+            hailuoImg &&
+            typeof hailuoImg === "string" &&
+            !hailuoImg.toLowerCase().endsWith(".mp4")
+        )
+            ? hailuoImg
+            : null;
 
     // ========================================================
-    // VIDÉO DE RÉFÉRENCE
+    // 2. RÉSOLUTION
     // ========================================================
 
-    const sourceReferenceVideo =
-        req.body.video_url ||
-        req.body.videoSource ||
-        req.body.videoUrl ||
-        (Array.isArray(video_urls) ? video_urls[0] : null) ||
-        null;
-
-    // ========================================================
-    // VÉRIFICATIONS DE BASE
-    // ========================================================
-
-    if (!sourceCharacterImage) {
-        throw new Error(
-            "Kling Motion Control requiert une image du personnage."
-        );
-    }
-
-    if (!sourceReferenceVideo) {
-        throw new Error(
-            "Kling Motion Control requiert une vidéo de référence."
-        );
-    }
-
-    console.log("📸 Source image reçue :", sourceCharacterImage);
-    console.log("🎥 Source vidéo reçue :", sourceReferenceVideo);
-
-    // ========================================================
-    // FONCTION : RETROUVER UN FICHIER LOCAL
-    // ========================================================
-
-    const resolveLocalUploadPath = (
-        fileUrlOrPath,
-        fileTypeName
-    ) => {
-
-        if (!fileUrlOrPath) {
-            throw new Error(
-                `${fileTypeName} : source absente.`
-            );
-        }
-
-        let fileName = null;
-
-        // ----------------------------------------------------
-        // CAS 1 : URL HTTP / HTTPS
-        // ----------------------------------------------------
-
-        if (
-            typeof fileUrlOrPath === "string" &&
-            (
-                fileUrlOrPath.startsWith("http://") ||
-                fileUrlOrPath.startsWith("https://")
-            )
-        ) {
-
-            try {
-
-                const parsedUrl = new URL(fileUrlOrPath);
-
-                fileName = path.basename(
-                    parsedUrl.pathname
-                );
-
-            } catch (error) {
-
-                throw new Error(
-                    `${fileTypeName} : URL invalide : ${fileUrlOrPath}`
-                );
-            }
-        }
-
-        // ----------------------------------------------------
-        // CAS 2 : CHEMIN LOCAL
-        // ----------------------------------------------------
-
-        else {
-
-            fileName = path.basename(
-                String(fileUrlOrPath)
-            );
-        }
-
-        // ----------------------------------------------------
-        // VÉRIFICATION NOM
-        // ----------------------------------------------------
-
-        if (!fileName) {
-
-            throw new Error(
-                `${fileTypeName} : impossible de déterminer le nom du fichier.`
-            );
-        }
-
-        console.log(
-            `🔎 ${fileTypeName} : fichier recherché = ${fileName}`
-        );
-
-        // ====================================================
-        // DOSSIERS POSSIBLES
-        // ====================================================
-
-        const possiblePaths = [
-
-            // Structure actuelle du serveur
-            path.join(
-                __dirname,
-                "public",
-                "uploads",
-                fileName
-            ),
-
-            // Sécurité si process.cwd() diffère de __dirname
-            path.join(
-                process.cwd(),
-                "public",
-                "uploads",
-                fileName
-            ),
-
-            // Structure alternative
-            path.join(
-                __dirname,
-                "uploads",
-                fileName
-            ),
-
-            // Structure alternative depuis cwd
-            path.join(
-                process.cwd(),
-                "uploads",
-                fileName
-            )
-        ];
-
-        // ====================================================
-        // RECHERCHE
-        // ====================================================
-
-        let localDiskPath = null;
-
-        for (const candidate of possiblePaths) {
-
-            if (fs.existsSync(candidate)) {
-
-                localDiskPath = candidate;
-
-                console.log(
-                    `✅ ${fileTypeName} trouvé : ${candidate}`
-                );
-
-                break;
-            }
-
-            console.log(
-                `❌ ${fileTypeName} absent : ${candidate}`
-            );
-        }
-
-        // ====================================================
-        // FICHIER INTROUVABLE
-        // ====================================================
-
-        if (!localDiskPath) {
-
-            throw new Error(
-                `${fileTypeName} introuvable sur le disque.\n\n` +
-                `Nom recherché : ${fileName}\n\n` +
-                `Dossiers vérifiés :\n` +
-                possiblePaths.join("\n")
-            );
-        }
-
-        // ====================================================
-        // VÉRIFICATION FICHIER
-        // ====================================================
-
-        const stats = fs.statSync(localDiskPath);
-
-        if (!stats.isFile()) {
-
-            throw new Error(
-                `${fileTypeName} n'est pas un fichier valide : ${localDiskPath}`
-            );
-        }
-
-        if (stats.size <= 0) {
-
-            throw new Error(
-                `${fileTypeName} est vide : ${localDiskPath}`
-            );
-        }
-
-        console.log(
-            `📦 Taille ${fileTypeName} : ${stats.size} octets`
-        );
-
-        return localDiskPath;
-    };
-
-    // ========================================================
-    // FONCTION : UPLOAD LOCAL → FAL STORAGE
-    // ========================================================
-
-    const uploadLocalFileToFal = async (
-        fileUrlOrPath,
-        fileTypeName
-    ) => {
-
-        // ----------------------------------------------------
-        // TROUVER LE FICHIER
-        // ----------------------------------------------------
-
-        const localDiskPath =
-            resolveLocalUploadPath(
-                fileUrlOrPath,
-                fileTypeName
-            );
-
-        console.log(
-            `📂 Lecture locale pour Fal Storage : ${localDiskPath}`
-        );
-
-        // ----------------------------------------------------
-        // LECTURE
-        // ----------------------------------------------------
-
-        const buffer = fs.readFileSync(
-            localDiskPath
-        );
-
-        if (!buffer || buffer.length === 0) {
-
-            throw new Error(
-                `${fileTypeName} : fichier vide.`
-            );
-        }
-
-        // ----------------------------------------------------
-        // EXTENSION
-        // ----------------------------------------------------
-
-        const extension =
-            path.extname(localDiskPath).toLowerCase() ||
-            ".bin";
-
-        // ----------------------------------------------------
-        // MIME TYPE
-        // ----------------------------------------------------
-
-        let contentType =
-            "application/octet-stream";
-
-        switch (extension) {
-
-            case ".jpg":
-            case ".jpeg":
-
-                contentType = "image/jpeg";
-
-                break;
-
-            case ".png":
-
-                contentType = "image/png";
-
-                break;
-
-            case ".webp":
-
-                contentType = "image/webp";
-
-                break;
-
-            case ".mp4":
-
-                contentType = "video/mp4";
-
-                break;
-
-            case ".mov":
-
-                contentType = "video/quicktime";
-
-                break;
-
-            case ".webm":
-
-                contentType = "video/webm";
-
-                break;
-        }
-
-        // ----------------------------------------------------
-        // NOM FICHIER FAL
-        // ----------------------------------------------------
-
-        const fileName =
-            `${fileTypeName.toLowerCase()}_${Date.now()}${extension}`;
-
-        // ----------------------------------------------------
-        // CRÉATION FILE
-        // ----------------------------------------------------
-
-        const file = new File(
-            [buffer],
-            fileName,
-            {
-                type: contentType
-            }
-        );
-
-        console.log(
-            `☁️ Upload vers Fal Storage : ${fileName}`
-        );
-
-        // ----------------------------------------------------
-        // UPLOAD
-        // ----------------------------------------------------
-
-        const falUrl =
-            await fal.storage.upload(file);
-
-        // ----------------------------------------------------
-        // VALIDATION URL
-        // ----------------------------------------------------
-
-        if (!falUrl) {
-
-            throw new Error(
-                `${fileTypeName} : Fal Storage n'a retourné aucune URL.`
-            );
-        }
-
-        console.log(
-            `✅ Upload réussi vers Fal Storage (${fileTypeName}) :`,
-            falUrl
-        );
-
-        return falUrl;
-    };
-
-    // ========================================================
-    // VALIDATION DES DEUX FICHIERS AVANT UPLOAD
-    // ========================================================
-
-    console.log("==============================================");
-    console.log("🔍 VALIDATION DES FICHIERS KLING");
-    console.log("==============================================");
-
-    const characterLocalPath =
-        resolveLocalUploadPath(
-            sourceCharacterImage,
-            "KLING_CHARACTER_IMAGE"
-        );
-
-    const referenceVideoLocalPath =
-        resolveLocalUploadPath(
-            sourceReferenceVideo,
-            "KLING_REF_VIDEO"
-        );
-
-    console.log(
-        "✅ Image locale validée :",
-        characterLocalPath
-    );
-
-    console.log(
-        "✅ Vidéo locale validée :",
-        referenceVideoLocalPath
-    );
-
-    // ========================================================
-    // UPLOAD IMAGE VERS FAL STORAGE
-    // ========================================================
-
-    const publicCharacterImage =
-        await uploadLocalFileToFal(
-            characterLocalPath,
-            "KLING_CHARACTER_IMAGE"
-        );
-
-    // ========================================================
-    // UPLOAD VIDÉO VERS FAL STORAGE
-    // ========================================================
-
-    const publicReferenceVideo =
-        await uploadLocalFileToFal(
-            referenceVideoLocalPath,
-            "KLING_REF_VIDEO"
-        );
-
-    // ========================================================
-    // VALIDATION URLS FAL
-    // ========================================================
-
-    if (!publicCharacterImage) {
-
-        throw new Error(
-            "Fal Storage : URL image personnage absente."
-        );
-    }
-
-    if (!publicReferenceVideo) {
-
-        throw new Error(
-            "Fal Storage : URL vidéo référence absente."
-        );
-    }
-
-    console.log("✅ Les deux fichiers sont maintenant sur Fal Storage.");
-
-    // ========================================================
-    // ORIENTATION DU PERSONNAGE
-    // ========================================================
-
-    const requestedOrientation =
+    const requestedResolution =
         String(
-            req.body.character_orientation ||
-            req.body.characterOrientation ||
-            "video"
-        ).toLowerCase();
+            req.body.resolution ||
+            resolution ||
+            "768p"
+        )
+        .toLowerCase()
+        .replace(/\s/g, "");
 
-    const orientation =
-        requestedOrientation === "image"
-            ? "image"
-            : "video";
-
-    // ========================================================
-    // SON ORIGINAL
-    // ========================================================
-
-    const keepOriginalSound =
-        req.body.keep_original_sound !== undefined
-            ? Boolean(req.body.keep_original_sound)
-
-            : req.body.enable_audio !== undefined
-                ? Boolean(req.body.enable_audio)
-
-                : true;
+    const is1080p =
+        requestedResolution === "1080p" ||
+        requestedResolution === "fhd" ||
+        requestedResolution === "fullhd";
 
     // ========================================================
-    // PAYLOAD FINAL KLING
+    // 3. DURÉE
     // ========================================================
 
-    finalInput = {
+    const requestedDuration =
+        parseInt(
+            req.body.duration ||
+            duration ||
+            6,
+            10
+        );
 
-        image_url:
-            publicCharacterImage,
+    // 1080p = uniquement 6 secondes
+    // 768p = 6 ou 10 secondes
 
-        video_url:
-            publicReferenceVideo,
-
-        character_orientation:
-            orientation,
-
-        keep_original_sound:
-            keepOriginalSound
-    };
+    const hailuoDuration =
+        is1080p
+            ? 6
+            : (
+                requestedDuration === 10
+                    ? 10
+                    : 6
+            );
 
     // ========================================================
-    // PROMPT FACULTATIF
+    // 4. PROMPT
     // ========================================================
 
-    const finalPrompt =
-        req.body.prompt ||
-        prompt ||
-        "";
+    const hailuoPrompt =
+        String(
+            prompt ||
+            req.body.prompt ||
+            ""
+        ).trim();
 
-    if (
-        typeof finalPrompt === "string" &&
-        finalPrompt.trim()
-    ) {
+    if (!hailuoPrompt) {
 
-        finalInput.prompt =
-            finalPrompt.trim();
+        throw new Error(
+            "Hailuo 2.3 : le prompt est vide."
+        );
     }
 
     // ========================================================
-    // LOG COMPLET
+    // 5. PAYLOAD RUNWARE
     // ========================================================
 
+    const hailuoRequest = {
+
+        taskType:
+            "videoInference",
+
+        model:
+            "minimax:4@1",
+
+        positivePrompt:
+            hailuoPrompt,
+
+        duration:
+            hailuoDuration,
+
+        includeCost:
+            true,
+
+        providerSettings: {
+
+            minimax: {
+
+                promptOptimizer:
+                    true
+
+            }
+
+        }
+    };
+
+    // ========================================================
+    // 6. IMAGE → VIDEO
+    // ========================================================
+
+    if (cleanHailuoImg) {
+
+        hailuoRequest.inputs = {
+
+            frameImages: [
+                cleanHailuoImg
+            ]
+
+        };
+
+        // Avec frameImages, on ne fournit PAS width/height.
+        // Hailuo utilise l'image comme première frame.
+    }
+
+    // ========================================================
+    // 7. TEXT → VIDEO
+    // ========================================================
+
+    else {
+
+        if (is1080p) {
+
+            hailuoRequest.width =
+                1920;
+
+            hailuoRequest.height =
+                1080;
+
+        } else {
+
+            hailuoRequest.width =
+                1366;
+
+            hailuoRequest.height =
+                768;
+        }
+    }
+
+    // ========================================================
+    // 8. LOG
+    // ========================================================
+
+    console.log("");
     console.log("==============================================");
-    console.log("🎬 KLING 2.6 MOTION CONTROL");
+    console.log("🎬 HAILUO 2.3 — RUNWARE");
     console.log("==============================================");
 
     console.log(
@@ -3170,570 +3938,209 @@ else if (
     );
 
     console.log(
-        "➡️ Endpoint :",
-        targetEngineId
+        "➡️ Modèle :",
+        "minimax:4@1"
     );
 
     console.log(
         "➡️ Mode :",
-        isPro ? "PRO" : "STANDARD"
-    );
-
-    console.log(
-        "➡️ Image locale :",
-        characterLocalPath
-    );
-
-    console.log(
-        "➡️ Image Fal :",
-        publicCharacterImage
-    );
-
-    console.log(
-        "➡️ Vidéo locale :",
-        referenceVideoLocalPath
-    );
-
-    console.log(
-        "➡️ Vidéo Fal :",
-        publicReferenceVideo
-    );
-
-    console.log(
-        "➡️ Orientation :",
-        orientation
-    );
-
-    console.log(
-        "➡️ Son original :",
-        keepOriginalSound
-    );
-
-    console.log(
-        "➡️ Prompt :",
-        finalInput.prompt || "(aucun)"
-    );
-
-    console.log("==============================================");
-
-    console.log(
-        "📦 PAYLOAD FINAL KLING MOTION"
-    );
-
-    console.log("==============================================");
-
-    console.log(
-        JSON.stringify(
-            finalInput,
-            null,
-            2
-        )
-    );
-
-    console.log("==============================================");
-
-}
-// ============================================================
-// 3. KLING 2.6 PRO (Strictement isolé des versions 3)
-// ============================================================
-else if (
-    engineId.includes("kling26") ||
-    (engineId.includes("kling") && !engineId.includes("v3") && !engineId.includes("30"))
-) {
-    console.log("🚀 KLING 2.6 PRO : configuration START + END IMAGE");
-
-    const sourceStartImage =
-        req.body.start_image_url ||
-        req.body.image_url ||
-        req.body.startImage ||
-        (typeof image_url !== "undefined" ? image_url : null);
-
-    const sourceEndImage =
-        req.body.end_image_url ||
-        req.body.tail_image_url ||
-        (typeof end_image_url !== "undefined" ? end_image_url : null);
-
-    const toPublicUrl = (url) => {
-        if (!url || typeof url !== "string") return null;
-        if (url.includes("localhost:5000")) {
-            return url.replace(
-                "http://localhost:5000",
-                "https://eclipse-ai.onrender.com"
-            );
-        }
-        return url;
-    };
-
-    const publicStartImage = toPublicUrl(sourceStartImage);
-    const publicEndImage = toPublicUrl(sourceEndImage);
-
-    if (publicStartImage) {
-        targetEngineId = "fal-ai/kling-video/v2.6/pro/image-to-video";
-    } else {
-        targetEngineId = "fal-ai/kling-video/v2.6/pro/text-to-video";
-    }
-
-    finalInput = {
-        prompt: prompt || req.body.prompt || "",
-        duration: String(parseInt(duration) || 5),
-        negative_prompt: req.body.negative_prompt || "blur, distort, and low quality",
-        generate_audio: req.body.generate_audio ?? false,
-
-        ...(publicStartImage && {
-            start_image_url: publicStartImage
-        })
-    };
-
-    console.log(`📦 PAYLOAD KLING 2.6 (${targetEngineId}) :`);
-    console.log(JSON.stringify(finalInput, null, 2));
-}
-
-else if (engineId.includes("hailuo")) {
-    console.log("🚀 ETAPE HAILUO : configuration");
-
-    // 1. Détection propre de l'image
-    const hailuoImg = validImg || req.body.startImage || req.body.start_image || req.body.image_url || req.body.start_image_url || (image_urls && image_urls[0]);
-    const cleanHailuoImg = (hailuoImg && typeof hailuoImg === 'string' && !hailuoImg.endsWith('.mp4')) ? hailuoImg : null;
-
-    const hasImage = Boolean(cleanHailuoImg || req.body.end_image_url);
-    const mode = hasImage ? "image-to-video" : "text-to-video";
-
-    // 2. Détermination de la gamme (standard vs pro)
-    const isPro = req.body.resolution === "768p" || req.body.resolution === "1080p" || req.body.resolution === "pro";
-    const range = isPro ? "pro" : "standard";
-
-    // Forcer le bon endpoint
-    targetEngineId = `fal-ai/minimax/hailuo-02/${range}/${mode}`;
-
-    // 3. Nettoyage du prompt
-    let cleanedPrompt = (prompt || req.body.prompt || "")
-        .replace(/photoréaliste|réalisme extrême|qualité cinéma hollywoodien|8k|textures de peau détaillées|éclairage volumétrique|HDR/gi, '')
-        .replace(/,\s*,/g, ',')
-        .trim();
-
-    // 4. Construction du payload STRICT pour Fal.ai
-    finalInput = {
-        prompt: cleanedPrompt,
-        prompt_optimizer: true,
-        duration: (duration === "10" || duration === "10s" || req.body.duration == 10) ? 10 : 6 // Entier requis (6 ou 10)
-    };
-
-    if (hasImage) {
-        // --- MODE IMAGE-TO-VIDEO ---
-        if (cleanHailuoImg) {
-            finalInput.image_url = cleanHailuoImg; // UNIQUEMENT image_url
-        }
-        if (req.body.end_image_url) {
-            finalInput.end_image_url = req.body.end_image_url;
-        }
-        
-        // Optionnel : résolution pour le mode image ("512P" ou "768P" selon schéma Fal.ai)
-        if (req.body.resolution && req.body.resolution.toLowerCase().includes("512")) {
-            finalInput.resolution = "512P";
-        } else if (isPro) {
-            finalInput.resolution = "768P";
-        }
-    } else {
-        // --- MODE TEXT-TO-VIDEO ---
-        // Seul aspect_ratio est autorisé en mode texte (pas de résolution)
-        finalInput.aspect_ratio = aspect_ratio || req.body.aspect_ratio || "16:9";
-    }
-}// ============================================================
-// LUMA RAY 2
-// Text-to-Video
-// Image-to-Video
-// Video-to-Video / Modify
-// ============================================================
-else if (engineId.includes("luma-ray2")) {
-
-    console.log("🚀 LUMA RAY 2 : configuration");
-
-    // ========================================================
-    // 1. RÉCUPÉRATION DES ENTRÉES
-    // ========================================================
-
-    const sourceVideo =
-        typeof req.body.video_url !== "undefined"
-            ? req.body.video_url
-            : null;
-
-    const sourceImage =
-        typeof image_url !== "undefined"
-            ? image_url
-            : null;
-
-    const sourceEndImage =
-        typeof end_image_url !== "undefined"
-            ? end_image_url
-            : null;
-
-    const lumaPrompt =
-        String(
-            prompt ||
-            req.body.prompt ||
-            ""
-        ).trim();
-
-    // ========================================================
-    // 2. PROMPT OBLIGATOIRE
-    // ========================================================
-
-    if (!lumaPrompt) {
-        throw new Error(
-            "Luma Ray 2 : le prompt est vide."
-        );
-    }
-
-    // ========================================================
-    // 3. VIDÉO → VIDÉO / MODIFY
-    // ========================================================
-
-    if (sourceVideo) {
-
-        targetEngineId =
-            "fal-ai/luma-dream-machine/ray-2/modify";
-
-        finalInput = {
-            video_url: sourceVideo,
-            prompt: lumaPrompt
-        };
-
-        // Image de référence / première image
-        if (sourceImage) {
-            finalInput.image_url =
-                sourceImage;
-        }
-
-        // Mode de modification
-        finalInput.mode =
-            req.body.mode ||
-            "flex_1";
-
-        console.log(
-            "🎬 LUMA RAY 2 MODIFY"
-        );
-    }
-
-    // ========================================================
-    // 4. IMAGE → VIDÉO
-    // ========================================================
-
-    else if (
-        sourceImage ||
-        sourceEndImage
-    ) {
-
-        targetEngineId =
-            "fal-ai/luma-dream-machine/ray-2/image-to-video";
-
-        finalInput = {
-            prompt: lumaPrompt
-        };
-
-        if (sourceImage) {
-            finalInput.image_url =
-                sourceImage;
-        }
-
-        if (sourceEndImage) {
-            finalInput.end_image_url =
-                sourceEndImage;
-        }
-
-        console.log(
-            "🎬 LUMA RAY 2 IMAGE-TO-VIDEO"
-        );
-    }
-
-    // ========================================================
-    // 5. TEXT → VIDÉO
-    // ========================================================
-
-    else {
-
-        targetEngineId =
-            "fal-ai/luma-dream-machine/ray-2";
-
-        finalInput = {
-            prompt: lumaPrompt
-        };
-
-        console.log(
-            "🎬 LUMA RAY 2 TEXT-TO-VIDEO"
-        );
-    }
-
-    // ========================================================
-    // 6. DURÉE
-    // ========================================================
-
-    finalInput.duration =
-        (
-            duration === "9" ||
-            duration === "9s"
-        )
-            ? "9s"
-            : "5s";
-
-    // ========================================================
-    // 7. ASPECT RATIO
-    // ========================================================
-
-    const allowedAspectRatios = [
-        "16:9",
-        "9:16",
-        "4:3",
-        "3:4",
-        "21:9",
-        "9:21"
-    ];
-
-    const requestedAspect =
-        req.body.aspect_ratio ||
-        aspect_ratio ||
-        "16:9";
-
-    finalInput.aspect_ratio =
-        allowedAspectRatios.includes(
-            requestedAspect
-        )
-            ? requestedAspect
-            : "16:9";
-
-    // ========================================================
-    // 8. RÉSOLUTION
-    // ========================================================
-
-    const allowedResolutions = [
-        "540p",
-        "720p",
-        "1080p"
-    ];
-
-    const requestedResolution =
-        req.body.resolution ||
-        "540p";
-
-    finalInput.resolution =
-        allowedResolutions.includes(
-            requestedResolution
-        )
-            ? requestedResolution
-            : "540p";
-
-    // ========================================================
-    // 9. LOOP
-    // ========================================================
-
-    finalInput.loop =
-        typeof loop !== "undefined"
-            ? Boolean(loop)
-            : false;
-
-    // ========================================================
-    // 10. LOG FINAL
-    // ========================================================
-
-    console.log("");
-    console.log("==============================================");
-    console.log("🎬 LUMA RAY 2");
-    console.log("==============================================");
-
-    console.log(
-        "➡️ Endpoint :",
-        targetEngineId
-    );
-
-    console.log(
-        "➡️ Mode :",
-        sourceVideo
-            ? "VIDEO-TO-VIDEO"
-            : (
-                sourceImage ||
-                sourceEndImage
-                    ? "IMAGE-TO-VIDEO"
-                    : "TEXT-TO-VIDEO"
-            )
-    );
-
-    console.log(
-        "➡️ Durée :",
-        finalInput.duration
+        cleanHailuoImg
+            ? "IMAGE → VIDEO"
+            : "TEXT → VIDEO"
     );
 
     console.log(
         "➡️ Résolution :",
-        finalInput.resolution
+        is1080p
+            ? "1080p"
+            : "768p"
     );
 
     console.log(
-        "➡️ Aspect ratio :",
-        finalInput.aspect_ratio
+        "➡️ Durée :",
+        hailuoDuration,
+        "secondes"
     );
 
     console.log(
-        "➡️ Loop :",
-        finalInput.loop
-    );
-
-    console.log("==============================================");
-
-    console.log(
-        "📦 PAYLOAD LUMA RAY 2 :"
+        "➡️ Image de départ :",
+        cleanHailuoImg || "❌ aucune"
     );
 
     console.log(
+        "📦 Requête Runware :",
         JSON.stringify(
-            finalInput,
+            hailuoRequest,
             null,
             2
         )
     );
-}
 
-    // Logic Pixverse// Logic Pixverse V6// Logic Pixverse V6
-else if (engineId.includes("pixverse6")) {
-    const sourceImage = req.body.image_url || (typeof image_url !== 'undefined' ? image_url : null);
-    const sourceEndImage = req.body.end_image_url || (typeof end_image_url !== 'undefined' ? end_image_url : null);
-    
-    // 1. On récupère la source vidéo
-    let sourceVideo = req.body.video_url || req.body.videoSource || req.body.videoUrl || (typeof video_url !== 'undefined' ? video_url : null);
+    console.log("==============================================");
 
-    // 🛠️ 2. CONVERSION NGROK AUTOMATIQUE : On transforme localhost en URL publique sécurisée
-    if (sourceVideo && sourceVideo.includes('localhost:5000')) {
-        sourceVideo = sourceVideo.replace('http://localhost:5000', 'https://eclipse-ai.onrender.com');
-    }
+    // ========================================================
+    // 9. APPEL RUNWARE
+    // ========================================================
 
-    // 3. On affiche les logs mis à jour
-    console.log("🔍 DEBUG PIXVERSE EXTEND :");
-    console.log(" - sourceVideo final converti :", sourceVideo);
+    try {
 
-    // Si on a vraiment une vidéo, on étend. Sinon, on bascule sur image ou texte pour éviter le 422 !
-    if (sourceVideo) {
-        targetEngineId = "fal-ai/pixverse/v6/extend";
-        finalInput = {
-            prompt: prompt || req.body.prompt || "",
-            video_url: sourceVideo, // 👈 Utilise l'URL ngrok prête pour Fal.ai
-            duration: parseInt(duration) || 5,
-            resolution: req.body.resolution || "720p"
-        };
-        if (sourceImage) finalInput.image_url = sourceImage;
-    } else if (sourceImage && sourceEndImage) {
-        targetEngineId = "fal-ai/pixverse/v6/transition";
-        finalInput = {
-            prompt: prompt || req.body.prompt || "",
-            first_image_url: sourceImage,
-            last_image_url: sourceEndImage,
-            duration: parseInt(duration) || 5,
-            resolution: req.body.resolution || "720p"
-        };
-    } else if (sourceImage) {
-        targetEngineId = "fal-ai/pixverse/v6/image-to-video";
-        finalInput = {
-            prompt: prompt || req.body.prompt || "",
-            image_url: sourceImage,
-            duration: parseInt(duration) || 5,
-            resolution: req.body.resolution || "720p"
-        };
-    } else {
-        targetEngineId = "fal-ai/pixverse/v6/text-to-video";
-        finalInput = {
-            prompt: prompt || req.body.prompt || "",
-            aspect_ratio: req.body.aspect_ratio || "16:9",
-            resolution: req.body.resolution || "720p",
-            duration: parseInt(duration) || 5
-        };
+        const [result] =
+            await runware.run(
+                hailuoRequest
+            );
+
+        console.log(
+            "✅ [HAILUO 2.3] Génération terminée"
+        );
+
+        console.log(
+            "📦 Résultat :",
+            JSON.stringify(
+                result,
+                null,
+                2
+            )
+        );
+
+        return await completeRunwareVideo(result, engineId);
+
+    } catch (error) {
+
+        console.error(
+            "❌ [HAILUO 2.3 / RUNWARE]",
+            error
+        );
+
+        throw error;
     }
 }
 // ============================================================
-// SEEDANCE 2.0
-// Standard / Fast
-// Text-to-Video / Image-to-Video / Reference-to-Video
+// MINIMAX H3 — RUNWARE
+// Text-to-Video
+// Image-to-Video
+// First + Last Frame
+// Reference Images / Video / Audio
 // ============================================================
-else if (
-    engineId === "seedance20" ||
-    engineId.includes("seedance2") ||
-    engineId.includes("seedance-2.0") ||
-    engineId.includes("seedance")
-) {
+else if (engineId.includes("minimax_h3")) {
 
-    console.log("🚀 SEEDANCE 2.0 : configuration");
+    console.log("🚀 MINIMAX H3 : configuration RUNWARE");
 
     // ========================================================
-    // 1. DÉTECTION STANDARD / FAST
+    // 1. PROMPT
     // ========================================================
 
-    const requestedEndpoint =
-        typeof req.body.modelEndpoint === "string"
-            ? req.body.modelEndpoint.trim()
-            : "";
+    const h3BasePrompt = String(prompt || req.body.prompt || "").trim();
+    const h3Dialogue = String(req.body.dialogue || "").trim().slice(0, 2000);
+    const h3HasAudioReference = Boolean(
+        (Array.isArray(req.body.audio_urls) && req.body.audio_urls.some(Boolean)) || req.body.audio_url
+    );
+    const h3ToPublicUrl = (url) => {
+        if (typeof url !== "string" || !url.trim()) return null;
+        if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
+            return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com");
+        }
+        return url;
+    };
+    const h3Prompt = [
+        h3BasePrompt,
+        h3Dialogue
+            ? `Sound: The character says exactly: "${h3Dialogue}". Use any provided reference audio to guide the voice, accent and delivery, and synchronize the character's lip movements with the dialogue.`
+            : h3HasAudioReference
+                ? "Sound: Use the provided reference audio to guide the character's voice, accent, tone and delivery. Generate natural speech synchronized with the scene."
+                : ""
+    ].filter(Boolean).join("\n").slice(0, 7000);
 
-    const isFast =
-        engineId.toLowerCase().includes("fast") ||
-        requestedEndpoint.toLowerCase().includes("/fast/");
-
-    // ========================================================
-    // 2. PROMPT
-    // ========================================================
-
-    const seedancePrompt =
-        String(
-            prompt ||
-            req.body.prompt ||
-            ""
-        ).trim();
-
-    if (!seedancePrompt) {
+    if (!h3Prompt) {
         throw new Error(
-            "Seedance 2.0 : le prompt est vide."
+            "MiniMax H3 : le prompt est vide."
         );
     }
 
     // ========================================================
-    // 3. IMAGES
+    // 2. DURÉE
     // ========================================================
 
-    const seedanceImages = [];
+    const h3Duration = Math.max(
+        4,
+        Math.min(
+            15,
+            parseInt(
+                req.body.duration ||
+                duration ||
+                5,
+                10
+            )
+        )
+    );
 
-    // image_urls global
+    // ========================================================
+    // 3. RÉSOLUTION
+    // ========================================================
+
+    const requestedResolution =
+        String(
+            req.body.resolution ||
+            resolution ||
+            "768p"
+        )
+        .toLowerCase()
+        .replace(/\s/g, "");
+
+    const h3Resolution =
+        (
+            requestedResolution === "1440p" ||
+            requestedResolution === "2k" ||
+            requestedResolution === "2k1440"
+        )
+            ? "1440p"
+            : "768p";
+
+    // ========================================================
+    // 4. RÉCUPÉRATION DES IMAGES
+    // ========================================================
+
+    const h3Images = [];
+
     if (Array.isArray(image_urls)) {
-        seedanceImages.push(
+        h3Images.push(
             ...image_urls.filter(Boolean)
         );
     }
 
-    // image_url
     if (req.body.image_url) {
-        seedanceImages.push(
+        h3Images.push(
             req.body.image_url
         );
     }
 
-    // start_image_url
     if (req.body.start_image_url) {
-        seedanceImages.push(
+        h3Images.push(
             req.body.start_image_url
         );
     }
 
-    // startImage
     if (req.body.startImage) {
-        seedanceImages.push(
+        h3Images.push(
             req.body.startImage
         );
     }
 
-    // end_image_url
     if (req.body.end_image_url) {
-        seedanceImages.push(
+        h3Images.push(
             req.body.end_image_url
         );
     }
 
-    // Suppression des doublons + exclusion vidéos
-    const uniqueImages = [
+    if (req.body.endImage) {
+        h3Images.push(
+            req.body.endImage
+        );
+    }
+
+    // Suppression des doublons + exclusion des vidéos
+    const uniqueH3Images = [
         ...new Set(
-            seedanceImages.filter(
+            h3Images.filter(
                 url =>
                     typeof url === "string" &&
                     url.trim() &&
@@ -3741,388 +4148,206 @@ else if (
             )
         )
     ];
+    const publicH3Images = uniqueH3Images.map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 4. VIDÉOS DE RÉFÉRENCE
+    // 5. VIDÉOS DE RÉFÉRENCE
     // ========================================================
 
-    const seedanceVideos = [];
+const sourceH3Video =
+    req.body.video_url ||
+    req.body.videoSource ||
+    req.body.videoUrl ||
+    null;
 
-    // video_urls global
-    if (Array.isArray(video_urls)) {
-        seedanceVideos.push(
-            ...video_urls.filter(Boolean)
-        );
-    }
+const extraH3Videos = Array.isArray(video_urls)
+    ? video_urls.filter(
+        url =>
+            typeof url === "string" &&
+            url.trim() &&
+            url !== sourceH3Video
+      )
+    : [];
 
-    // video_url
-    if (req.body.video_url) {
-        seedanceVideos.push(
-            req.body.video_url
-        );
-    }
-
-    // videoSource
-    if (req.body.videoSource) {
-        seedanceVideos.push(
-            req.body.videoSource
-        );
-    }
-
-    // videoUrl
-    if (req.body.videoUrl) {
-        seedanceVideos.push(
-            req.body.videoUrl
-        );
-    }
-
-    // Suppression des doublons
-    const uniqueVideos = [
-        ...new Set(
-            seedanceVideos.filter(
-                url =>
-                    typeof url === "string" &&
-                    url.trim()
-            )
-        )
-    ];
+const uniqueH3Videos = [
+    ...new Set([
+        ...(typeof sourceH3Video === "string" && sourceH3Video.trim()
+            ? [sourceH3Video]
+            : []),
+        ...extraH3Videos
+    ])
+].slice(0, 3).map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 5. AUDIO DE RÉFÉRENCE
+    // 6. AUDIOS DE RÉFÉRENCE
     // ========================================================
 
-    // Pour l'instant, Seedance utilise generate_audio
-    // pour la génération audio.
-    //
-    // On initialise toujours uniqueAudios afin d'éviter
-    // "uniqueAudios is not defined".
-
-    const uniqueAudios = [];
-
-    // Si le frontend fournit plus tard des audios de référence,
-    // ils pourront être ajoutés ici sans casser le serveur.
+    const h3Audios = [];
 
     if (Array.isArray(req.body.audio_urls)) {
-        uniqueAudios.push(
+        h3Audios.push(
             ...req.body.audio_urls.filter(Boolean)
         );
     }
 
     if (req.body.audio_url) {
-        uniqueAudios.push(
+        h3Audios.push(
             req.body.audio_url
         );
     }
 
-    // Suppression des doublons
-    const finalUniqueAudios = [
+    const uniqueH3Audios = [
         ...new Set(
-            uniqueAudios.filter(
+            h3Audios.filter(
                 url =>
                     typeof url === "string" &&
                     url.trim()
             )
         )
     ];
+    const publicH3Audios = uniqueH3Audios.map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 6. CHOIX AUTOMATIQUE DU MODE
+    // 7. IMAGES DE RÉFÉRENCE
     // ========================================================
 
-    let seedanceMode;
+    const h3ReferenceImages = [];
 
-    // Une vidéo de référence = Reference-to-Video
-    if (uniqueVideos.length > 0) {
-
-        seedanceMode = "reference-to-video";
-
-    }
-
-    // Une ou deux images = Image-to-Video
-    //
-    // 1 image :
-    // image de départ
-    //
-    // 2 images :
-    // image de départ + image finale
-    else if (uniqueImages.length >= 1) {
-
-        seedanceMode = "image-to-video";
-
-    }
-
-    // Aucun média = Text-to-Video
-    else {
-
-        seedanceMode = "text-to-video";
-    }
-
-    // ========================================================
-    // 7. ENDPOINT SEEDANCE 2.0
-    // ========================================================
-
-    if (seedanceMode === "reference-to-video") {
-
-        targetEngineId = isFast
-            ? "bytedance/seedance-2.0/fast/reference-to-video"
-            : "bytedance/seedance-2.0/reference-to-video";
-
-    }
-
-    else if (seedanceMode === "image-to-video") {
-
-        targetEngineId = isFast
-            ? "bytedance/seedance-2.0/fast/image-to-video"
-            : "bytedance/seedance-2.0/image-to-video";
-
-    }
-
-    else {
-
-        targetEngineId = isFast
-            ? "bytedance/seedance-2.0/fast/text-to-video"
-            : "bytedance/seedance-2.0/text-to-video";
-    }
-
-    // ========================================================
-    // IMPORTANT
-    // ========================================================
-    //
-    // Le frontend possède actuellement :
-    //
-    // bytedance/seedance-2.0/text-to-video
-    //
-    // Mais si une image est présente, on NE doit PAS
-    // écraser l'endpoint Image-to-Video avec celui du frontend.
-    //
-    // On respecte donc modelEndpoint uniquement lorsqu'on
-    // est réellement en Text-to-Video.
-
-    if (
-        requestedEndpoint &&
-        seedanceMode === "text-to-video"
-    ) {
-
-        targetEngineId = requestedEndpoint;
-    }
-
-    // ========================================================
-    // 8. DURÉE
-    // ========================================================
-
-    const requestedDuration =
-        req.body.duration ||
-        duration ||
-        "auto";
-
-    const parsedDuration =
-        parseInt(
-            requestedDuration,
-            10
+    if (Array.isArray(req.body.referenceImages)) {
+        h3ReferenceImages.push(
+            ...req.body.referenceImages.filter(Boolean)
         );
+    }
 
-    const seedanceDuration =
-        requestedDuration === "auto"
+    if (Array.isArray(req.body.reference_images)) {
+        h3ReferenceImages.push(
+            ...req.body.reference_images.filter(Boolean)
+        );
+    }
 
-            ? "auto"
-
-            : (
-                Number.isInteger(parsedDuration) &&
-                parsedDuration >= 4 &&
-                parsedDuration <= 15
+    const uniqueH3ReferenceImages = [
+        ...new Set(
+            h3ReferenceImages.filter(
+                url =>
+                    typeof url === "string" &&
+                    url.trim()
             )
-
-                ? String(parsedDuration)
-
-                : "5";
-
-    // ========================================================
-    // 9. RÉSOLUTION
-    // ========================================================
-
-    const resolution =
-        ["480p", "720p"].includes(
-            req.body.resolution
         )
-
-            ? req.body.resolution
-
-            : "720p";
-
-    // ========================================================
-    // 10. ASPECT RATIO
-    // ========================================================
-
-    const allowedAspectRatios = [
-        "auto",
-        "21:9",
-        "16:9",
-        "4:3",
-        "1:1",
-        "3:4",
-        "9:16"
     ];
-
-    const requestedAspectRatio =
-        req.body.aspect_ratio ||
-        aspect_ratio ||
-        "auto";
-
-    const aspectRatio =
-        allowedAspectRatios.includes(
-            requestedAspectRatio
-        )
-
-            ? requestedAspectRatio
-
-            : "auto";
+    const publicH3ReferenceImages = uniqueH3ReferenceImages.map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 11. AUDIO
+    // 8. CONSTRUCTION DE LA REQUÊTE RUNWARE
     // ========================================================
 
-    const generateAudio =
-        req.body.generate_audio ??
-        req.body.enable_audio ??
-        true;
+  
+const h3Request = {
+    taskType: "videoInference",
+    model: "minimax:h3@0",
+    positivePrompt: h3Prompt,
+    duration: h3Duration,
+    includeCost: true,
+    ...(Number.isInteger(Number(req.body.seed)) && String(req.body.seed ?? "").trim() !== "" && Number(req.body.seed) >= 0 && Number(req.body.seed) <= 4294967295 ? { seed: Number(req.body.seed) } : {}),
+    settings: { promptExpansion: ["disabled", "balanced", "quality"].includes(req.body.settings?.promptExpansion) ? req.body.settings.promptExpansion : "balanced" }
+};
 
     // ========================================================
-    // 12. PAYLOAD DE BASE
+    // 9. INPUTS
     // ========================================================
 
-    finalInput = {
-        prompt: seedancePrompt,
+const h3Inputs = {};
 
-        resolution: resolution,
+// --------------------------------------------------------
+// Références multimodales : 12 fichiers au total maximum
+// --------------------------------------------------------
+if (publicH3ReferenceImages.length + uniqueH3Videos.length + publicH3Audios.length > 12) {
+    throw new Error("MiniMax H3 : 12 fichiers de référence maximum au total (images, vidéos et audios combinés).");
+}
+const effectiveH3ReferenceImages = publicH3ReferenceImages.slice(0, 9);
+let h3RemainingFiles = Math.max(0, 12 - effectiveH3ReferenceImages.length);
+const effectiveH3ReferenceVideos = uniqueH3Videos.slice(0, Math.min(3, h3RemainingFiles));
+h3RemainingFiles -= effectiveH3ReferenceVideos.length;
+const effectiveH3ReferenceAudios = publicH3Audios.slice(0, Math.min(3, h3RemainingFiles));
 
-        duration: seedanceDuration,
+const hasH3ReferenceImages = effectiveH3ReferenceImages.length > 0;
+const hasH3ReferenceVideos = effectiveH3ReferenceVideos.length > 0;
 
-        aspect_ratio: aspectRatio,
+const hasH3VisualReferences =
+    hasH3ReferenceImages || hasH3ReferenceVideos;
 
-        generate_audio: Boolean(generateAudio),
+if (uniqueH3Audios.length > 0 && !hasH3VisualReferences) {
+    throw new Error("MiniMax H3 : une référence audio nécessite aussi au moins une image ou une vidéo dans les références visuelles.");
+}
 
-        image_urls: [],
-
-        video_urls: [],
-
-        audio_urls: []
-    };
-
-    // ========================================================
-    // 13. SEED OPTIONNEL
-    // ========================================================
-
-    if (
-        req.body.seed !== undefined &&
-        req.body.seed !== null &&
-        req.body.seed !== ""
-    ) {
-
-        const seed =
-            parseInt(
-                req.body.seed,
-                10
-            );
-
-        if (Number.isInteger(seed)) {
-
-            finalInput.seed = seed;
-        }
+if (hasH3VisualReferences) {
+    if (hasH3ReferenceImages) {
+        h3Inputs.referenceImages =
+            effectiveH3ReferenceImages;
     }
 
-    // ========================================================
-    // 14. IMAGE-TO-VIDEO
-    // ========================================================
-
-    if (
-        seedanceMode === "image-to-video"
-    ) {
-
-        // ----------------------------------------------------
-        // IMAGE DE DÉPART
-        // ----------------------------------------------------
-
-        if (uniqueImages[0]) {
-
-            finalInput.image_url =
-                uniqueImages[0];
-        }
-
-        // ----------------------------------------------------
-        // IMAGE FINALE
-        // ----------------------------------------------------
-
-        if (
-            uniqueImages.length >= 2 &&
-            uniqueImages[1]
-        ) {
-
-            finalInput.end_image_url =
-                uniqueImages[1];
-        }
-
-        // ----------------------------------------------------
-        // Nettoyage
-        // ----------------------------------------------------
-
-        delete finalInput.image_urls;
-        delete finalInput.video_urls;
-        delete finalInput.audio_urls;
+    if (hasH3ReferenceVideos) {
+        h3Inputs.referenceVideos =
+            effectiveH3ReferenceVideos;
     }
 
-    // ========================================================
-    // 15. REFERENCE-TO-VIDEO
-    // ========================================================
-
-    if (
-        seedanceMode === "reference-to-video"
-    ) {
-
-        if (
-            uniqueImages.length > 0
-        ) {
-
-            finalInput.image_urls =
-                uniqueImages.slice(0, 9);
-        }
-
-        if (
-            uniqueVideos.length > 0
-        ) {
-
-            finalInput.video_urls =
-                uniqueVideos.slice(0, 3);
-        }
-
-        if (
-            finalUniqueAudios.length > 0
-        ) {
-
-            finalInput.audio_urls =
-                finalUniqueAudios.slice(0, 3);
-        }
+    if (effectiveH3ReferenceAudios.length > 0) {
+        h3Inputs.referenceAudios =
+            effectiveH3ReferenceAudios;
     }
+}
+
+// --------------------------------------------------------
+// Première et dernière image
+// Uniquement sans références multimodales
+// --------------------------------------------------------
+
+else if (uniqueH3Images.length > 0) {
+    h3Inputs.frameImages =
+        publicH3Images.slice(0, 2);
+}
+
+if (Object.keys(h3Inputs).length > 0) {
+    h3Request.inputs = h3Inputs;
+}
+
+const requestedAspectRatio =
+    req.body.aspect_ratio || "16:9";
+
+const h3Dimensions = {
+    "16:9": h3Resolution === "1440p"
+        ? [2560, 1440] : [1344, 768],
+    "4:3": h3Resolution === "1440p"
+        ? [1920, 1440] : [1024, 768],
+    "1:1": h3Resolution === "1440p"
+        ? [1440, 1440] : [768, 768],
+    "3:4": h3Resolution === "1440p"
+        ? [1440, 1920] : [768, 1024],
+    "9:16": h3Resolution === "1440p"
+        ? [1440, 2560] : [768, 1344],
+    "21:9": h3Resolution === "1440p"
+        ? [2944, 1248] : [1536, 672]
+};
+
+if (Object.keys(h3Inputs).length > 0) {
+    // Mode avec image ou vidéo de référence
+    h3Request.resolution = h3Resolution;
+} else {
+    // Mode texte seul : largeur et hauteur obligatoires
+    const dimensions =
+        h3Dimensions[requestedAspectRatio] ||
+        h3Dimensions["16:9"];
+
+    h3Request.width = dimensions[0];
+    h3Request.height = dimensions[1];
+}
 
     // ========================================================
-    // 16. TEXT-TO-VIDEO
-    // ========================================================
-
-    if (
-        seedanceMode === "text-to-video"
-    ) {
-
-        delete finalInput.image_urls;
-        delete finalInput.video_urls;
-        delete finalInput.audio_urls;
-    }
-
-    // ========================================================
-    // 17. LOG
+    // 10. LOG
     // ========================================================
 
     console.log("");
     console.log("==============================================");
-    console.log("🎬 SEEDANCE 2.0");
+    console.log("🎬 MINIMAX H3 — RUNWARE");
     console.log("==============================================");
 
     console.log(
@@ -4131,98 +4356,356 @@ else if (
     );
 
     console.log(
-        "➡️ Endpoint :",
-        targetEngineId
+        "➡️ Modèle :",
+        "minimax:h3@0"
     );
 
     console.log(
         "➡️ Mode :",
-        seedanceMode
-    );
-
-    console.log(
-        "➡️ Tier :",
-        isFast
-            ? "FAST"
-            : "STANDARD"
-    );
-
-    console.log(
-        "➡️ Images :",
-        uniqueImages.length
-    );
-
-    console.log(
-        "➡️ Vidéos :",
-        uniqueVideos.length
-    );
-
-    console.log(
-        "➡️ Audios :",
-        finalUniqueAudios.length
+        uniqueH3Videos.length > 0
+            ? "VIDEO → VIDEO"
+            : uniqueH3Audios.length > 0
+                ? "AUDIO → VIDEO"
+                : uniqueH3Images.length >= 2
+                    ? "FIRST + LAST FRAME"
+                    : uniqueH3Images.length === 1
+                        ? "IMAGE → VIDEO"
+                        : "TEXT → VIDEO"
     );
 
     console.log(
         "➡️ Résolution :",
-        resolution
+        h3Resolution
     );
 
     console.log(
         "➡️ Durée :",
-        seedanceDuration
+        h3Duration,
+        "secondes"
     );
 
     console.log(
-        "➡️ Aspect ratio :",
-        aspectRatio
+        "➡️ Images frame :",
+        uniqueH3Images.length
     );
 
     console.log(
-        "➡️ Audio généré :",
-        Boolean(generateAudio)
-    );
-
-    console.log("==============================================");
-
-    console.log(
-        "📦 PAYLOAD SEEDANCE 2.0 :"
+        "➡️ Images référence :",
+        uniqueH3ReferenceImages.length
     );
 
     console.log(
+        "➡️ Vidéos référence :",
+        uniqueH3Videos.length
+    );
+
+    console.log(
+        "➡️ Audios référence :",
+        effectiveH3ReferenceAudios.length
+    );
+
+    console.log(
+        "📦 Requête Runware :",
         JSON.stringify(
-            finalInput,
+            h3Request,
             null,
             2
         )
     );
 
-    console.log("==============================================");
-const PUBLIC_URL = process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com";
+    console.log(
+        "=============================================="
+    );
 
+    // ========================================================
+    // 11. APPEL RUNWARE
+    // ========================================================
+
+    try {
+
+        const [result] =
+            await runware.run(
+                h3Request
+            );
+
+        console.log(
+            "✅ [MINIMAX H3] Génération terminée"
+        );
+
+        console.log(
+            "📦 Résultat :",
+            JSON.stringify(
+                result,
+                null,
+                2
+            )
+        );
+
+        return await completeRunwareVideo(result, engineId);
+
+    } catch (error) {
+
+        console.error(
+            "❌ [MINIMAX H3 / RUNWARE]",
+            error
+        );
+
+        throw error;
+    }
+}
+// ============================================================
+// PIXVERSE V6 — RUNWARE
+// Text-to-video, first/last frames, video-to-video, native audio.
+// ============================================================
+else if (engineId === "pixverse6") {
+    const runware = await getRunwareClient();
     const toPublicUrl = (url) => {
-        if (!url) return null;
+        if (typeof url !== "string" || !url.trim()) return null;
         if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
-            return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, PUBLIC_URL);
+            return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com");
         }
         return url;
     };
-
-    if (finalInput.image_url) {
-        finalInput.image_url = toPublicUrl(finalInput.image_url);
+    const sourceVideo = toPublicUrl(req.body.video_url || req.body.videoSource || req.body.videoUrl || null);
+    const sourceStart = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || null);
+    const sourceEnd = toPublicUrl(req.body.end_image_url || req.body.endImage || null);
+    const safeDuration = Math.max(1, Math.min(15, Number(req.body.duration) || 5));
+    const safeResolution = ["360p", "540p", "720p", "1080p"].includes(String(req.body.resolution)) ? String(req.body.resolution) : "720p";
+    const ratio = String(req.body.aspect_ratio || "16:9");
+    const pixverseSizes = {
+        "360p": { "16:9": [640,360], "4:3": [480,360], "1:1": [360,360], "3:4": [360,480], "9:16": [360,640] },
+        "540p": { "16:9": [960,540], "4:3": [720,540], "1:1": [540,540], "3:4": [540,720], "9:16": [540,960] },
+        "720p": { "16:9": [1280,720], "4:3": [960,720], "1:1": [720,720], "3:4": [720,960], "9:16": [720,1280] },
+        "1080p": { "16:9": [1920,1080], "4:3": [1440,1080], "1:1": [1080,1080], "3:4": [1080,1440], "9:16": [1080,1920] }
+    };
+    const [baseW, baseH] = (pixverseSizes[safeResolution] || pixverseSizes["720p"])[ratio] || (pixverseSizes[safeResolution] || pixverseSizes["720p"])["16:9"];
+    const request = {
+        taskType: "videoInference",
+        model: "pixverse:1@8",
+        positivePrompt: String(prompt || req.body.prompt || "").trim().slice(0, 5000),
+        duration: safeDuration,
+        includeCost: true,
+        ...(Number.isInteger(Number(req.body.seed)) && String(req.body.seed ?? "").trim() !== "" && Number(req.body.seed) >= 0 ? { seed: Number(req.body.seed) } : {}),
+        settings: {
+            audio: req.body.settings?.audio ?? req.body.enable_audio === true,
+            ...(!sourceVideo ? {
+                multiClip: req.body.settings?.multiClip === true,
+                ...( ["anime", "3d_animation", "clay", "comic", "cyberpunk"].includes(req.body.settings?.style) ? { style: req.body.settings.style } : {}),
+                thinking: ["enabled", "disabled", "auto"].includes(req.body.settings?.thinking) ? req.body.settings.thinking : "auto"
+            } : {})
+        },
+        ...(typeof req.body.negativePrompt === "string" && req.body.negativePrompt.trim() ? { negativePrompt: req.body.negativePrompt.trim().slice(0, 2048) } : {})
+    };
+    if (sourceVideo) {
+        request.inputs = { video: sourceVideo };
+        request.resolution = safeResolution;
+    } else if (sourceStart || sourceEnd) {
+        request.inputs = { frameImages: sourceStart && sourceEnd
+            ? [sourceStart, { image: sourceEnd, frame: "last" }]
+            : sourceStart ? [sourceStart] : [{ image: sourceEnd, frame: "last" }] };
+        request.resolution = safeResolution;
+        if (request.inputs.frameImages.length > 1 && request.settings.thinking === "auto") request.settings.thinking = "enabled";
+    } else {
+        request.width = baseW;
+        request.height = baseH;
     }
-    if (finalInput.end_image_url) {
-        finalInput.end_image_url = toPublicUrl(finalInput.end_image_url);
-    }
-    if (Array.isArray(finalInput.image_urls)) {
-        finalInput.image_urls = finalInput.image_urls.map(toPublicUrl);
-    }
-
-    // (Optionnel) Tu peux rajouter un console.log ici pour vérifier que le payload final a bien les URLs ngrok :
-    console.log("📦 PAYLOAD FINAL AVEC URLS PUBLIQUES :", JSON.stringify(finalInput, null, 2));
+    if (!request.positivePrompt) throw new Error("PixVerse V6 : le prompt est vide.");
+    console.log("🎬 [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
+    const [result] = await runware.run(request);
+    const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
+    if (!videoURL) throw new Error("Runware PixVerse V6 n'a retourné aucune vidéo.");
+    return await completeRunwareVideo(result, engineId);
 }
 
-// --- Logic Seedance 1.5 ---// --- Logic Seedance 1.5 ---
-else if (engineId.includes("seedance")) {
+// ============================================================
+// SEEDANCE 2.5 — RUNWARE
+// Jusqu'à 30 images, 10 vidéos et 10 audios de référence.
+// ============================================================
+else if (engineId === "seedance25") {
+    const runware = await getRunwareClient();
+    const toPublicUrl = (url) => {
+        if (typeof url !== "string" || !url.trim()) return null;
+        if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
+            return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com");
+        }
+        return url;
+    };
+    const cleanList = (arr, max) => [...new Set((Array.isArray(arr) ? arr : [])
+        .filter(u => typeof u === "string" && u.trim())
+        .map(toPublicUrl)
+        .filter(Boolean))].slice(0, max);
+    const images = cleanList(req.body.referenceImages, 30);
+    const videos = cleanList(req.body.referenceVideos, 10);
+    const audios = cleanList(req.body.referenceAudios, 10);
+    const sourceVideo = toPublicUrl(req.body.video_url || req.body.videoSource || req.body.video || null);
+    const start = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || null);
+    const end = toPublicUrl(req.body.end_image_url || null);
+    const operation = sourceVideo && req.body.settings?.operation === "edit" ? "edit" : sourceVideo ? "extend" : null;
+    const rawSeedance25Prompt = String(prompt || req.body.prompt || "").trim();
+    const seedance25Prompt = operation === "edit"
+        ? ["Edit the provided source video according to the following instruction. Preserve everything not explicitly changed.", rawSeedance25Prompt].filter(Boolean).join("\n")
+        : operation === "extend"
+            ? ["Continue the provided source video with a seamless continuation, preserving character, scene, style and motion.", rawSeedance25Prompt].filter(Boolean).join("\n")
+            : rawSeedance25Prompt;
+    const resolutionAliases = {
+        "sd": "480p",
+        "480p": "480p",
+        "hd": "720p",
+        "720p": "720p",
+        "full hd": "1080p",
+        "fhd": "1080p",
+        "1080p": "1080p"
+    };
+    const requestedResolution = String(req.body.resolution || "720p").trim().toLowerCase();
+    const safeResolution = resolutionAliases[requestedResolution] || "720p";
+    const durationValue = operation === "edit" ? "auto" : Math.max(4, Math.min(30, parseInt(req.body.duration, 10) || 5));
+    const request = {
+        taskType: "videoInference",
+        model: "bytedance:seedance@2.5",
+        ...(seedance25Prompt ? { positivePrompt: seedance25Prompt.slice(0, 10000) } : {}),
+        duration: durationValue,
+        includeCost: true,
+        ...(Number.isInteger(Number(req.body.seed)) && String(req.body.seed ?? "").trim() !== "" && Number(req.body.seed) >= 0 && Number(req.body.seed) <= 4294967295 ? { seed: Number(req.body.seed) } : {}),
+        settings: {
+            audio: req.body.settings?.audio !== false,
+            ...(operation ? { operation } : {})
+        }
+    };
+
+    if (sourceVideo) {
+        // Video-to-video : la résolution choisit la qualité, l'aspect reste celui de la vidéo source.
+        request.inputs = { video: sourceVideo };
+        request.resolution = safeResolution;
+    } else if (start || end) {
+        // frameImages exige toujours une première image. Une image de fin seule est traitée comme référence.
+        if (start) {
+            request.inputs = { frameImages: start && end
+                ? [{ image: start, frame: "first" }, { image: end, frame: "last" }]
+                : [{ image: start, frame: "first" }] };
+            request.resolution = safeResolution;
+        } else {
+            request.inputs = {
+                referenceImages: [...new Set([end, ...images].filter(Boolean))].slice(0, 30),
+                ...(videos.length ? { referenceVideos: videos } : {}),
+                ...(audios.length ? { referenceAudios: audios } : {})
+            };
+            const aspect = String(req.body.aspect_ratio || "16:9");
+            const sizesByTier = {
+                "480p": { "16:9": [854,480], "9:16": [480,854], "1:1": [640,640], "4:3": [752,560], "3:4": [560,752], "21:9": [992,432] },
+                "720p": { "16:9": [1280,720], "9:16": [720,1280], "1:1": [960,960], "4:3": [1112,834], "3:4": [834,1112], "21:9": [1470,630] },
+                "1080p": { "16:9": [1920,1080], "9:16": [1080,1920], "1:1": [1440,1440], "4:3": [1664,1248], "3:4": [1248,1664], "21:9": [2206,946] }
+            };
+            [request.width, request.height] = sizesByTier[safeResolution][aspect] || sizesByTier[safeResolution]["16:9"];
+        }
+    } else if (images.length || videos.length || audios.length) {
+        request.inputs = {
+            ...(images.length ? { referenceImages: images } : {}),
+            ...(videos.length ? { referenceVideos: videos } : {}),
+            ...(audios.length ? { referenceAudios: audios } : {})
+        };
+        const aspect = String(req.body.aspect_ratio || "16:9");
+        const sizesByTier = {
+            "480p": { "16:9": [854,480], "9:16": [480,854], "1:1": [640,640], "4:3": [752,560], "3:4": [560,752], "21:9": [992,432] },
+            "720p": { "16:9": [1280,720], "9:16": [720,1280], "1:1": [960,960], "4:3": [1112,834], "3:4": [834,1112], "21:9": [1470,630] },
+            "1080p": { "16:9": [1920,1080], "9:16": [1080,1920], "1:1": [1440,1440], "4:3": [1664,1248], "3:4": [1248,1664], "21:9": [2206,946] }
+        };
+        [request.width, request.height] = sizesByTier[safeResolution][aspect] || sizesByTier[safeResolution]["16:9"];
+    } else {
+        const aspect = String(req.body.aspect_ratio || "16:9");
+        const sizesByTier = {
+            "480p": { "16:9": [854,480], "9:16": [480,854], "1:1": [640,640], "4:3": [752,560], "3:4": [560,752], "21:9": [992,432] },
+            "720p": { "16:9": [1280,720], "9:16": [720,1280], "1:1": [960,960], "4:3": [1112,834], "3:4": [834,1112], "21:9": [1470,630] },
+            "1080p": { "16:9": [1920,1080], "9:16": [1080,1920], "1:1": [1440,1440], "4:3": [1664,1248], "3:4": [1248,1664], "21:9": [2206,946] }
+        };
+        [request.width, request.height] = sizesByTier[safeResolution][aspect] || sizesByTier[safeResolution]["16:9"];
+    }
+
+    if (!request.positivePrompt && !request.inputs) throw new Error("Seedance 2.5 : le prompt est obligatoire sans média de référence.");
+    console.log("🎬 [RUNWARE SEEDANCE 2.5]", JSON.stringify(request, null, 2));
+    const [result] = await runware.run(request);
+    const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
+    if (!videoURL) throw new Error("Runware Seedance 2.5 n'a retourné aucune vidéo.");
+    return await completeRunwareVideo(result, engineId);
+}
+// ============================================================
+// SEEDANCE 2.0 — RUNWARE
+// Jusqu'à 9 images, 3 vidéos et 3 audios de référence.
+// ============================================================
+else if (engineId === "seedance20") {
+    const runware = await getRunwareClient();
+    const toPublicUrl = (url) => {
+        if (typeof url !== "string" || !url.trim()) return null;
+        if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com");
+        return url;
+    };
+    const cleanList = (arr, max) => [...new Set((Array.isArray(arr) ? arr : []).filter(u => typeof u === "string" && u.trim()).map(toPublicUrl).filter(Boolean))].slice(0, max);
+    const images = cleanList(req.body.referenceImages, 9);
+    const requestedVideos = cleanList(req.body.referenceVideos, 3);
+    const requestedAudios = cleanList(req.body.referenceAudios, 3);
+    const sourceVideo = toPublicUrl(req.body.video_url || req.body.videoSource || null);
+    if (images.length + requestedVideos.length + requestedAudios.length + (sourceVideo ? 1 : 0) > 12) {
+        throw new Error("Seedance 2.0 : 12 fichiers de référence maximum au total (images, vidéos et audios combinés).");
+    }
+    let referenceBudget = Math.max(0, 12 - images.length - (sourceVideo ? 1 : 0));
+    const videos = requestedVideos.slice(0, Math.min(sourceVideo ? 2 : 3, referenceBudget));
+    referenceBudget -= videos.length;
+    const audios = requestedAudios.slice(0, Math.min(3, referenceBudget));
+    const start = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || null);
+    const end = toPublicUrl(req.body.end_image_url || null);
+    const request = {
+        taskType: "videoInference",
+        model: "bytedance:seedance@2.0",
+        ...(String(prompt || req.body.prompt || "").trim() ? { positivePrompt: String(prompt || req.body.prompt || "").trim().slice(0, 10000) } : {}),
+        duration: Math.max(4, Math.min(15, parseInt(req.body.duration, 10) || 5)),
+        includeCost: true,
+        ...(Number.isInteger(Number(req.body.seed)) && String(req.body.seed ?? "").trim() !== "" && Number(req.body.seed) >= 0 && Number(req.body.seed) <= 4294967295 ? { seed: Number(req.body.seed) } : {}),
+        settings: { audio: req.body.settings?.audio !== false }
+    };
+    if (sourceVideo || images.length || videos.length || audios.length) {
+        // Seedance 2.0 audio-reference mode requires at least one image or video reference.
+        const referenceVideos = [...new Set([...(sourceVideo ? [sourceVideo] : []), ...videos])].slice(0, 3);
+        const hasVisual = images.length > 0 || referenceVideos.length > 0;
+        if (audios.length && !hasVisual) throw new Error("Seedance 2.0 : une référence audio nécessite au moins une image ou une vidéo de référence.");
+        request.inputs = {
+            ...(images.length ? { referenceImages: images } : {}),
+            ...(referenceVideos.length ? { referenceVideos } : {}),
+            ...(audios.length ? { referenceAudios: audios } : {})
+        };
+        const aspect = String(req.body.aspect_ratio || "16:9");
+        const tier = ["480p", "720p", "1080p", "4k"].includes(String(req.body.resolution).toLowerCase()) ? String(req.body.resolution).toLowerCase() : "720p";
+        const sizesByTier = {
+            "480p": { "16:9": [864,496], "9:16": [496,864], "1:1": [640,640], "4:3": [752,560], "3:4": [560,752], "21:9": [992,432] },
+            "720p": { "16:9": [1280,720], "9:16": [720,1280], "1:1": [960,960], "4:3": [1112,834], "3:4": [834,1112], "21:9": [1470,630] },
+            "1080p": { "16:9": [1920,1080], "9:16": [1080,1920], "1:1": [1440,1440], "4:3": [1664,1248], "3:4": [1248,1664], "21:9": [2206,946] },
+            "4k": { "16:9": [3840,2160], "9:16": [2160,3840], "1:1": [2880,2880], "4:3": [3326,2494], "3:4": [2496,3328], "21:9": [4398,1886] }
+        };
+        [request.width, request.height] = (sizesByTier[tier][aspect] || sizesByTier[tier]["16:9"]);
+    } else if (start || end) {
+        request.inputs = { frameImages: start && end
+            ? [start, { image: end, frame: "last" }]
+            : start ? [start] : [{ image: end, frame: "last" }] };
+        request.resolution = ["480p", "720p", "1080p", "4k"].includes(String(req.body.resolution).toLowerCase()) ? String(req.body.resolution).toLowerCase() : "720p";
+    } else {
+        const aspect = String(req.body.aspect_ratio || "16:9");
+        const tier = ["480p", "720p", "1080p", "4k"].includes(String(req.body.resolution).toLowerCase()) ? String(req.body.resolution).toLowerCase() : "720p";
+        const sizesByTier = {
+            "480p": { "16:9": [864,496], "9:16": [496,864], "1:1": [640,640], "4:3": [752,560], "3:4": [560,752], "21:9": [992,432] },
+            "720p": { "16:9": [1280,720], "9:16": [720,1280], "1:1": [960,960], "4:3": [1112,834], "3:4": [834,1112], "21:9": [1470,630] },
+            "1080p": { "16:9": [1920,1080], "9:16": [1080,1920], "1:1": [1440,1440], "4:3": [1664,1248], "3:4": [1248,1664], "21:9": [2206,946] },
+            "4k": { "16:9": [3840,2160], "9:16": [2160,3840], "1:1": [2880,2880], "4:3": [3326,2494], "3:4": [2496,3328], "21:9": [4398,1886] }
+        };
+        [request.width, request.height] = (sizesByTier[tier][aspect] || sizesByTier[tier]["16:9"]);
+    }
+    if (!request.positivePrompt) throw new Error("Seedance 2.0 : le prompt est obligatoire.");
+    console.log("🎬 [RUNWARE SEEDANCE 2.0]", JSON.stringify(request, null, 2));
+    const [result] = await runware.run(request);
+    const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
+    if (!videoURL) throw new Error("Runware Seedance 2.0 n'a retourné aucune vidéo.");
+    return await completeRunwareVideo(result, engineId);
+}
+
+// --- Logic Seedance 1.5 ---
+else if (engineId === "seedance") {
     const sourceImage = validImg || req.body.image_url || req.body.start_image_url || null;
     const sourceEndImage = req.body.end_image_url || null;
 
@@ -4249,7 +4732,12 @@ else if (engineId.includes("seedance")) {
 
 
 
-// --- APPEL RÉEL A FAL.AI ---
+// Fal.ai est volontairement réservé au seul moteur Seedance 1.5 Pro.
+        if (engineId !== "seedance") {
+            throw new Error(`Moteur vidéo non raccordé à Runware : ${engineId}`);
+        }
+
+// --- APPEL FAL.AI : SEEDANCE 1.5 PRO UNIQUEMENT ---
         res.write(`data: ${JSON.stringify({ percent: 30, message: "Envoi à la file de rendu..." })}\n\n`);
 
         const falResult = await fal.subscribe(targetEngineId, {
@@ -4635,11 +5123,11 @@ cron.schedule('0 * * * *', async () => {
 
 
         const creditsByPlan = { 
-            essentiel: 300, 
-            standard: 700, 
-            master: 1200, 
-            elite: 2500, 
-            legende: 8000 
+            essentiel: 3000, 
+            standard: 7000, 
+            master: 12000, 
+            elite: 25000, 
+            legende: 80000 
         };
 
 
@@ -4649,7 +5137,7 @@ cron.schedule('0 * * * *', async () => {
 
             const plan = (data.userPlan || '').toLowerCase();
 
-            const baseCredits = creditsByPlan[plan] || 300;
+            const baseCredits = creditsByPlan[plan] || 3000;
 
 
             // Récupération du type d'abonnement

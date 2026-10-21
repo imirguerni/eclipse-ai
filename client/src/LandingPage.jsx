@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import './LandingPage.css';
 import logoEclipse from './assets/logo-eclipse.webp';
 import logoEclair from './assets/logo-token.webp';
+import { useTranslation } from 'react-i18next';
 
 import Navbar from './Navbar';
 
@@ -54,6 +56,9 @@ const LazyTikTokVideo = ({ src, className }) => {
 
 
 const LandingPage = ({ user, tokens, packTokens, logoEclair, onStart, onLogout, onShowTerms, onShowPrivacy, onShowCgv, onShowLegal, onShowPricing, onPurchase }) => {
+
+  const { t, i18n } = useTranslation();
+
   // --- ÉTATS ET LOGIQUE (BIEN À L'INTÉRIEUR DU COMPOSANT) ---
   const [currentIndex, setCurrentIndex] = useState(0); 
   const [startEndIndex, setStartEndIndex] = useState(0);
@@ -82,34 +87,75 @@ const LandingPage = ({ user, tokens, packTokens, logoEclair, onStart, onLogout, 
 const backgroundVideoUrl = "/videos/extrait1.webm"; 
 
 const heroVideos = [
-  { id: 1, videoUrl: "/videos/caméra.webm", prompt: "Scène ultra-réaliste : un homme s'approche d'un bonhomme de neige et, soudain, un chat surgit et l'attaque au visage...", model: "IA", time: "4.2s" },
-  { id: 2, videoUrl: "/videos/zombies.webm", prompt: "Scène ultra-réaliste de zombies dans les rues de New York...", model: "IA", time: "3.8s" },
-  { id: 3, videoUrl: "/videos/anime2.webm", prompt: "Un anime style, fille aux cheveux roses courts assise à table avec un verre de jus d'orange et une part de gâteau aux fraises.", model: "IA", time: "4s" },
-
+  {
+    id: 1,
+    videoUrl: "/videos/caméra.webm",
+    prompt: t("hero prompt 1", {
+      defaultValue: "Scène ultra-réaliste : un homme s'approche d'un bonhomme de neige et, soudain, un chat surgit et l'attaque au visage..."
+    }),
+    model: "IA",
+    time: "4.2s"
+  },
+  {
+    id: 2,
+    videoUrl: "/videos/zombies.webm",
+    prompt: t("hero prompt 2", {
+      defaultValue: "Scène ultra-réaliste de zombies dans les rues de New York..."
+    }),
+    model: "IA",
+    time: "3.8s"
+  },
+  {
+    id: 3,
+    videoUrl: "/videos/anime2.webm",
+    prompt: t("hero prompt 3", {
+      defaultValue: "Un anime style, fille aux cheveux roses courts assise à table avec un verre de jus d'orange et une part de gâteau aux fraises."
+    }),
+    model: "IA",
+    time: "4s"
+  },
 ];
 
 const replaceLibrary = [
   {
-  id: 1,
-    title: "La liberté créative absolue",
-    desc: "Remplacer n’importe quel objet devient un jeu d'enfant. Importez votre photo, décrivez votre vision, et l'IA génère un rendu réaliste en quelques secondes. Plus besoin d'outils complexes : votre imagination est la seule limite.",
-    prompt: "Retire le chat en arriere plan",
+    id: 1,
+    title: t("replace title 1", {
+      defaultValue: "La liberté créative absolue"
+    }),
+    desc: t("replace desc 1", {
+      defaultValue: "Remplacer n’importe quel objet devient un jeu d'enfant. Importez votre photo, décrivez votre vision, et l'IA génère un rendu réaliste en quelques secondes. Plus besoin d'outils complexes : votre imagination est la seule limite."
+    }),
+    prompt: t("replace prompt 1", {
+      defaultValue: "Retire le chat en arriere plan"
+    }),
     source: "/videos/12.webp",
     result: "/videos/11.webp"
   },
   {
     id: 2,
-    title: "Design d'intérieur : Mobilier IA",
-    desc: "Réinventez votre espace sans effort. Remplacez un vieux meuble par une pièce moderne en gardant l'éclairage naturel.",
-    prompt: "Retire la paille et le citron.",
+    title: t("replace title 2", {
+      defaultValue: "Design d'intérieur : Mobilier IA"
+    }),
+    desc: t("replace desc 2", {
+      defaultValue: "Réinventez votre espace sans effort. Remplacez un vieux meuble par une pièce moderne en gardant l'éclairage naturel."
+    }),
+    prompt: t("replace prompt 2", {
+      defaultValue: "Retire la paille et le citron."
+    }),
     source: "/videos/13.webp", // Change par tes noms de fichiers
     result: "/videos/14.webp"
   },
   {
     id: 3,
-    title: "Automobile : Personnalisation",
-    desc: "Visualisez n'importe quelle modification sur un véhicule. Changez la couleur ou les jantes avec une précision chirurgicale.",
-    prompt: "Retire la pelle",
+    title: t("replace title 3", {
+      defaultValue: "Automobile : Personnalisation"
+    }),
+    desc: t("replace desc 3", {
+      defaultValue: "Visualisez n'importe quelle modification sur un véhicule. Changez la couleur ou les jantes avec une précision chirurgicale."
+    }),
+    prompt: t("replace prompt 3", {
+      defaultValue: "Retire la pelle"
+    }),
     source: "/videos/15.webp", // Change par tes noms de fichiers
     result: "/videos/16.webp"
   }
@@ -121,13 +167,18 @@ const replaceLibrary = [
 const captureControlLibrary = [
   {
     id: 1,
-    title: "Contrôle précis des mouvements de caméra",
-    desc: "Définissez des trajectoires de caméra fluides (zoom, panoramique, travelling) pour donner une dimension professionnelle à vos scènes.",
-    prompt: "Anime entre 2 images.",
+    title: t("capture title", {
+      defaultValue: "Contrôle précis des mouvements de caméra"
+    }),
+    desc: t("capture desc", {
+      defaultValue: "Définissez des trajectoires de caméra fluides (zoom, panoramique, travelling) pour donner une dimension professionnelle à vos scènes."
+    }),
+    prompt: t("capture prompt", {
+      defaultValue: "Anime entre 2 images."
+    }),
     source: "/videos/model.webp", // Remplace par tes chemins d'images/sources
     motionVid: "/videos/mouvement2.webm",
     result: "/videos/mouvement1.webm"
-
   }
 ];
 
@@ -138,27 +189,45 @@ const captureControlLibrary = [
 const startEndLibrary = [
   {
     id: 1,
-    title: "Cohérence totale du début à la fin",
-    desc: "Définissez une image de départ et une image de fin. L'IA génère toute la transition fluide entre les deux cadres pour un contrôle artistique absolu.",
-    prompt: "Transition fluide entre 2 images. Camera en mouvement, elle avance jusqu'a sa victime.",
+    title: t("start end title 1", {
+      defaultValue: "Cohérence totale du début à la fin"
+    }),
+    desc: t("start end desc 1", {
+      defaultValue: "Définissez une image de départ et une image de fin. L'IA génère toute la transition fluide entre les deux cadres pour un contrôle artistique absolu."
+    }),
+    prompt: t("start end prompt 1", {
+      defaultValue: "Transition fluide entre 2 images. Camera en mouvement, elle avance jusqu'a sa victime."
+    }),
     startImg: "/videos/tueuse1.webp", 
     endImg: "/videos/tueuse2.webp",    
     resultVid: "/videos/tueuse3.webm"
   },
   {
     id: 2,
-    title: "Métamorphose fluide",
-    desc: "Guidez l'évolution d'un personnage ou d'un décor d'un état A à un état B sans rupture visuelle.",
-    prompt: "Transition entre deux images : elle discute complètement bourrée, et puis elle fait une grimasse et vomit.",
+    title: t("start end title 2", {
+      defaultValue: "Métamorphose fluide"
+    }),
+    desc: t("start end desc 2", {
+      defaultValue: "Guidez l'évolution d'un personnage ou d'un décor d'un état A à un état B sans rupture visuelle."
+    }),
+    prompt: t("start end prompt 2", {
+      defaultValue: "Transition entre deux images : elle discute complètement bourrée, et puis elle fait une grimasse et vomit."
+    }),
     startImg: "/videos/femme1.webp",
     endImg: "/videos/femme2.webp",
     resultVid: "/videos/femme3.webm"
-      },
+  },
   {
     id: 3,
-    title: "Métamorphose fluide",
-    desc: "Guidez l'évolution d'un personnage ou d'un décor d'un état A à un état B sans rupture visuelle.",
-    prompt: "Transition entre deux images : elle se met en position de combat",
+    title: t("start end title 3", {
+      defaultValue: "Métamorphose fluide"
+    }),
+    desc: t("start end desc 3", {
+      defaultValue: "Guidez l'évolution d'un personnage ou d'un décor d'un état A à un état B sans rupture visuelle."
+    }),
+    prompt: t("start end prompt 3", {
+      defaultValue: "Transition entre deux images : elle se met en position de combat"
+    }),
     startImg: "/videos/combat1.webp",
     endImg: "/videos/combat2.webp",
     resultVid: "/videos/combat3.webm"
@@ -173,48 +242,76 @@ const imageToVideoLibrary = [
     id: 1, 
     img: "/videos/videoimage.webp", 
     vid: "/videos/videoimage.webm",
-    prompt: "Le crabe qui dance." 
+    prompt: t("image video prompt 1", {
+      defaultValue: "Le crabe qui dance."
+    })
   },
   { 
     id: 2, 
     img: "/videos/autre-video.webp", 
     vid: "/videos/autre-video.webm",
-    prompt: "Une femme désorientée, au regard égaré, semblant perdue." 
+    prompt: t("image video prompt 2", {
+      defaultValue: "Une femme désorientée, au regard égaré, semblant perdue."
+    })
   },
   { 
     id: 3, 
     img: "/videos/encore-une.webp", 
     vid: "/videos/encore-une.webm",
-    prompt: "Travelling avant jusqu’au gros plan du visage de la femme, qui semble exténuée." 
-     },
+    prompt: t("image video prompt 3", {
+      defaultValue: "Travelling avant jusqu’au gros plan du visage de la femme, qui semble exténuée."
+    })
+  },
   { 
     id: 4, 
     img: "/videos/punk1.webp", 
     vid: "/videos/punk2.webm",
-    prompt: "anime cette image : elle fume et regarde la camera" 
+    prompt: t("image video prompt 4", {
+      defaultValue: "anime cette image : elle fume et regarde la camera"
+    })
   },
 ];
 
 const faqData = [
   {
-    question: "Qu'est-ce que Eclipse et comment ça fonctionne ?",
-    answer: "Eclipse est un studio de création propulsé par l'IA qui transforme vos idées en œuvres cinématographiques. Nous utilisons une architecture hybride combinant les meilleurs moteurs de génération actuels avec notre propre technologie d'optimisation pour garantir une fluidité et une esthétique professionnelle."
+    question: t("faq question 1", {
+      defaultValue: "Qu'est-ce que Eclipse et comment ça fonctionne ?"
+    }),
+    answer: t("faq answer 1", {
+      defaultValue: "Eclipse est un studio de création propulsé par l'IA qui transforme vos idées en œuvres cinématographiques. Nous utilisons une architecture hybride combinant les meilleurs moteurs de génération actuels avec notre propre technologie d'optimisation pour garantir une fluidité et une esthétique professionnelle."
+    })
   },
   {
-    question: "Ai-je besoin de compétences techniques pour utiliser Eclipse ?",
-    answer: "Absolument pas. Eclipse a été conçu pour simplifier la création. Il vous suffit de décrire votre scène ou d'importer une image, et notre interface s'occupe de configurer les réglages complexes des moteurs pour générer un résultat de haute qualité."
+    question: t("faq question 2", {
+      defaultValue: "Ai-je besoin de compétences techniques pour utiliser Eclipse ?"
+    }),
+    answer: t("faq answer 2", {
+      defaultValue: "Absolument pas. Eclipse a été conçu pour simplifier la création. Il vous suffit de décrire votre scène ou d'importer une image, et notre interface s'occupe de configurer les réglages complexes des moteurs pour générer un résultat de haute qualité."
+    })
   },
   {
-    question: "Quels sont les moteurs de génération utilisés ?",
-    answer: "Plutôt que de nous limiter à un seul modèle, Eclipse sélectionne dynamiquement le moteur le plus performant selon votre demande. Que ce soit pour un rendu cinématographique, de l'animation stylisée ou des mouvements de caméra complexes, nous exploitons la puissance des moteurs leaders du marché pour vous offrir le meilleur résultat possible."
+    question: t("faq question 3", {
+      defaultValue: "Quels sont les moteurs de génération utilisés ?"
+    }),
+    answer: t("faq answer 3", {
+      defaultValue: "Plutôt que de nous limiter à un seul modèle, Eclipse sélectionne dynamiquement le moteur le plus performant selon votre demande. Que ce soit pour un rendu cinématographique, de l'animation stylisée ou des mouvements de caméra complexes, nous exploitons la puissance des moteurs leaders du marché pour vous offrir le meilleur résultat possible."
+    })
   },
   {
-    question: "Les vidéos générées m'appartiennent-elles ?",
-    answer: "Oui, vous détenez l'intégralité des droits sur les contenus créés avec Eclipse. Vous pouvez les utiliser pour vos réseaux sociaux, vos publicités ou vos projets personnels sans aucune restriction."
+    question: t("faq question 4", {
+      defaultValue: "Les vidéos générées m'appartiennent-elles ?"
+    }),
+    answer: t("faq answer 4", {
+      defaultValue: "Oui, vous détenez l'intégralité des droits sur les contenus créés avec Eclipse. Vous pouvez les utiliser pour vos réseaux sociaux, vos publicités ou vos projets personnels sans aucune restriction."
+    })
   },
   {
-    question: "Quelle est la durée maximale des vidéos ?",
-    answer: "Actuellement, vous pouvez générer des clips allant de 4 à 15 secondes. Grâce à notre fonction d'extension, vous pouvez ensuite prolonger ces séquences pour créer des récits plus longs tout en conservant une cohérence visuelle parfaite."
+    question: t("faq question 5", {
+      defaultValue: "Quelle est la durée maximale des vidéos ?"
+    }),
+    answer: t("faq answer 5", {
+      defaultValue: "Actuellement, vous pouvez générer des clips allant de 4 à 15 secondes. Grâce à notre fonction d'extension, vous pouvez ensuite prolonger ces séquences pour créer des récits plus longs tout en conservant une cohérence visuelle parfaite."
+    })
   }
 ];
 
@@ -247,12 +344,43 @@ const faqData = [
   };
 
   const showcaseVideos = [
-  { id: 101, videoUrl: "/videos/3d.webm", prompt: "Cyberpunk street market..." },
-  { id: 102, videoUrl: "/videos/anime.webm", prompt: "Anime landscape..." },
-  { id: 103, videoUrl: "/videos/musée.webm", prompt: "Macro nature shot..." },
-  { id: 104, videoUrl: "/videos/Astronaute.webm", prompt: "Astronaut floating in nebula..." },
-  { id: 105, videoUrl: "/videos/ocean.webm", prompt: "Deep sea glowing jellyfish..." }
-];
+    {
+      id: 101,
+      videoUrl: "/videos/3d.webm",
+      prompt: t("showcase prompt 1", {
+        defaultValue: "Cyberpunk street market..."
+      })
+    },
+    {
+      id: 102,
+      videoUrl: "/videos/anime.webm",
+      prompt: t("showcase prompt 2", {
+        defaultValue: "Anime landscape..."
+      })
+    },
+    {
+      id: 103,
+      videoUrl: "/videos/musée.webm",
+      prompt: t("showcase prompt 3", {
+        defaultValue: "Macro nature shot..."
+      })
+    },
+    {
+      id: 104,
+      videoUrl: "/videos/Astronaute.webm",
+      prompt: t("showcase prompt 4", {
+        defaultValue: "Astronaut floating in nebula..."
+      })
+    },
+    {
+      id: 105,
+      videoUrl: "/videos/ocean.webm",
+      prompt: t("showcase prompt 5", {
+        defaultValue: "Deep sea glowing jellyfish..."
+      })
+    }
+  ];
+
 const motionVideoRef = React.useRef(null);
   const resultVideoRef = React.useRef(null);
 
@@ -364,45 +492,56 @@ const motionVideoRef = React.useRef(null);
       isMounted = false;
       clearInterval(typingInterval);
     };
-  }, [currentIndex, tick]);
+  }, [currentIndex, tick, i18n.language]);
 
   return (
     <div className="landing-container">
       <div className="main-glow"></div>  
 <header className="hero">
-  <div className="hero-badge">seedance 2.0 disponible</div>
+  <div className="hero-badge">
+    {t("seedance available", {
+      defaultValue: "seedance 2.5 disponible"
+    })}
+  </div>
   
                 
   <h1 className="hero-title">
-    Créez en un instant. <br />
+    {t("create instantly", {
+      defaultValue: "Créez en un instant."
+    })} <br />
     
   </h1>
  
   <p className="hero-subtitle">
-    Transformez vos idées en visuels cinématographiques de haute qualité 
-    grâce à la puissance de l'intelligence artificielle générative.
+    {t("hero subtitle", {
+      defaultValue: "Transformez vos idées en visuels cinématographiques de haute qualité grâce à la puissance de l'intelligence artificielle générative."
+    })}
   </p>       
         
-        <button className="main-launch-btn" onClick={onStart}>Générer 🚀</button>
+        <button className="main-launch-btn" onClick={onStart}>
+          {t("generate", {
+            defaultValue: "Générer"
+          })} 🚀
+        </button>
 
         <div className="video-showcase-container">
           <div className="hero-mockup-modern">
             <video 
-  src={backgroundVideoUrl} 
-  autoPlay 
-  muted 
-  playsInline 
-  preload="auto"
-  style={{ willChange: 'transform' }}
-  className="main-video" 
-  onTimeUpdate={(e) => {
-    const v = e.target;
-    if (v.duration && v.currentTime >= v.duration - 0.3) {
-      v.currentTime = 0;
-      v.play().catch(() => {});
-    }
-  }}
-/>
+              src={backgroundVideoUrl} 
+              autoPlay 
+              muted 
+              playsInline 
+              preload="auto"
+              style={{ willChange: 'transform' }}
+              className="main-video" 
+              onTimeUpdate={(e) => {
+                const v = e.target;
+                if (v.duration && v.currentTime >= v.duration - 0.3) {
+                  v.currentTime = 0;
+                  v.play().catch(() => {});
+                }
+              }}
+            />
           </div>
 
           <div className="video-reflection"></div>
@@ -411,9 +550,19 @@ const motionVideoRef = React.useRef(null);
           {/* --- 2ème TITRE (Dans la section prompt-showcase) --- */}
 <div className="prompt-header">
   <h2 className="prompt-main-title">
-    Du texte à l'image <span className="purple-glow-text">cinématique</span>
+    {t("text to image title", {
+      defaultValue: "Du texte à l'image"
+    })} <span className="purple-glow-text">
+      {t("cinematic image", {
+        defaultValue: "cinématique"
+      })}
+    </span>
   </h2>
-  <p className="prompt-subtitle">L'IA interprète chaque détail de votre imagination.</p>
+  <p className="prompt-subtitle">
+    {t("ai interprets imagination", {
+      defaultValue: "L'IA interprète chaque détail de votre imagination."
+    })}
+  </p>
 </div>
 
             <div className="prompt-content-wrapper">
@@ -433,7 +582,11 @@ const motionVideoRef = React.useRef(null);
                   <span className="ai-icon">✦</span>
                   <p className="typing-text">{displayedText}<span className="cursor">|</span></p>
                 </div>
-                <button className={`generate-pill-btn ${isGenerating ? 'active-click' : ''}`}>Generate ✨</button>
+                <button className={`generate-pill-btn ${isGenerating ? 'active-click' : ''}`}>
+                  {t("generate button", {
+                    defaultValue: "Generate"
+                  })} ✨
+                </button>
               </div>
 
               <div className={`video-result-preview ${isGenerating ? 'visible' : ''}`}>
@@ -446,9 +599,17 @@ const motionVideoRef = React.useRef(null);
               
               <div className="prompt-footer-info">
                 <span className="dot-pulse"></span>
-                <span>Modèle : <span className="text-purple">{heroVideos[currentIndex].model}</span></span>
+                <span>
+                  {t("model", {
+                    defaultValue: "Modèle"
+                  })} : <span className="text-purple">{heroVideos[currentIndex].model}</span>
+                </span>
                 <span className="separator"> | </span>
-                <span>Rendu : <span className="text-white">{heroVideos[currentIndex].time}</span></span>
+                <span>
+                  {t("render", {
+                    defaultValue: "Rendu"
+                  })} : <span className="text-white">{heroVideos[currentIndex].time}</span>
+                </span>
               </div>
             </div>
           </div>
@@ -480,11 +641,14 @@ const motionVideoRef = React.useRef(null);
     />
   </svg>
 </div>
+
       {/* 1. SECTION VIDEOS (SHOWCASE) */}
       <section className="showcase-section">
         <div className="showcase-header">
           <p className="showcase-subtitle">
-            Votre texte devient réalité. Créez des vidéos captivantes instantanément grâce à la puissance de l'IA.
+            {t("showcase subtitle", {
+              defaultValue: "Votre texte devient réalité. Créez des vidéos captivantes instantanément grâce à la puissance de l'IA."
+            })}
           </p>
         </div>
 
@@ -536,10 +700,18 @@ const motionVideoRef = React.useRef(null);
         {/* TITRE HARMONISÉ (Même taille que les autres) */}
 <div className="social-footer-text section-spacing" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginBottom: '40px' }}>  
           <h2 className="social-main-title fade-in-up">
-            De l'image à la <span className="purple-glow-text">vidéo cinématique</span>
+            {t("image to video title", {
+              defaultValue: "De l'image à la"
+            })} <span className="purple-glow-text">
+              {t("cinematic video", {
+                defaultValue: "vidéo cinématique"
+              })}
+            </span>
           </h2>
           <p className="social-subtitle fade-in-up-delay">
-            Importez vos visuels et laissez l'IA insuffler la vie à vos idées.
+            {t("image to video subtitle", {
+              defaultValue: "Importez vos visuels et laissez l'IA insuffler la vie à vos idées."
+            })}
           </p>
         </div>
 
@@ -549,21 +721,33 @@ const motionVideoRef = React.useRef(null);
             <div className="media-comparison-row">
               <div className="comparison-column">
                 <div className="compare-box">
-                  <div className="box-label">IMAGE SOURCE</div>
+                  <div className="box-label">
+                    {t("source image", {
+                      defaultValue: "IMAGE SOURCE"
+                    })}
+                  </div>
                   <img key={`img-${libIndex}`} src={imageToVideoLibrary[libIndex].img} alt="Source" className="compare-media animated-media" />
                 </div>
               </div>
               <div className="compare-separator"><div className="sep-icon">»</div></div>
               <div className="comparison-column">
                 <div className="compare-box">
-                  <div className="box-label">RÉSULTAT IA</div>
+                  <div className="box-label">
+                    {t("ai result", {
+                      defaultValue: "RÉSULTAT IA"
+                    })}
+                  </div>
                   <video key={`vid-${libIndex}`} src={imageToVideoLibrary[libIndex].vid} autoPlay muted loop playsInline className="compare-media animated-media" />
                 </div>
               </div>
             </div>
             <div className="prompt-instruction-container">
               <div className="prompt-pill-display">
-                <span className="prompt-badge">PROMPT</span>
+                <span className="prompt-badge">
+                  {t("prompt", {
+                    defaultValue: "PROMPT"
+                  })}
+                </span>
                 <p key={`txt-${libIndex}`} className="instruction-text-styled fade-in-text">
                   "{imageToVideoLibrary[libIndex].prompt}"
                 </p>
@@ -611,7 +795,11 @@ const motionVideoRef = React.useRef(null);
                 {/* 1. Image Début */}
                 <div className="comparison-column">
                   <div className="compare-box">
-                    <div className="box-label">IMAGE DÉBUT</div>
+                    <div className="box-label">
+                      {t("start image", {
+                        defaultValue: "IMAGE DÉBUT"
+                      })}
+                    </div>
                     <img key={`se-start-${startEndIndex}`} src={startEndLibrary[startEndIndex].startImg} alt="Début" className="compare-media animated-media" />
                   </div>
                 </div>
@@ -621,7 +809,11 @@ const motionVideoRef = React.useRef(null);
                 {/* 2. Image Fin */}
                 <div className="comparison-column">
                   <div className="compare-box">
-                    <div className="box-label">IMAGE FIN</div>
+                    <div className="box-label">
+                      {t("end image", {
+                        defaultValue: "IMAGE FIN"
+                      })}
+                    </div>
                     <img key={`se-end-${startEndIndex}`} src={startEndLibrary[startEndIndex].endImg} alt="Fin" className="compare-media animated-media" />
                   </div>
                 </div>
@@ -631,7 +823,11 @@ const motionVideoRef = React.useRef(null);
                 {/* 3. Résultat Vidéo */}
                 <div className="comparison-column">
                   <div className="compare-box">
-                    <div className="box-label">RÉSULTAT TRANSITION</div>
+                    <div className="box-label">
+                      {t("transition result", {
+                        defaultValue: "RÉSULTAT TRANSITION"
+                      })}
+                    </div>
                     <video key={`se-res-${startEndIndex}`} src={startEndLibrary[startEndIndex].resultVid} autoPlay muted loop playsInline className="compare-media animated-media" />
                   </div>
                 </div>
@@ -640,7 +836,11 @@ const motionVideoRef = React.useRef(null);
 
               <div className="prompt-instruction-container" style={{ marginTop: '20px' }}>
                 <div className="prompt-pill-display">
-                  <span className="prompt-badge">PROMPT</span>
+                  <span className="prompt-badge">
+                    {t("prompt", {
+                      defaultValue: "PROMPT"
+                    })}
+                  </span>
                   <p key={`se-txt-${startEndIndex}`} className="instruction-text-styled fade-in-text">
                     "{startEndLibrary[startEndIndex].prompt}"
                   </p>
@@ -652,7 +852,9 @@ const motionVideoRef = React.useRef(null);
 
           {startEndLibrary.length > 1 && (
             <div className="lib-counter" style={{ margin: '15px auto 0', width: 'fit-content', padding: '6px 16px', borderRadius: '20px', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#a855f7', fontWeight: 'bold' }}>
-              Exemple {startEndIndex + 1} / {startEndLibrary.length}
+              {t("example", {
+                defaultValue: "Exemple"
+              })} {startEndIndex + 1} / {startEndLibrary.length}
             </div>
           )}
         </div>
@@ -679,7 +881,11 @@ const motionVideoRef = React.useRef(null);
           {/* 1. Image Source */}
           <div className="comparison-column">
             <div className="compare-box">
-              <div className="box-label">IMAGE SOURCE</div>
+              <div className="box-label">
+                {t("source image", {
+                  defaultValue: "IMAGE SOURCE"
+                })}
+              </div>
               <img 
                 key={`cap-src-${captureIndex}`} 
                 src={captureControlLibrary[captureIndex].source} 
@@ -690,10 +896,15 @@ const motionVideoRef = React.useRef(null);
           </div>
 
           <div className="compare-separator"><div className="sep-icon">+</div></div>
+
 {/* 2. Modèle de mouvement (Synchro avec ref) */}
           <div className="comparison-column">
             <div className="compare-box">
-              <div className="box-label">MODÈLE DE MOUVEMENT</div>
+              <div className="box-label">
+                {t("motion model", {
+                  defaultValue: "MODÈLE DE MOUVEMENT"
+                })}
+              </div>
               <video 
                 ref={motionVideoRef}
                 key={`cap-motion-${captureIndex}`} 
@@ -711,7 +922,11 @@ const motionVideoRef = React.useRef(null);
           {/* 3. Résultat Final (Synchro avec ref) */}
           <div className="comparison-column">
             <div className="compare-box">
-              <div className="box-label">RÉSULTAT CAMÉRA CONTROL</div>
+              <div className="box-label">
+                {t("camera control result", {
+                  defaultValue: "RÉSULTAT CAMÉRA CONTROL"
+                })}
+              </div>
               <video 
                 ref={resultVideoRef}
                 key={`cap-res-${captureIndex}`} 
@@ -728,7 +943,11 @@ const motionVideoRef = React.useRef(null);
 
         <div className="prompt-instruction-container" style={{ marginTop: '20px' }}>
           <div className="prompt-pill-display">
-            <span className="prompt-badge">PROMPT</span>
+            <span className="prompt-badge">
+              {t("prompt", {
+                defaultValue: "PROMPT"
+              })}
+            </span>
             <p key={`cap-txt-${captureIndex}`} className="instruction-text-styled fade-in-text">
               "{captureControlLibrary[captureIndex].prompt}"
             </p>
@@ -740,7 +959,9 @@ const motionVideoRef = React.useRef(null);
 
     {captureControlLibrary.length > 1 && (
       <div className="lib-counter" style={{ margin: '15px auto 0', width: 'fit-content', padding: '6px 16px', borderRadius: '20px', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#a855f7', fontWeight: 'bold' }}>
-        Exemple {captureIndex + 1} / {captureControlLibrary.length}
+        {t("example", {
+          defaultValue: "Exemple"
+        })} {captureIndex + 1} / {captureControlLibrary.length}
       </div>
     )}
 
@@ -754,10 +975,18 @@ const motionVideoRef = React.useRef(null);
         {/* TITRE PRINCIPAL DE LA SECTION */}
         <div className="social-footer-text" style={{ marginBottom: '60px' }}>
           <h2 className="social-main-title fade-in-up">
-            Réinventez vos photos : Remplacez n'importe quel objet <span className="purple-glow-text">instantanément</span>
+            {t("replace photos title", {
+              defaultValue: "Réinventez vos photos : Remplacez n'importe quel objet"
+            })} <span className="purple-glow-text">
+              {t("instant", {
+                defaultValue: "instantanément"
+              })}
+            </span>
           </h2>
           <p className="social-subtitle fade-in-up-delay">
-            Essayez l’outil IA pour effacer et remplacer un objet indésirable par l’élément de votre choix.
+            {t("replace subtitle", {
+              defaultValue: "Essayez l’outil IA pour effacer et remplacer un objet indésirable par l’élément de votre choix."
+            })}
           </p>
         </div>
 
@@ -787,7 +1016,11 @@ const motionVideoRef = React.useRef(null);
                   src={replaceLibrary[socialIndex].result} 
                   className="mobile-img animated-media" 
                 />
-                <div className="card-badge purple">RÉSULTAT IA</div>
+                <div className="card-badge purple">
+                  {t("ai result", {
+                    defaultValue: "RÉSULTAT IA"
+                  })}
+                </div>
               </div>
             </div>
 
@@ -816,11 +1049,15 @@ const motionVideoRef = React.useRef(null);
     fontWeight: 'bold',
     fontSize: '0.9rem'
 }}>
-  Modèle {socialIndex + 1} / {replaceLibrary.length}
+  {t("model example", {
+    defaultValue: "Modèle"
+  })} {socialIndex + 1} / {replaceLibrary.length}
 </div>
 
             <button className="neon-download-btn" onClick={onStart}>
-              Générer ✨
+              {t("generate", {
+                defaultValue: "Générer"
+              })} ✨
             </button>
           </div>
         </div>
@@ -828,10 +1065,18 @@ const motionVideoRef = React.useRef(null);
        {/* TITRE DE FIN DE SECTION */}
 <div className="social-footer-text" style={{ marginTop: '140px', marginBottom: '30px' }}>
       <h2 className="social-main-title">
-        Dominez l'attention sur les <span className="purple-glow-text">réseaux sociaux</span>
+        {t("social media title", {
+          defaultValue: "Dominez l'attention sur les"
+        })} <span className="purple-glow-text">
+          {t("social media", {
+            defaultValue: "réseaux sociaux"
+          })}
+        </span>
       </h2>
       <p className="social-subtitle">
-        Transformez vos idées en contenus viraux optimisés pour TikTok et Instagram.
+        {t("social media subtitle", {
+          defaultValue: "Transformez vos idées en contenus viraux optimisés pour TikTok et Instagram."
+        })}
       </p>
     
 {/* --- BLOC DES MINIATURES --- */}
@@ -848,7 +1093,9 @@ const motionVideoRef = React.useRef(null);
 </div>
 
           <button className="neon-download-btn" onClick={onStart} style={{ marginTop: '50px' }}>
-            Générer ✨
+            {t("generate", {
+              defaultValue: "Générer"
+            })} ✨
             
           </button>
         </div>
@@ -898,7 +1145,9 @@ const motionVideoRef = React.useRef(null);
         display: 'block',
         marginBottom: '15px'
       }}>
-        Technologie de pointe
+        {t("cutting edge technology", {
+          defaultValue: "Technologie de pointe"
+        })}
       </span>
       
       <h3 className="engines-title" style={{ 
@@ -912,7 +1161,11 @@ const motionVideoRef = React.useRef(null);
         WebkitTextFillColor: 'transparent',
         filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.1))'
       }}>
-        Propulsé par les moteurs <br/> les plus avancés au monde
+        {t("advanced engines", {
+          defaultValue: "Propulsé par les moteurs"
+        })} <br/> {t("most advanced in world", {
+          defaultValue: "les plus avancés au monde"
+        })}
       </h3>
       
       <div style={{ 
@@ -971,7 +1224,9 @@ const motionVideoRef = React.useRef(null);
               {engine.name || engine.id.toUpperCase()}
             </span>
             <span className={`engine-type-badge ${engine.type.toLowerCase()}`}>
-              {engine.type}
+              {t(engine.type.toLowerCase(), {
+                defaultValue: engine.type
+              })}
             </span>
           </div>
         </div>
@@ -983,7 +1238,15 @@ const motionVideoRef = React.useRef(null);
 {/* --- SECTION FAQ --- */}
 <section className="faq-section">
   <div className="faq-container">
-    <h2 className="social-main-title">Foire Aux <span className="purple-glow-text">Questions</span></h2>
+    <h2 className="social-main-title">
+      {t("faq title", {
+        defaultValue: "Foire Aux"
+      })} <span className="purple-glow-text">
+        {t("faq highlight", {
+          defaultValue: "Questions"
+        })}
+      </span>
+    </h2>
     
     <div className="faq-list">
       {faqData.map((item, index) => (
@@ -1011,22 +1274,67 @@ const motionVideoRef = React.useRef(null);
     <div className="footer-content">
       <div className="footer-brand">
         <img src={logoEclipse} alt="Eclipse Logo" className="footer-logo" />
-        <p className="footer-tagline">L'excellence cinématique accessible à tous.</p>
+        <p className="footer-tagline">
+          {t("cinematic excellence accessible", {
+            defaultValue: "L'excellence cinématique accessible à tous."
+          })}
+        </p>
       </div>
       
       <div className="footer-links">
         <div className="footer-col">
-          <h4>Outils</h4>
-          <a href="#" onClick={(e) => { e.preventDefault(); onStart("IMAGE"); }}>Du texte à l'image</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); onStart("VIDEO"); }}>De l'image à la vidéo</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); onStart("VIDEO"); }}>Générer</a>
+          <h4>
+            {t("tools", {
+              defaultValue: "Outils"
+            })}
+          </h4>
+          <a href="#" onClick={(e) => { e.preventDefault(); onStart("IMAGE"); }}>
+            {t("text to image", {
+              defaultValue: "Du texte à l'image"
+            })}
+          </a>
+          <a href="#" onClick={(e) => { e.preventDefault(); onStart("VIDEO"); }}>
+            {t("image to video", {
+              defaultValue: "De l'image à la vidéo"
+            })}
+          </a>
+          <a href="#" onClick={(e) => { e.preventDefault(); onStart("VIDEO"); }}>
+            {t("generate", {
+              defaultValue: "Générer"
+            })}
+          </a>
         </div>
+
         <div className="footer-col">
-          <h4>Entreprise</h4>
-          <a href="#" onClick={(e) => { e.preventDefault(); onShowTerms && onShowTerms(); }}>Conditions d'Utilisation</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); onShowPrivacy && onShowPrivacy(); }}>Politique de Confidentialité</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); onShowCgv && onShowCgv(); }}>Conditions Générales de Vente</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); onShowLegal && onShowLegal(); }}>Mentions Légales</a>
+          <h4>
+            {t("company", {
+              defaultValue: "Entreprise"
+            })}
+          </h4>
+
+          <a href="#" onClick={(e) => { e.preventDefault(); onShowTerms && onShowTerms(); }}>
+            {t("terms of use", {
+              defaultValue: "Conditions d'Utilisation"
+            })}
+          </a>
+
+          <a href="#" onClick={(e) => { e.preventDefault(); onShowPrivacy && onShowPrivacy(); }}>
+            {t("privacy policy", {
+              defaultValue: "Politique de Confidentialité"
+            })}
+          </a>
+
+          <a href="#" onClick={(e) => { e.preventDefault(); onShowCgv && onShowCgv(); }}>
+            {t("terms of sale", {
+              defaultValue: "Conditions Générales de Vente"
+            })}
+          </a>
+
+          <a href="#" onClick={(e) => { e.preventDefault(); onShowLegal && onShowLegal(); }}>
+            {t("legal notice", {
+              defaultValue: "Mentions Légales"
+            })}
+          </a>
           
           <a href="#" onClick={(e) => { 
             e.preventDefault(); 
@@ -1042,26 +1350,45 @@ const motionVideoRef = React.useRef(null);
             const mainViewport = document.querySelector('.main-viewport');
             if (mainViewport) mainViewport.scrollTo({ top: 0, behavior: 'smooth' });
           }}>
-            Revenir en haut
+            {t("back to top", {
+              defaultValue: "Revenir en haut"
+            })}
           </a>
 
           <a href="#" onClick={(e) => { 
             e.preventDefault(); 
             if (typeof onShowPricing === 'function') onShowPricing(); 
           }}>
-            Tarifs
+            {t("pricing", {
+              defaultValue: "Tarifs"
+            })}
           </a>
         </div>
+
         <div className="footer-col">
-          <h4>Communauté</h4>
-          <a href="https://www.instagram.com/ovortex_ai?stkn=cWlqZHM0cmFhdnN0" target="_blank" rel="noopener noreferrer">Instagram</a>
+          <h4>
+            {t("community", {
+              defaultValue: "Communauté"
+            })}
+          </h4>
+          <a href="https://www.instagram.com/ovortex_ai?stkn=cWlqZHM0cmFhdnN0" target="_blank" rel="noopener noreferrer">
+            Instagram
+          </a>
         </div>
       </div>
     </div>
     
     <div className="footer-bottom">
-      <p>© 2026 Ovortex. Tous droits réservés.</p>
-      <span className="api-mention">Propulsé par les moteurs de génération leaders du marché.</span>
+      <p>
+        © 2026 Ovortex. {t("all rights reserved", {
+          defaultValue: "Tous droits réservés."
+        })}
+      </p>
+      <span className="api-mention">
+        {t("powered by leading engines", {
+          defaultValue: "Propulsé par les moteurs de génération leaders du marché."
+        })}
+      </span>
     </div>
   </div>
 </footer>
@@ -1071,3 +1398,4 @@ const motionVideoRef = React.useRef(null);
 };
 
 export default LandingPage;
+
