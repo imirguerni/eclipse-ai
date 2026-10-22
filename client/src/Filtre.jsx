@@ -1295,6 +1295,7 @@ const Filtre = ({
       </div>
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Presets</div>
+        
         <div className="ovx-filter-presets-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '8px' }}>
           {PRESET_FILTERS.map((filter) => {
             const active = selectedFilter.id === filter.id;
@@ -1336,27 +1337,9 @@ const Filtre = ({
               </button>
             );
           })}
+          
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: '8px', padding: '0 15px', marginTop: '10px' }}>
-        <button
-          type="button"
-          onClick={handleFiltersReset}
-          style={{ flex: 1, padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#f87171', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-        >
-          <span>🔄</span> <span>Réinitialiser</span>
-        </button>
-        <button
-          type="button"
-          onClick={handleApply}
-          disabled={isSaving}
-          style={{ flex: 2, padding: '7px 12px', borderRadius: '8px', border: 'none', background: isSaving ? '#777' : '#ffffff', color: '#000000', fontSize: '13px', fontWeight: '700', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1 }}
-        >
-          {isSaving ? 'Veuillez patienter…' : 'Appliquer'}
-        </button>
-      </div>
-      {saveMessage && <div style={{ marginTop: '6px', textAlign: 'center', fontSize: '11px', color: '#4ade80', fontWeight: '600' }}>{saveMessage}</div>}
-      <div style={sectionStyle}>
+             <div style={sectionStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span style={{ fontSize: '12px', fontWeight: '600' }}>Intensité</span>
           <span style={{ fontSize: '11px', color: '#00b4d8', fontWeight: '700' }}>{intensity}%</span>
@@ -1374,6 +1357,26 @@ const Filtre = ({
           style={{ width: '100%', accentColor: '#00b4d8', cursor: 'pointer' }}
         />
       </div>
+      </div>
+ <div style={{ display: 'flex', gap: '8px', padding: '0 15px 16px 15px', marginTop: '10px' }}>
+        <button
+          type="button"
+          onClick={handleFiltersReset}
+          style={{ flex: 1, padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#f87171', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+        >
+          <span>🔄</span> <span>Réinitialiser</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleApply}
+          disabled={isSaving}
+          style={{ flex: 2, padding: '7px 12px', borderRadius: '8px', border: 'none', background: isSaving ? '#777' : '#ffffff', color: '#000000', fontSize: '13px', fontWeight: '700', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1 }}
+        >
+          {isSaving ? 'Veuillez patienter…' : 'Appliquer'}
+        </button>
+      </div>
+      {saveMessage && <div style={{ marginTop: '6px', textAlign: 'center', fontSize: '11px', color: '#4ade80', fontWeight: '600' }}>{saveMessage}</div>}
+ 
     </>
   );
 
