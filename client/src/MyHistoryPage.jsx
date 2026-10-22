@@ -102,18 +102,35 @@ const MyHistoryPage = ({
   const translations =
     HISTORY_TRANSLATIONS[language] || HISTORY_TRANSLATIONS.fr;
 
-  const [filter, setFilter] = useState('IMAGE');
-  const [selectedMedia, setSelectedMedia] = useState(null);
 
-  const filteredData = (Array.isArray(history) ? history : []).filter(
-    item => String(item.type || 'IMAGE').toUpperCase() === filter
+const [filter, setFilter] = useState('IMAGE');
+const [selectedMedia, setSelectedMedia] = useState(null);
+
+
+const mediaUrl = (item) =>
+  item?.url ||
+  item?.videoUrl ||
+  item?.imageUrl ||
+  item?.resultUrl ||
+  item?.video?.url ||
+  '';
+
+const isVideo = (item) => {
+  const type = String(item?.type || '').toUpperCase();
+  const url = String(mediaUrl(item)).toLowerCase();
+
+  return (
+    type === 'VIDEO' ||
+    Boolean(item?.videoUrl) ||
+    Boolean(item?.video?.url) ||
+    /\.(mp4|webm|mov|m4v)(?:[?#].*)?$/.test(url)
   );
+};
 
-  const isVideo = item =>
-    String(item?.type || '').toUpperCase() === 'VIDEO' ||
-    Boolean(item?.videoUrl);
+const filteredData = (Array.isArray(history) ? history : []).filter(
+  item => filter === 'VIDEO' ? isVideo(item) : !isVideo(item)
+);
 
-  const mediaUrl = item => item?.url || item?.videoUrl || '';
 
   return (
     <div
