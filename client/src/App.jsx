@@ -12,7 +12,10 @@ import logoEclair from './assets/logo-token.webp';
 import Pricing from './Pricing'; 
 import { PRICING_DATA, PLAN_TO_PRICE, packs, ALLOWED_ENGINES } from "./pricingConfig";
 import { auth, db, createUserProfile, syncCreditsToDB } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  getRedirectResult
+} from "firebase/auth";
 import MyHistoryPage from './MyHistoryPage'; 
 import Success from "./Success";
 import ProfilePage from './ProfilePage';
@@ -210,10 +213,32 @@ const [isLoading, setIsLoading] = useState(false);
 const [isThinking, setIsThinking] = useState(false);
 const [chatMessages, setChatMessages] = useState([]);
 const [progress, setProgress] = useState(0);
+
 const [statusMsg, setStatusMsg] = useState("");
 const [user, setUser] = useState(null);
 const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 const [errorMsg, setErrorMsg] = useState(null);
+
+// Retour de la connexion Google sur mobile
+useEffect(() => {
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result?.user) {
+        console.log(
+          "✅ Retour Google confirmé :",
+          result.user.email
+        );
+      }
+    })
+    .catch((error) => {
+      console.error(
+        "❌ Erreur au retour de Google :",
+        error.code,
+        error.message
+      );
+    });
+}, []);
+
 const API_BASE_URL = "${import.meta.env.VITE_API_URL}";
 const [itemToDelete, setItemToDelete] = useState(null);
 const [remixStrength, setRemixStrength] = useState(0.5); // 0.5 = équilibre parfait

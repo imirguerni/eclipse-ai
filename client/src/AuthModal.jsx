@@ -30,31 +30,39 @@ const AuthModal = ({ isOpen, onClose, onSuccess, onShowTerms, onShowPrivacy }) =
   if (!isOpen) return null;
 
   // --- LOGIQUE GOOGLE ---
-  const handleGoogleLogin = async () => {
-    setError('');
+const handleGoogleLogin = async () => {
+  setError('');
 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
+  try {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(
+      navigator.userAgent
+    );
 
-      const user = result.user;
-      console.log('✅ Utilisateur Google connecté :', user.email);
-
-      onClose();
-
-      if (onSuccess) {
-        onSuccess(user);
-      }
-
-    } catch (error) {
-      console.error('❌ Erreur Google :', error.code);
-
-      if (error.code === 'auth/popup-blocked') {
-        setError(t('allow popups login'));
-      } else {
-        setError(t('google login error'));
-      }
+    if (isMobile) {
+      await signInWithRedirect(auth, googleProvider);
+      return;
     }
-  };
+
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+
+    console.log('✅ Utilisateur Google connecté :', user.email);
+
+    onClose();
+
+    if (onSuccess) {
+      onSuccess(user);
+    }
+  } catch (error) {
+    console.error('❌ Erreur Google :', error.code, error.message);
+
+    if (error.code === 'auth/popup-blocked') {
+      setError(t('allow popups login'));
+    } else {
+      setError(t('google login error'));
+    }
+  }
+};
 
   // --- LOGIQUE APPLE ---
   const handleAppleLogin = async () => {
