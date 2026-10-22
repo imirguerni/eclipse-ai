@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Navbar.css';
 import { useTranslation } from 'react-i18next'; 
-import LanguageSelector from './LanguageSelector'; 
-
+import LanguageSelector from './LanguageSelector';
 
 const Navbar = ({ 
   user, 
@@ -26,7 +25,25 @@ const Navbar = ({
 
 const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+const dropdownRef = useRef(null);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        if (typeof setShowDropdown === 'function') {
+          setShowDropdown(false);
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [setShowDropdown]);
 const planConfig = {
     "legende": { name: t('legend'), color: "#ff4757" },
     "elite": { name: t('elite'), color: "#ffa502" },
@@ -227,8 +244,8 @@ const currentPlan = planConfig[userPlan?.toLowerCase()] || planConfig["debutant"
             </div>
           )}
 
-          {user ? (
-            <div className="user-menu-container" style={{ position: 'relative', marginLeft: '10px' }}>
+    {user ? (
+            <div className="user-menu-container" ref={dropdownRef} style={{ position: 'relative', marginLeft: '10px' }}>
               <div className="user-nav-profile" onClick={() => setShowDropdown(!showDropdown)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
         <img 
   src={user?.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.email || 'default'}`} 

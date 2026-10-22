@@ -1394,8 +1394,7 @@ const Filtre = ({
           </button>
         </div>
         <div style={{ padding: '14px 15px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-        {config.options.map((option) => {
+<div className="ovx-ai-presets-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '8px' }}>        {config.options.map((option) => {
   const [iconOrImage, name] = option;
   const active = selectedAIOption === name;
   const isVideo = typeof iconOrImage === 'string' && (iconOrImage.endsWith('.webm') || iconOrImage.endsWith('.mp4'));
@@ -1552,6 +1551,25 @@ const Filtre = ({
             min-height: 54px !important;
           }
           .ovx-filter-presets-grid > button > span { font-size: 9px !important; }
+          .ovx-ai-presets-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            width: 100% !important;
+          }
+          .ovx-ai-presets-grid > button {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: auto !important;
+            aspect-ratio: 16 / 9 !important;
+            min-height: 54px !important;
+          }
+          .ovx-ai-presets-grid > button > span {
+            font-size: 9px !important;
+            line-height: 1.1 !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+          }
           .ovx-color-editor-scroll { padding: 10px !important; gap: 10px !important; }
           .ovx-color-editor-layout {
             display: grid !important;
