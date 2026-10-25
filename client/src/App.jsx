@@ -2166,12 +2166,12 @@ try {
 
     console.log("✅ reCAPTCHA Enterprise prêt.");
 
-    recaptchaToken = await window.grecaptcha.enterprise.execute(
-        "6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq",
-        {
-            action: "generate_video"
-        }
-    );
+recaptchaToken = await window.grecaptcha.enterprise.execute(
+    "6LdYEaItAAAAALoBXNIY3bjruS-UiAla3Ns2M1sq",
+    {
+        action: mode === "IMAGE" ? "generate_image" : "generate_video"
+    }
+);
 
     if (!recaptchaToken) {
         throw new Error("Google n'a retourné aucun token reCAPTCHA.");
