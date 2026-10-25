@@ -4775,41 +4775,45 @@ else if (engineId === "seedance") {
         });
 
 const falVideoUrl = 
-    falResult.video?.url || 
-    falResult.video_url || 
-    falResult.data?.video?.url || 
-    falResult.data?.url || 
-    falResult.url;
+        falResult.video?.url || 
+        falResult.video_url || 
+        falResult.data?.video?.url || 
+        falResult.data?.url || 
+        falResult.url;
 
-if (!falVideoUrl) {
-    throw new Error("Fal.ai n'a renvoyé aucune URL de vidéo.");
-}
+    if (!falVideoUrl) {
+        throw new Error("Fal.ai n'a renvoyé aucune URL de vidéo.");
+    }
 
-     // 1️⃣ Mise à jour du verrou
-        await lockRef.update({
-            status: "completed",
+    // 1️⃣ Mise à jour du verrou
+    await lockRef.update({
+        status: "completed",
+        videoUrl: falVideoUrl,
+        url: falVideoUrl,
+        prompt: prompt || "",
+        description: prompt || "",
+        completedAt: FieldValue.serverTimestamp()
+    });
+
+    // 2️⃣ 💾 SAUVEGARDE FIRESTORE : Ajout à l'historique utilisateur
+    if (userId) {
+        await db.collection("users").doc(userId).collection("generations").add({
             videoUrl: falVideoUrl,
-            url: falVideoUrl,
             prompt: prompt || "",
             description: prompt || "",
-            completedAt: FieldValue.serverTimestamp()
+            engine: targetEngineId || engineId || "fal.ai",
+            createdAt: FieldValue.serverTimestamp()
         });
+        console.log(`💾 Vidéo ajoutée à l'historique de l'utilisateur : ${userId}`);
+    } else {
+        console.warn("⚠️ Impossible d'enregistrer la vidéo : userId est introuvable.");
+    }
 
-        // 2️⃣ 💾 SAUVEGARDE FIRESTORE : Ajout à l'historique utilisateur
-        if (userId) {
-            await db.collection("users").doc(userId).collection("generations").add({
-                videoUrl: falVideoUrl,
-                prompt: prompt || "",
-                description: prompt || "",
-                engine: targetEngineId || engineId || "fal.ai",
-                createdAt: FieldValue.serverTimestamp()
-            });
-            console.log(`💾 Vidéo ajoutée à l'historique de l'utilisateur : ${userId}`);
-        } else {
-            console.warn("⚠️ Impossible d'enregistrer la vidéo : userId est introuvable.");
-        }
+    // Marquer la génération comme terminée pour bloquer tout remboursement ou double écriture
+    generationFinished = true;
 
-        // 3️⃣ Envoi du message SSE de fin au client
+    // 3️⃣ Envoi du message SSE de fin au client (seulement si la connexion est ouverte)
+    if (!res.writableEnded) {
         res.write(`data: ${JSON.stringify({ 
             percent: 100, 
             videoUrl: falVideoUrl, 
@@ -4819,65 +4823,63 @@ if (!falVideoUrl) {
         })}\n\n`);
 
         res.end();
+    }
         
 
 } catch (error) {
-        console.error("❌ Erreur dans le flux de génération :", error.message);
+    console.error("❌ Erreur dans le flux de génération :", error.message);
 
-// 🛡️ SÉCURITÉ : Remboursement SEULEMENT si débité ET non terminé ET pas encore remboursé
-        if (creditsDebited && !generationFinished && !refundDone) {
-            refundDone = true;
-            console.log("🔄 Échec après débit -> Remboursement des crédits...");
-            try {
-                await db.runTransaction(async (transaction) => {
-                    const uDoc = await transaction.get(userRef);
-                    if (uDoc.exists) {
-                        // 🎯 CALCUL CHIRURGICAL DU MONTANT À REMBOURSER
-                        const amountToRefund = Number(cost) || 15;
+    // 🛡️ SÉCURITÉ : Remboursement SEULEMENT si débité ET non terminé ET pas encore remboursé
+    if (creditsDebited && !generationFinished && !refundDone) {
+        refundDone = true;
+        console.log("🔄 Échec après débit -> Remboursement des crédits...");
+        try {
+            await db.runTransaction(async (transaction) => {
+                const uDoc = await transaction.get(userRef);
+                if (uDoc.exists) {
+                    const amountToRefund = Number(cost) || 15;
+                    const wasPackTokens = usedWallet === "packTokens" || (deductedDiamonds && deductedDiamonds > 0) || (uDoc.data()?.tokens === 0);
 
-                        // Si deductedDiamonds a une valeur > 0 OU si usedWallet était packTokens, on crédite les diamants.
-                        // Sinon, si on sait que les tokens étaient à 0, c'était forcément les packTokens !
-                        const wasPackTokens = usedWallet === "packTokens" || (deductedDiamonds && deductedDiamonds > 0) || (uDoc.data()?.tokens === 0);
-
-                        if (usedWallet === "hybrid") {
-                            transaction.update(userRef, {
-                                tokens: FieldValue.increment(deductedTokens || 0),
-                                packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
-                            });
-                        } else if (wasPackTokens) {
-                            transaction.update(userRef, {
-                                packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
-                            });
-                        } else {
-                            transaction.update(userRef, {
-                                tokens: FieldValue.increment(deductedTokens || amountToRefund)
-                            });
-                        }
+                    if (usedWallet === "hybrid") {
+                        transaction.update(userRef, {
+                            tokens: FieldValue.increment(deductedTokens || 0),
+                            packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
+                        });
+                    } else if (wasPackTokens) {
+                        transaction.update(userRef, {
+                            packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
+                        });
+                    } else {
+                        transaction.update(userRef, {
+                            tokens: FieldValue.increment(deductedTokens || amountToRefund)
+                        });
                     }
-                });
-                console.log("🪙 Remboursement effectué avec succès.");
-            } catch (refundErr) {
-                console.error("❌ Échec lors du remboursement :", refundErr.message);
-            }
-        } else if (!creditsDebited) {
-            console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
+                }
+            });
+            console.log("🪙 Remboursement effectué avec succès.");
+        } catch (refundErr) {
+            console.error("❌ Échec lors du remboursement :", refundErr.message);
         }
+    } else if (!creditsDebited) {
+        console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
+    }
 
-        // Ne jamais supprimer un résultat déjà enregistré comme terminé.
-        // En cas d'échec avant finalisation, nettoyer le verrou de traitement.
-        if (!generationFinished) {
-            await lockRef.delete().catch(() => {});
-        } else {
-            console.warn("⚠️ Verrou conservé : la vidéo a déjà été enregistrée comme terminée.");
-        }
+    if (!generationFinished) {
+        await lockRef.delete().catch(() => {});
+    } else {
+        console.warn("⚠️ Verrou conservé : la vidéo a déjà été enregistrée comme terminée.");
+    }
 
-        // Envoi de l'erreur au client
-        if (!res.headersSent) {
-            return res.status(400).json({ error: error.message });
-        } else if (!res.writableEnded) {
-            res.write(`event: error\ndata: ${JSON.stringify({ error: error.message, status: "failed" })}\n\n`);
-            res.end();
-        }
+    // 🛡️ SÉCURITÉ FINALE : Ne jamais tenter d'écrire si la réponse a déjà été terminée avec succès !
+    if (res.writableEnded || res.headersSent) {
+        console.warn("⚠️ Impossible d'envoyer l'erreur au client : la réponse SSE est déjà fermée.");
+        return;
+    }
+
+    // Envoi de l'erreur au client si la connexion est encore active
+    res.write(`event: error\ndata: ${JSON.stringify({ error: error.message, status: "failed" })}\n\n`);
+    res.end();
+
     }
 });
 
