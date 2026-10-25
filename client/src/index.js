@@ -1372,7 +1372,7 @@ if (engineId === "flux2pro") {
         // 0 est une valeur valide : ne pas la remplacer par 2 avec un opérateur ||.
         safetyTolerance: Number.isFinite(parsedSafetyTolerance)
             ? Math.max(0, Math.min(5, Math.round(parsedSafetyTolerance)))
-            : 2
+            : 5
     }};
 }
 if (engineId === "nano_banana2_lite") {

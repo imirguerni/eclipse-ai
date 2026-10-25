@@ -22,8 +22,8 @@ import {
 import { GradePool, detectCores, workersSupported } from './gradePool.js';
 import * as MB from 'mediabunny';
 import {
-  createSegments, splitAt, toggleRemoved, keptRanges, keptDuration, isTrimmed, setBoundary,
-  detectSceneCuts, playbackJump, segmentAt
+  createSegments, splitAt, toggleRemoved, keptRanges, keptDuration, isTrimmed,
+  detectSceneCuts, playbackJump, removeRange, trimEdge, tickStep, generateThumbnails
 } from './timeline.js';
 import { collectOriginalAudio, renderMix, iterateSamples } from './audioMix.js';
 
@@ -623,42 +623,253 @@ function ColorWheel({ label, hex, amount, onChange }) {
 // COMPOSANT PRINCIPAL
 // ============================================================
 
-// Frise chronologique : sections conservées (bleu) et supprimées (rayées), tête de lecture jaune.
-function Timeline({ duration, segments, currentTime, selectedId, onSelect, onSeek }) {
-  const ref = useRef(null);
-  const seekFromEvent = (e) => {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect || !rect.width || !duration) return;
-    const t = clamp((e.clientX - rect.left) / rect.width, 0, 1) * duration;
-    onSeek(t);
-    const seg = segmentAt(segments, t);
-    if (seg) onSelect(seg.id);
+// ============================================================
+// FRISE CHRONOLOGIQUE (style « CapCut »)
+// - Une section supprimée disparaît et le vide se referme tout seul.
+// - Clips avec vignettes, règle graduée, tête de lecture glissable, poignées de rognage.
+// - Zoom : curseur ou Ctrl + molette ; défilement horizontal quand on zoome.
+// ============================================================
+const TL_PAD = 16;
+const TL_RULER_H = 26;
+const TL_TRACK_H = 58;
+const TL_GAP = 8;
+
+// Position dans la vidéo finale d'un instant de la vidéo source (zone supprimée → début de la section suivante).
+function outTimeOf(clips, t) {
+  if (!clips.length) return 0;
+  for (const c of clips) {
+    if (t >= c.start - 1e-6 && t <= c.end + 1e-6) return c.outStart + Math.min(Math.max(t - c.start, 0), c.end - c.start);
+  }
+  const next = clips.find((c) => c.start >= t);
+  if (next) return next.outStart;
+  const last = clips[clips.length - 1];
+  return last.outStart + (last.end - last.start);
+}
+
+// Instant de la vidéo source correspondant à une position dans la vidéo finale.
+function sourceTimeOf(clips, o) {
+  if (!clips.length) return 0;
+  const c = clips.find((x) => o >= x.outStart && o < x.outStart + (x.end - x.start)) || clips[clips.length - 1];
+  return Math.min(c.end, c.start + Math.max(0, o - c.outStart));
+}
+
+function Timeline({ duration, segments, selectedId, onSelect, onSeek, onChange, getTime, currentTime, isPlaying, thumbs, zoom, onZoom }) {
+  const scrollRef = useRef(null);
+  const contentRef = useRef(null);
+  const playheadRef = useRef(null);
+  const dragRef = useRef(null);
+  const geo = useRef({});
+  const [viewW, setViewW] = useState(640);
+
+  const clips = useMemo(() => {
+    let out = 0;
+    return segments
+      .filter((s) => !s.removed)
+      .map((s) => {
+        const clip = { ...s, outStart: out };
+        out += s.end - s.start;
+        return clip;
+      });
+  }, [segments]);
+  const outDuration = clips.length ? clips[clips.length - 1].outStart + (clips[clips.length - 1].end - clips[clips.length - 1].start) : duration;
+  const pps = ((viewW - 2 * TL_PAD) / Math.max(outDuration, 0.1)) * zoom;
+  const contentW = Math.max(viewW, outDuration * pps + 2 * TL_PAD);
+  geo.current = { clips, pps, outDuration, duration, segments };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const update = () => setViewW(el.clientWidth || 640);
+    update();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Ctrl + molette = zoom.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      onZoom((prev) => clamp(prev * factor, 1, 40));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [onZoom]);
+
+  // Tête de lecture (déplacée directement dans le DOM pour rester fluide à 60 i/s).
+  const place = useCallback(
+    (srcT) => {
+      const el = playheadRef.current;
+      if (!el) return;
+      const x = TL_PAD + outTimeOf(clips, srcT) * pps;
+      el.style.transform = `translateX(${x}px)`;
+      const sc = scrollRef.current;
+      if (sc && !dragRef.current) {
+        const margin = 48;
+        if (x < sc.scrollLeft + margin || x > sc.scrollLeft + sc.clientWidth - margin) sc.scrollLeft = Math.max(0, x - sc.clientWidth / 2);
+      }
+    },
+    [clips, pps]
+  );
+  useEffect(() => { place(getTime()); }, [place, currentTime, getTime]);
+  useEffect(() => {
+    if (!isPlaying) return undefined;
+    let id = 0;
+    const loop = () => { place(getTime()); id = requestAnimationFrame(loop); };
+    id = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(id);
+  }, [isPlaying, place, getTime]);
+
+  const xToOut = (clientX) => {
+    const rect = contentRef.current.getBoundingClientRect();
+    return clamp((clientX - rect.left - TL_PAD) / geo.current.pps, 0, geo.current.outDuration);
   };
-  const pct = (v) => `${(clamp(v / (duration || 1), 0, 1) * 100).toFixed(3)}%`;
+  // Aimantation : la tête de lecture « colle » aux bords des clips.
+  const snap = (o) => {
+    const { clips: cl, pps: p } = geo.current;
+    let best = o;
+    let bestDist = 8 / p;
+    cl.forEach((c) => {
+      [c.outStart, c.outStart + (c.end - c.start)].forEach((edge) => {
+        const d = Math.abs(edge - o);
+        if (d < bestDist) { bestDist = d; best = edge; }
+      });
+    });
+    return best;
+  };
+  const scrubTo = (clientX) => {
+    const o = snap(xToOut(clientX));
+    onSeek(sourceTimeOf(geo.current.clips, Math.min(o, Math.max(0, geo.current.outDuration - 0.001))));
+  };
+
+  const onPointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    const edgeEl = e.target.closest ? e.target.closest('[data-edge]') : null;
+    const clipEl = e.target.closest ? e.target.closest('[data-clip]') : null;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    if (edgeEl) {
+      const { id, side } = edgeEl.dataset;
+      const seg = geo.current.segments.find((s) => s.id === id);
+      if (!seg) return;
+      onSelect(id);
+      dragRef.current = { kind: 'trim', id, side, base: geo.current.segments, startX: e.clientX, origT: side === 'start' ? seg.start : seg.end, pps: geo.current.pps };
+      return;
+    }
+    if (clipEl) onSelect(clipEl.dataset.clip);
+    dragRef.current = { kind: 'scrub' };
+    scrubTo(e.clientX);
+  };
+  const onPointerMove = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    if (d.kind === 'scrub') { scrubTo(e.clientX); return; }
+    const t = clamp(d.origT + (e.clientX - d.startX) / d.pps, 0, geo.current.duration);
+    const next = trimEdge(d.base, d.id, d.side, t);
+    if (next !== geo.current.segments) onChange(next);
+    onSeek(d.side === 'start' ? t : Math.max(0, t - 0.04));
+  };
+  const onPointerUp = (e) => {
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
+
+  // Règle graduée
+  const step = tickStep(pps, 90);
+  const ticks = [];
+  for (let k = 0; k * step <= outDuration + 1e-6; k++) ticks.push(k * step);
+  const minorCount = step * pps >= 60 ? 5 : 2;
+  const tickLabel = (t) => (step < 1 ? `${t.toFixed(1)}s` : fmtTime(t));
+
+  const tileW = thumbs && thumbs.length ? Math.max(40, Math.round(TL_TRACK_H * (thumbs[0].ratio || 16 / 9))) : 0;
+
   return (
     <div
-      ref={ref}
-      role="slider"
-      aria-label="Frise chronologique"
-      aria-valuemin={0}
-      aria-valuemax={Math.round(duration)}
-      aria-valuenow={Math.round(currentTime)}
-      onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); seekFromEvent(e); }}
-      onPointerMove={(e) => { if (e.buttons === 1) seekFromEvent(e); }}
-      style={{ position: 'relative', height: '56px', borderRadius: '8px', background: '#0c0c0f', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', touchAction: 'none', cursor: 'pointer', userSelect: 'none' }}
+      ref={scrollRef}
+      style={{ position: 'relative', overflowX: 'auto', overflowY: 'hidden', background: '#0b0b0e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}
     >
-      {segments.map((s) => (
-        <div
-          key={s.id}
-          title={`${fmtTime(s.start)} – ${fmtTime(s.end)}${s.removed ? ' (supprimée)' : ''}`}
-          style={{
-            position: 'absolute', top: '8px', bottom: '8px', left: pct(s.start), width: pct(s.end - s.start), boxSizing: 'border-box', borderRadius: '4px',
-            background: s.removed ? 'repeating-linear-gradient(45deg,#4a1d1d,#4a1d1d 6px,#2a1212 6px,#2a1212 12px)' : 'linear-gradient(#0e7490,#155e75)',
-            border: s.id === selectedId ? '2px solid #fff' : '1px solid rgba(255,255,255,0.18)', opacity: s.removed ? 0.85 : 1
-          }}
-        />
-      ))}
-      <div style={{ position: 'absolute', top: 0, bottom: 0, left: pct(currentTime), width: '2px', background: '#fbbf24', transform: 'translateX(-1px)', pointerEvents: 'none' }} />
+      <div
+        ref={contentRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        style={{ position: 'relative', width: contentW, height: TL_RULER_H + TL_TRACK_H + TL_GAP * 2 + 4, touchAction: 'none', userSelect: 'none', cursor: 'pointer' }}
+      >
+        {/* règle */}
+        <div style={{ position: 'absolute', left: 0, top: 0, width: contentW, height: TL_RULER_H, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {ticks.map((t) => {
+            const x = TL_PAD + t * pps;
+            return (
+              <React.Fragment key={t}>
+                <div style={{ position: 'absolute', left: x, top: 12, width: 1, height: 12, background: 'rgba(255,255,255,0.45)' }} />
+                <span style={{ position: 'absolute', left: x + 4, top: 3, fontSize: '9px', color: '#9ca3af', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{tickLabel(t)}</span>
+                {Array.from({ length: minorCount - 1 }, (_, j) => (
+                  <div key={j} style={{ position: 'absolute', left: x + ((j + 1) * step * pps) / minorCount, top: 18, width: 1, height: 6, background: 'rgba(255,255,255,0.2)' }} />
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* clips */}
+        <div style={{ position: 'absolute', left: 0, top: TL_RULER_H + TL_GAP, width: contentW, height: TL_TRACK_H }}>
+          {clips.map((c) => {
+            const w = (c.end - c.start) * pps;
+            const sel = c.id === selectedId;
+            const tiles = [];
+            if (tileW) {
+              const n = Math.min(300, Math.ceil(w / tileW));
+              for (let k = 0; k < n; k++) {
+                const ts = c.start + (k * tileW + tileW / 2) / pps;
+                const idx = clamp(Math.floor((ts / duration) * thumbs.length), 0, thumbs.length - 1);
+                tiles.push(<div key={k} style={{ flex: `0 0 ${tileW}px`, height: '100%', backgroundImage: `url(${thumbs[idx].url})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />);
+              }
+            }
+            return (
+              <div
+                key={c.id}
+                data-clip={c.id}
+                style={{
+                  position: 'absolute', left: TL_PAD + c.outStart * pps + 1, width: Math.max(3, w - 2), top: 0, height: TL_TRACK_H,
+                  borderRadius: '6px', overflow: 'hidden', boxSizing: 'border-box',
+                  background: 'linear-gradient(180deg, #14677a, #0d4452)',
+                  outline: sel ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.14)', outlineOffset: sel ? '-2px' : '-1px',
+                  boxShadow: sel ? '0 0 0 1px rgba(0,180,216,0.6)' : 'none'
+                }}
+              >
+                <div style={{ display: 'flex', height: '100%', pointerEvents: 'none' }}>{tiles}</div>
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0) 45%, rgba(0,0,0,0.35))', pointerEvents: 'none' }} />
+                {w > 46 && (
+                  <span style={{ position: 'absolute', left: 8, top: 4, fontSize: '9px', fontWeight: 700, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                    {(c.end - c.start).toFixed(1)} s
+                  </span>
+                )}
+                {sel && w > 24 && (
+                  <>
+                    <div data-edge="1" data-side="start" data-id={c.id} title="Tirer pour rogner le début" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 11, background: '#fff', cursor: 'ew-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 2, height: 18, borderRadius: 1, background: '#0d4452', pointerEvents: 'none' }} />
+                    </div>
+                    <div data-edge="1" data-side="end" data-id={c.id} title="Tirer pour rogner la fin" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 11, background: '#fff', cursor: 'ew-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 2, height: 18, borderRadius: 1, background: '#0d4452', pointerEvents: 'none' }} />
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* tête de lecture */}
+        <div ref={playheadRef} style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: 0, pointerEvents: 'none', zIndex: 5, willChange: 'transform' }}>
+          <div style={{ position: 'absolute', left: -1, top: 8, bottom: 0, width: 2, background: '#ffffff', boxShadow: '0 0 4px rgba(0,0,0,0.6)' }} />
+          <div style={{ position: 'absolute', left: -6, top: 0, width: 12, height: 10, background: '#ffffff', clipPath: 'polygon(0 0, 100% 0, 50% 100%)' }} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -747,6 +958,9 @@ const Filtre = ({
   const [selectedSegId, setSelectedSegId] = useState(null);
   const [sceneProgress, setSceneProgress] = useState(null); // null | 0..1
   const [soundOn, setSoundOn] = useState(false);
+  const [timelineZoom, setTimelineZoom] = useState(1);
+  const [thumbs, setThumbs] = useState([]);
+  const thumbsKeyRef = useRef('');
   const [sceneInfo, setSceneInfo] = useState(null);
   const [matchData, setMatchData] = useState(null); // { name, refStats }
   const [matchAmount, setMatchAmount] = useState(80);
@@ -828,16 +1042,24 @@ const Filtre = ({
 
   // ---------- Historique (annuler / rétablir) ----------
   const snapshot = useMemo(
-    () => ({ colorSettings, filterId: selectedFilter.id, intensity, filmId, filmAmount, lutAmount }),
-    [colorSettings, selectedFilter.id, intensity, filmId, filmAmount, lutAmount]
+    () => ({ colorSettings, filterId: selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments }),
+    [colorSettings, selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments]
   );
   useEffect(() => {
     const timer = setTimeout(() => {
       const h = historyRef.current;
       const key = JSON.stringify(snapshot);
       if (h.index >= 0 && JSON.stringify(h.stack[h.index]) === key) return;
+      const parsed = JSON.parse(key);
+      const last = h.stack[h.index];
+      // Création initiale des sections : on remplace l'entrée vide au lieu d'ajouter une étape à annuler.
+      if (last && (!last.segments || last.segments.length === 0) && parsed.segments.length > 0 &&
+          JSON.stringify({ ...last, segments: [] }) === JSON.stringify({ ...parsed, segments: [] })) {
+        h.stack[h.index] = parsed;
+        return;
+      }
       h.stack = h.stack.slice(0, h.index + 1);
-      h.stack.push(JSON.parse(key));
+      h.stack.push(parsed);
       if (h.stack.length > 60) h.stack.shift();
       h.index = h.stack.length - 1;
       setHistoryTick((t) => t + 1);
@@ -852,6 +1074,7 @@ const Filtre = ({
     setFilmId(snap.filmId);
     setFilmAmount(snap.filmAmount);
     setLutAmount(snap.lutAmount);
+    if (Array.isArray(snap.segments) && snap.segments.length) setSegments(snap.segments);
   };
   const undo = () => {
     const h = historyRef.current;
@@ -889,6 +1112,32 @@ const Filtre = ({
     setSegments(createSegments(duration));
     setSelectedSegId(null);
   }, [isVideo, duration, activeMedia]);
+
+  // Quand la découpe change, la tête de lecture ne doit jamais rester dans une zone supprimée.
+  useEffect(() => {
+    const video = mediaRef.current;
+    if (!isVideo || !video || !segments.length) return;
+    const jump = playbackJump(segments, video.currentTime);
+    if (jump !== undefined && Math.abs(jump - video.currentTime) > 0.02) {
+      video.currentTime = jump;
+      setCurrentTime(jump);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segments]);
+
+  // Vignettes des clips (une seule fois par vidéo, uniquement dans l'onglet Filtre).
+  useEffect(() => {
+    if (!isVideo || !(duration > 0) || activeTool !== 'filters') return undefined;
+    const key = `${activeMedia}:${duration.toFixed(2)}`;
+    if (thumbsKeyRef.current === key) return undefined;
+    let stop = false;
+    generateThumbnails(activeMedia, duration, { count: 24, height: 58, shouldStop: () => stop }).then((list) => {
+      if (stop) return;
+      thumbsKeyRef.current = key;
+      setThumbs(list);
+    });
+    return () => { stop = true; };
+  }, [isVideo, duration, activeMedia, activeTool]);
 
   // ---------- Aperçu étalonné (canvas) ----------
   const drawGradedPreview = useCallback(() => {
@@ -1187,20 +1436,65 @@ const Filtre = ({
     setSaveMessage(`Palette « ${palette.name} » appliquée.`);
   };
 
-  // ---------- Montage (sections) ----------
+  // ---------- Découpe (frise) ----------
   const finalDuration = keptDuration(segments);
-  const selectedSeg = segments.find((s) => s.id === selectedSegId) || null;
+  const keptSegs = segments.filter((s) => !s.removed);
   const liveTime = () => (isVideo && mediaRef.current ? mediaRef.current.currentTime : currentTime);
+  const getVideoTime = useCallback(() => (mediaRef.current ? mediaRef.current.currentTime : 0), []);
+  const clipAt = (t) => segmentsRef.current.find((s) => !s.removed && t >= s.start - 1e-6 && t <= s.end + 1e-6) || null;
 
   const doSplit = () => {
     const next = splitAt(segmentsRef.current, liveTime());
     if (next === segmentsRef.current) { setExportError('Impossible de couper ici (trop près d’un bord ou d’une coupure existante).'); return; }
     setSegments(next);
     setExportError('');
+    setSaveMessage('Vidéo coupée. Cliquez sur une partie puis appuyez sur Suppr pour la supprimer.');
   };
-  const doToggleSelected = () => { if (selectedSegId) setSegments((prev) => toggleRemoved(prev, selectedSegId)); };
-  const doBoundary = (which) => setSegments((prev) => setBoundary(prev, which, liveTime(), duration));
-  const resetEdit = () => { setSegments(createSegments(duration)); setSelectedSegId(null); };
+
+  // Supprime la section sélectionnée (ou celle sous la tête de lecture) : le vide se referme.
+  const doDeleteSelected = () => {
+    const list = segmentsRef.current.filter((s) => !s.removed);
+    if (list.length <= 1) { setExportError('Impossible de supprimer la dernière section de la vidéo.'); return; }
+    const target = (selectedSegId && list.find((s) => s.id === selectedSegId)) || clipAt(liveTime());
+    if (!target) return;
+    const idx = list.findIndex((s) => s.id === target.id);
+    const after = list[idx + 1] || null;
+    const before = list[idx - 1] || null;
+    setSegments((prev) => toggleRemoved(prev, target.id));
+    setSelectedSegId(after ? after.id : before ? before.id : null);
+    seekTo(after ? after.start : Math.max(0, before.end - 0.05));
+    setExportError('');
+    setSaveMessage('Section supprimée, le vide s’est refermé. Ctrl+Z pour annuler.');
+  };
+
+  // Supprime ce qui est à gauche / à droite de la tête de lecture, dans la section courante.
+  const doDeleteSide = (side) => {
+    const t = liveTime();
+    const clip = clipAt(t);
+    if (!clip) return;
+    const next = side === 'left' ? removeRange(segmentsRef.current, clip.start, t) : removeRange(segmentsRef.current, t, clip.end);
+    if (next === segmentsRef.current) { setExportError('Rien à supprimer ici : placez la tête de lecture à l’intérieur d’une section.'); return; }
+    setSegments(next);
+    setExportError('');
+    if (side === 'right') seekTo(Math.max(clip.start, t - 0.04));
+  };
+
+  // Image par image (1/30 s) ou seconde par seconde (Maj), en sautant les zones supprimées.
+  const stepTime = (dir, big) => {
+    const list = segmentsRef.current;
+    const kept = list.filter((s) => !s.removed);
+    if (!kept.length) return;
+    let t = liveTime() + (big ? 1 : 1 / 30) * dir;
+    t = clamp(t, kept[0].start, kept[kept.length - 1].end - 0.001);
+    const hit = list.find((s) => t >= s.start && t < s.end);
+    if (hit && hit.removed) {
+      if (dir > 0) { const nxt = kept.find((s) => s.start >= hit.end - 1e-6); if (nxt) t = nxt.start; }
+      else { const prv = [...kept].reverse().find((s) => s.end <= hit.start + 1e-6); if (prv) t = prv.end - 1 / 60; }
+    }
+    seekTo(clamp(t, 0, Math.max(0, duration - 0.001)));
+  };
+
+  const resetEdit = () => { setSegments(createSegments(duration)); setSelectedSegId(null); seekTo(0); };
 
   const runSceneDetect = async () => {
     if (!isVideo || !(duration > 0)) return;
@@ -1865,6 +2159,7 @@ const Filtre = ({
   };
 
   // Raccourcis : Échap, Espace (lecture), Ctrl/Cmd+Z / Ctrl+Y (historique), antislash (maintenir : original).
+  // Découpe (onglet Filtre) : Suppr supprime la section, S divise, Q / W suppriment à gauche / à droite, flèches = image par image.
   shortcutRef.current = (e, isUp) => {
     const tag = (e.target && e.target.tagName) || '';
     const typing = tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'checkbox');
@@ -1880,6 +2175,25 @@ const Filtre = ({
     } else if (mod && e.key.toLowerCase() === 'y') {
       e.preventDefault();
       redo();
+    } else if (isVideo && activeTool === 'filters' && tag !== 'INPUT' && (e.key === 'Delete' || e.key === 'Backspace')) {
+      e.preventDefault();
+      doDeleteSelected();
+    } else if (isVideo && activeTool === 'filters' && tag !== 'INPUT' && ((!mod && e.key.toLowerCase() === 's') || (mod && e.key.toLowerCase() === 'b'))) {
+      e.preventDefault();
+      doSplit();
+    } else if (isVideo && activeTool === 'filters' && tag !== 'INPUT' && !mod && e.key.toLowerCase() === 'q') {
+      e.preventDefault();
+      doDeleteSide('left');
+    } else if (isVideo && activeTool === 'filters' && tag !== 'INPUT' && !mod && e.key.toLowerCase() === 'w') {
+      e.preventDefault();
+      doDeleteSide('right');
+    } else if (isVideo && activeTool === 'filters' && tag !== 'INPUT' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault();
+      stepTime(e.key === 'ArrowRight' ? 1 : -1, e.shiftKey);
+    } else if (isVideo && activeTool === 'filters' && tag !== 'INPUT' && (e.key === 'Home' || e.key === 'End')) {
+      e.preventDefault();
+      const list = segmentsRef.current.filter((s) => !s.removed);
+      if (list.length) seekTo(e.key === 'Home' ? list[0].start : Math.max(0, list[list.length - 1].end - 0.05));
     } else if (e.key === ' ' && isVideo && tag !== 'INPUT') {
       e.preventDefault();
       togglePlay();
@@ -1906,7 +2220,7 @@ const Filtre = ({
     const mediaStyle = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', display: 'block' };
 
     return (
-      <div style={{ width: '100%', padding: '10px', boxSizing: 'border-box', background: '#08080b' }}>
+      <div style={{ width: '100%', padding: '10px', boxSizing: 'border-box', background: '#101014', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px' }}>
         <div
           ref={compareBoxRef}
           id="compare-container"
@@ -2126,7 +2440,6 @@ const Filtre = ({
         {/* CENTRE : vidéo + outils */}
         <div className="ovx-color-editor-center" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
           {renderPreview()}
-          {renderTimelineBlock()}
           {colorActiveCount > 0 && (
             <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', padding: '8px 12px', borderRadius: '8px', background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.3)', color: '#7dd3fc', fontSize: '11px', maxWidth: '760px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
               <span>🎨 {colorActiveCount} réglage(s) de l’onglet Couleur encore actif(s)</span>
@@ -2203,50 +2516,78 @@ const Filtre = ({
         </div>
       </div>
           </div>
-        </div>
-      </div>
-
-      {renderStatus()}
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ flex: '1 1 380px', minWidth: 0 }}>{renderExportOptions()}</div>
-        <div style={{ flex: '1 1 320px', display: 'flex', gap: '8px', minWidth: 0 }}>
+          <div className="ovx-color-editor-panel" style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {renderExportOptions()}
+            {renderStatus()}
+            <div style={{ display: 'flex', gap: '8px' }}>
           <button type="button" onClick={handleFiltersReset} style={{ flex: 1, padding: '11px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#f87171', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
             🔄 Tout réinitialiser
           </button>
           <button type="button" onClick={handleApply} disabled={isSaving || isExporting} style={{ flex: 2, padding: '11px 12px', borderRadius: '10px', border: 'none', background: isSaving || isExporting ? '#777' : '#ffffff', color: '#000000', fontSize: '13px', fontWeight: '700', cursor: isSaving || isExporting ? 'not-allowed' : 'pointer', opacity: isSaving || isExporting ? 0.7 : 1 }}>
             {isSaving || isExporting ? 'Veuillez patienter…' : 'Appliquer'}
           </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {renderTimelineBlock()}
     </div>
   );
 
   // ---------- Découpe de la vidéo ----------
   const renderTimelineBlock = () => {
     if (!isVideo) return null;
-    const keptCount = segments.filter((s) => !s.removed).length;
     const edited = segments.length > 1 || finalDuration < duration - 0.05;
+    const zoomPos = Math.round((Math.log(timelineZoom) / Math.log(40)) * 100);
+    const iconBtn = (disabled, active) => ({ ...toolChipStyle(active, disabled), display: 'inline-flex', alignItems: 'center', gap: '5px' });
+    const kbd = { fontSize: '9px', padding: '1px 5px', borderRadius: '4px', background: 'rgba(255,255,255,0.12)', color: '#d1d5db', fontWeight: 700 };
     return (
-      <div className="ovx-color-editor-panel" style={{ ...panelStyle, width: '100%', maxWidth: '600px', margin: '0 auto', boxSizing: 'border-box' }}>
+      <div className="ovx-color-editor-panel" style={{ ...panelStyle, width: '100%', boxSizing: 'border-box' }}>
         <PanelTitle onReset={edited ? resetEdit : undefined}>✂ DÉCOUPE DE LA VIDÉO</PanelTitle>
         {duration > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <Timeline duration={duration} segments={segments} currentTime={currentTime} selectedId={selectedSegId} onSelect={setSelectedSegId} onSeek={seekTo} />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              <button type="button" onClick={doSplit} title="Coupe la vidéo à la position de la tête de lecture" style={toolChipStyle(false, false)}>✂ Couper ici</button>
-              <button type="button" onClick={doToggleSelected} disabled={!selectedSeg} title="Cliquez d’abord sur une section de la frise" style={toolChipStyle(false, !selectedSeg)}>
-                {selectedSeg?.removed ? '↩ Restaurer la section' : '🗑 Supprimer la section'}
-              </button>
-              <button type="button" onClick={() => doBoundary('start')} title="Le début de la vidéo devient la position actuelle" style={toolChipStyle(false, false)}>⇤ Début ici</button>
-              <button type="button" onClick={() => doBoundary('end')} title="La fin de la vidéo devient la position actuelle" style={toolChipStyle(false, false)}>⇥ Fin ici</button>
-              <button type="button" onClick={sceneProgress === null ? runSceneDetect : () => { sceneStopRef.current = true; }} style={toolChipStyle(sceneProgress !== null, false)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+              <button type="button" onClick={doSplit} title="Couper à la position de la tête de lecture (S)" style={iconBtn(false, false)}>✂ Diviser <span style={kbd}>S</span></button>
+              <button type="button" onClick={() => doDeleteSide('left')} title="Supprimer ce qui est avant la tête de lecture (Q)" style={iconBtn(false, false)}>⇤ Supprimer à gauche <span style={kbd}>Q</span></button>
+              <button type="button" onClick={() => doDeleteSide('right')} title="Supprimer ce qui est après la tête de lecture (W)" style={iconBtn(false, false)}>⇥ Supprimer à droite <span style={kbd}>W</span></button>
+              <button type="button" onClick={doDeleteSelected} disabled={keptSegs.length <= 1} title="Supprimer la section sélectionnée (touche Suppr)" style={{ ...iconBtn(keptSegs.length <= 1, false), color: '#fca5a5' }}>🗑 Supprimer <span style={kbd}>Suppr</span></button>
+              <button type="button" onClick={sceneProgress === null ? runSceneDetect : () => { sceneStopRef.current = true; }} style={iconBtn(false, sceneProgress !== null)}>
                 {sceneProgress === null ? '🔎 Détecter les scènes' : `Analyse… ${Math.round(sceneProgress * 100)} % (arrêter)`}
               </button>
+              <span style={{ flex: 1 }} />
+              <button type="button" aria-label="Zoom arrière" title="Zoom arrière" onClick={() => setTimelineZoom((z) => clamp(z / 1.5, 1, 40))} style={iconBtn(false, false)}>−</button>
+              <input
+                type="range"
+                aria-label="Zoom de la frise"
+                min={0}
+                max={100}
+                value={zoomPos}
+                onChange={(e) => setTimelineZoom(Math.pow(40, Number(e.target.value) / 100))}
+                style={{ width: '110px', accentColor: '#00b4d8', cursor: 'pointer' }}
+              />
+              <button type="button" aria-label="Zoom avant" title="Zoom avant (Ctrl + molette sur la frise)" onClick={() => setTimelineZoom((z) => clamp(z * 1.5, 1, 40))} style={iconBtn(false, false)}>+</button>
             </div>
-            <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.45 }}>
-              Durée finale : <strong style={{ color: '#fff' }}>{fmtTime(finalDuration)}</strong> sur {fmtTime(duration)} · {keptCount} section(s) conservée(s).
+
+            <Timeline
+              duration={duration}
+              segments={segments}
+              selectedId={selectedSegId}
+              onSelect={setSelectedSegId}
+              onSeek={seekTo}
+              onChange={setSegments}
+              getTime={getVideoTime}
+              currentTime={currentTime}
+              isPlaying={isPlaying}
+              thumbs={thumbs}
+              zoom={timelineZoom}
+              onZoom={setTimelineZoom}
+            />
+
+            <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.6 }}>
+              Durée finale : <strong style={{ color: '#fff' }}>{fmtTime(finalDuration)}</strong> sur {fmtTime(duration)} · {keptSegs.length} section(s).
               <br />
-              Placez la tête de lecture puis « Couper ici ». Cliquez sur une section de la frise pour la supprimer. La lecture saute les parties supprimées et l’export ne garde que le reste (son compris).
+              <span style={kbd}>Clic</span> sélectionne une section · <span style={kbd}>Suppr</span> la supprime et referme le vide · tirez les <b>poignées blanches</b> pour rogner · <span style={kbd}>←</span> <span style={kbd}>→</span> image par image · <span style={kbd}>Ctrl</span> + molette pour zoomer · <span style={kbd}>Ctrl</span> <span style={kbd}>Z</span> annule.
             </div>
           </div>
         ) : (

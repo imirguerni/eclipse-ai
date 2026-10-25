@@ -151,3 +151,119 @@ export async function detectSceneCuts(videoUrl, duration, { step = 0.5, threshol
     video.load();
   }
 }
+
+
+// ---------- Frise de type « CapCut » : lecture sur la durée finale (les sections supprimées disparaissent) ----------
+
+// Instant de la vidéo source correspondant à une position dans la vidéo finale.
+export function sourceTimeAt(ranges, outT) {
+  if (!ranges.length) return 0;
+  const total = ranges[ranges.length - 1].outStart + (ranges[ranges.length - 1].end - ranges[ranges.length - 1].start);
+  const t = Math.max(0, Math.min(outT, total));
+  const r = ranges.find((x) => t >= x.outStart && t < x.outStart + (x.end - x.start)) || ranges[ranges.length - 1];
+  return Math.min(r.end, r.start + (t - r.outStart));
+}
+
+// Supprime l'intervalle [a, b] de la vidéo source (découpe aux deux bords, puis marque supprimé).
+// Garde toujours au moins une section.
+export function removeRange(segments, a, b) {
+  if (!(b - a > 1e-3)) return segments;
+  let out = splitAt(segments, a);
+  out = splitAt(out, b);
+  out = out.map((s) => (s.start >= a - 1e-6 && s.end <= b + 1e-6 ? { ...s, removed: true } : s));
+  return out.some((s) => !s.removed) ? out : segments;
+}
+
+// Rogne (ou rallonge) un bord d'une section, comme en tirant sur sa poignée.
+// Raccourcir : la partie retirée devient une zone supprimée. Rallonger : seulement dans une zone supprimée voisine.
+export function trimEdge(segments, id, side, t) {
+  const i = segments.findIndex((s) => s.id === id);
+  if (i < 0) return segments;
+  const s = segments[i];
+  const out = segments.map((x) => ({ ...x }));
+  const prev = out[i - 1];
+  const next = out[i + 1];
+
+  if (side === 'start') {
+    if (t > s.start + 1e-3) {
+      const nt = Math.min(t, s.end - MIN_SEGMENT);
+      if (nt - s.start < 1e-3) return segments;
+      if (prev && prev.removed) { prev.end = nt; out[i] = { ...s, start: nt }; }
+      else out.splice(i, 1, { id: newId(), start: s.start, end: nt, removed: true }, { ...s, start: nt });
+      return out;
+    }
+    if (t < s.start - 1e-3) {
+      if (!prev || !prev.removed) return segments;
+      const nt = Math.max(t, prev.start);
+      if (nt <= prev.start + MIN_SEGMENT / 2) { out.splice(i - 1, 2, { ...s, start: prev.start }); return out; }
+      prev.end = nt;
+      out[i] = { ...s, start: nt };
+      return out;
+    }
+    return segments;
+  }
+
+  if (t < s.end - 1e-3) {
+    const nt = Math.max(t, s.start + MIN_SEGMENT);
+    if (s.end - nt < 1e-3) return segments;
+    if (next && next.removed) { next.start = nt; out[i] = { ...s, end: nt }; }
+    else out.splice(i, 1, { ...s, end: nt }, { id: newId(), start: nt, end: s.end, removed: true });
+    return out;
+  }
+  if (t > s.end + 1e-3) {
+    if (!next || !next.removed) return segments;
+    const nt = Math.min(t, next.end);
+    if (nt >= next.end - MIN_SEGMENT / 2) { out.splice(i, 2, { ...s, end: next.end }); return out; }
+    next.start = nt;
+    out[i] = { ...s, end: nt };
+    return out;
+  }
+  return segments;
+}
+
+// Pas de graduation de la règle (en secondes) pour garder ~`minPx` pixels entre deux repères.
+export function tickStep(pxPerSec, minPx = 80) {
+  const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  return steps.find((s) => s * pxPerSec >= minPx) || steps[steps.length - 1];
+}
+
+// Vignettes régulièrement espacées (pour illustrer les clips). Retourne [{ t, url }] ; s'arrête proprement en cas d'erreur.
+export async function generateThumbnails(videoUrl, duration, { count = 24, height = 54, shouldStop } = {}) {
+  const video = document.createElement('video');
+  video.crossOrigin = 'anonymous';
+  video.muted = true;
+  video.preload = 'auto';
+  video.src = videoUrl;
+  const waitFor = (name, ms = 5000) =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, ms);
+      const ok = () => { cleanup(); resolve(); };
+      const ko = () => { cleanup(); reject(new Error('erreur vidéo')); };
+      const cleanup = () => { clearTimeout(timer); video.removeEventListener(name, ok); video.removeEventListener('error', ko); };
+      video.addEventListener(name, ok);
+      video.addEventListener('error', ko);
+    });
+  const thumbs = [];
+  try {
+    if (video.readyState < 2) await waitFor('loadeddata', 10000);
+    const ratio = (video.videoWidth || 16) / (video.videoHeight || 9);
+    const canvas = document.createElement('canvas');
+    canvas.height = Math.max(24, Math.round(height * 2)); // x2 : écrans haute densité
+    canvas.width = Math.max(32, Math.round(canvas.height * ratio));
+    const ctx = canvas.getContext('2d');
+    for (let i = 0; i < count; i++) {
+      if (shouldStop && shouldStop()) break;
+      const t = Math.min(duration - 0.05, ((i + 0.5) * duration) / count);
+      video.currentTime = Math.max(0, t);
+      await waitFor('seeked');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      thumbs.push({ t, url: canvas.toDataURL('image/jpeg', 0.6), ratio });
+    }
+  } catch {
+    /* on garde les vignettes déjà obtenues (CORS, délai…) */
+  } finally {
+    video.removeAttribute('src');
+    video.load();
+  }
+  return thumbs;
+}

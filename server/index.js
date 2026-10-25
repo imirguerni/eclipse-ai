@@ -1,7 +1,7 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 console.log(
-    "ðŸ”‘ RUNWARE_API_KEY :",
-    process.env.RUNWARE_API_KEY ? "PRÃ‰SENTE" : "ABSENTE"
+    "🔑 RUNWARE_API_KEY :",
+    process.env.RUNWARE_API_KEY ? "PRÉSENTE" : "ABSENTE"
 );
 const express = require('express');
 const cors = require('cors');
@@ -31,7 +31,7 @@ async function loadRunwareSDK() {
         throw new Error("createClient introuvable dans @runware/sdk");
 
     } catch (error) {
-        console.error("âŒ Impossible de charger @runware/sdk :", error);
+        console.error("❌ Impossible de charger @runware/sdk :", error);
         throw error;
     }
 }
@@ -47,7 +47,7 @@ async function getRunwareClient() {
 
         await runwareClient.connect();
 
-        console.log("âœ… Runware connectÃ©");
+        console.log("✅ Runware connecté");
     }
 
     return runwareClient;
@@ -62,7 +62,7 @@ const { db, auth } = require('./firebaseAdmin');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { spawn } = require('child_process');
 
-console.log("âœ… Firebase Admin initialisÃ© avec succÃ¨s");
+console.log("✅ Firebase Admin initialisé avec succès");
 // En haut de votre fichier principal (ex: server/index.js)
 const { isIpBlacklisted, blacklistIp } = require('./security/ipBlacklist');
 const { detectSuspicious } = require('./security/detector');
@@ -76,11 +76,11 @@ if (!ffmpegPath) {
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-console.log("ðŸ› ï¸ FFMPEG configurÃ© :", ffmpegPath);
+console.log("🛠️ FFMPEG configuré :", ffmpegPath);
 /*
 ============================================================
-ANCIEN SYSTÃˆME GOOGLE VEO / VERTEX AI
-CONSERVÃ‰ POUR RETOUR EN ARRIÃˆRE
+ANCIEN SYSTÈME GOOGLE VEO / VERTEX AI
+CONSERVÉ POUR RETOUR EN ARRIÈRE
 ============================================================
 
 const isGoogleVideo = engineId.startsWith("veo3"); 
@@ -99,7 +99,7 @@ const admin = require('firebase-admin');
 
 async function verifyRecaptcha(token) {
     if (!token || typeof token !== "string") {
-        console.warn("âš ï¸ Aucun token reCAPTCHA reÃ§u.");
+        console.warn("⚠️ Aucun token reCAPTCHA reçu.");
         return false;
     }
 
@@ -117,7 +117,6 @@ async function verifyRecaptcha(token) {
         };
 
         const [response] = await recaptchaClient.createAssessment(request);
-        console.log('Diagnostic reCAPTCHA :', { valid: response.tokenProperties?.valid, invalidReason: response.tokenProperties?.invalidReason, hostname: response.tokenProperties?.hostname, action: response.tokenProperties?.action, score: response.riskAnalysis?.score });
 
         const tokenProperties = response.tokenProperties;
 
@@ -125,32 +124,32 @@ async function verifyRecaptcha(token) {
             const invalidReason = tokenProperties?.invalidReason;
 
             console.warn(
-                `âš ï¸ Jeton reCAPTCHA invalide : ${invalidReason || "RAISON_INCONNUE"}`
+                `⚠️ Jeton reCAPTCHA invalide : ${invalidReason || "RAISON_INCONNUE"}`
             );
 
-            // BROWSER_ERROR = problÃ¨me temporaire cÃ´tÃ© navigateur/rÃ©seau.
+            // BROWSER_ERROR = problème temporaire côté navigateur/réseau.
             // Ce n'est PAS une preuve que l'utilisateur est un bot.
             if (invalidReason === "BROWSER_ERROR") {
                 console.warn(
-                    "ðŸ”„ BROWSER_ERROR reCAPTCHA : nouveau token nÃ©cessaire cÃ´tÃ© navigateur."
+                    "🔄 BROWSER_ERROR reCAPTCHA : nouveau token nécessaire côté navigateur."
                 );
 
                 return "retry";
             }
 
-            // Les autres tokens rÃ©ellement invalides restent bloquÃ©s.
+            // Les autres tokens réellement invalides restent bloqués.
             return false;
         }
 
         const score = Number(response.riskAnalysis?.score ?? 0);
 
-        console.log(`ðŸ›¡ï¸ Score reCAPTCHA reÃ§u : ${score}`);
+        console.log(`🛡️ Score reCAPTCHA reçu : ${score}`);
 
         return score >= 0.5;
 
     } catch (error) {
         console.error(
-            "âŒ Erreur technique reCAPTCHA :",
+            "❌ Erreur technique reCAPTCHA :",
             error.message
         );
 
@@ -160,15 +159,15 @@ async function verifyRecaptcha(token) {
     }
 }
 
-// ðŸ›¡ï¸ MIDDLEWARE D'AUTHENTIFICATION :
+// 🛡️ MIDDLEWARE D'AUTHENTIFICATION :
 const authenticateUser = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     console.log(
-    "ðŸ” Header Authorization reÃ§u :",
-    authHeader ? "Bearer prÃ©sent âœ…" : "Absent âŒ"
+    "🔍 Header Authorization reçu :",
+    authHeader ? "Bearer présent ✅" : "Absent ❌"
 );
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: "AccÃ¨s refusÃ© : Token manquant." });
+        return res.status(401).json({ error: "Accès refusé : Token manquant." });
     }
 
 const token = authHeader.substring(7).trim();
@@ -179,28 +178,28 @@ const decodedToken = await auth.verifyIdToken(token);
         next();
    } catch (error) {
         console.error("=================================");
-        console.error("âŒ FIREBASE AUTH ERROR");
+        console.error("❌ FIREBASE AUTH ERROR");
         console.error("CODE :", error.code);
         console.error("MESSAGE :", error.message);
         console.error("=================================");
 
         return res.status(401).json({
-            error: "AccÃ¨s refusÃ© : Token invalide ou expirÃ©."
+            error: "Accès refusé : Token invalide ou expiré."
 
         });
     }
 };
 
-// ðŸ”„ VÃ‰RIFICATION DES GÃ‰NÃ‰RATIONS EN COURS
+// 🔄 VÉRIFICATION DES GÉNÉRATIONS EN COURS
 async function recoverInterruptedGenerations() {
 
-    console.log("ðŸ”Ž VÃ©rification des gÃ©nÃ©rations en cours...");
+    console.log("🔎 Vérification des générations en cours...");
 
     const locks = await db.collection('imageLocks')
         .where("status", "==", "processing")
         .get();
 
-    console.log("ðŸ”’ Nombre de locks trouvÃ©s :", locks.size);
+    console.log("🔒 Nombre de locks trouvés :", locks.size);
 
     for (const doc of locks.docs) {
 
@@ -211,17 +210,17 @@ async function recoverInterruptedGenerations() {
         if (data.provider === "fal") {
 
             console.log(
-                "â³ GÃ©nÃ©ration Fal toujours considÃ©rÃ©e active :",
+                "⏳ Génération Fal toujours considérée active :",
                 data.userId
             );
             // Pas de remboursement ici.
-            // Fal peut encore Ãªtre en train de gÃ©nÃ©rer.
+            // Fal peut encore être en train de générer.
             continue;
         }
-        // Pour les autres fournisseurs Ã©ventuellement
+        // Pour les autres fournisseurs éventuellement
         // on ne rembourse pas automatiquement non plus.
         console.log(
-            "âš ï¸ Lock inconnu conservÃ© :",
+            "⚠️ Lock inconnu conservé :",
             data.userId
         );
     }
@@ -235,7 +234,7 @@ const app = express();
 app.set('trust proxy', 1);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// 1. HELMET ET CORS (S'appliquent Ã  tout)
+// 1. HELMET ET CORS (S'appliquent à tout)
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginEmbedderPolicy: false,
@@ -253,7 +252,7 @@ const allowedOrigins = [
 app.use(cors({
     origin: function (origin, callback) {
 
-        // Autorise les requÃªtes sans Origin
+        // Autorise les requêtes sans Origin
         // (certains outils, tests serveur, etc.)
         if (!origin) {
             return callback(null, true);
@@ -263,8 +262,8 @@ app.use(cors({
             return callback(null, true);
         }
 
-        console.warn('ðŸš« CORS bloquÃ© pour :', origin);
-        return callback(new Error('Origin non autorisÃ©e par CORS'));
+        console.warn('🚫 CORS bloqué pour :', origin);
+        return callback(new Error('Origin non autorisée par CORS'));
     },
 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -276,30 +275,30 @@ app.use(cors({
 // 2. RATE LIMITER (Protection contre le spam et les attaques par force brute)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limite chaque IP Ã  100 requÃªtes par fenÃªtre sur l'API
-    message: "Trop de requÃªtes depuis cette IP, rÃ©essayez plus tard."
+    max: 100, // Limite chaque IP à 100 requêtes par fenêtre sur l'API
+    message: "Trop de requêtes depuis cette IP, réessayez plus tard."
 });
 
 app.use('/api/', limiter);
 
 // 2. ROUTE WEBHOOK STRIPE (OBLIGATOIREMENT AVANT express.json global !)
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    console.log("ðŸ”¥ REQUÃŠTE WEBHOOK REÃ‡UE !"); 
+    console.log("🔥 REQUÊTE WEBHOOK REÇUE !"); 
     const sig = req.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET; // Assure-toi d'avoir cette clÃ© dans ton .env !
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET; // Assure-toi d'avoir cette clé dans ton .env !
     let event;
 
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
     } catch (err) {
-        console.error("âŒ Erreur Webhook dÃ©taillÃ©e :", err.message);
+        console.error("❌ Erreur Webhook détaillée :", err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
         if (!session.metadata || !session.metadata.userId) {
-            console.error("âš ï¸ Webhook ignorÃ© : userId absent");
+            console.error("⚠️ Webhook ignoré : userId absent");
             return res.status(400).send("Metadata manquantes");
         }
         
@@ -339,7 +338,7 @@ if (type === 'subscription') {
     const creditsByPlan = { essentiel: 3000, standard: 7000, master: 12000, elite: 25000, legende: 80000 };
     const baseCredits = creditsByPlan[planId.toLowerCase()] || 0;
     
-    // On rÃ©cupÃ¨re l'intervalle envoyÃ© depuis le front (ex: 'year' ou 'month')
+    // On récupère l'intervalle envoyé depuis le front (ex: 'year' ou 'month')
 const intervalRaw = session.metadata.interval || 'monthly';
 
 const interval = intervalRaw.toLowerCase();
@@ -381,32 +380,32 @@ const daysToReset = isYearly ? 365 : 30;
                 });
             });
 
-            console.log(`âœ… Livraison sÃ©curisÃ©e pour ${userId}`);
+            console.log(`✅ Livraison sécurisée pour ${userId}`);
 
         } catch (error) {
-            console.error(`âŒ Erreur Webhook Firestore:`, error);
-            return res.status(500).json({ error: "Erreur base de donnÃ©es" });
+            console.error(`❌ Erreur Webhook Firestore:`, error);
+            return res.status(500).json({ error: "Erreur base de données" });
         }
     }    
 
 // ==============================================================================
-    // GESTION EXPLICITE DES MISES Ã€ JOUR ET RÃ‰SILIATIONS D'ABONNEMENT (CORRIGÃ‰)
+    // GESTION EXPLICITE DES MISES À JOUR ET RÉSILIATIONS D'ABONNEMENT (CORRIGÉ)
     // ==============================================================================
 
-// GÃ¨re le changement d'Ã©tat (ex: annulation planifiÃ©e, Ã©chec de paiement, rÃ©activation)
+// Gère le changement d'état (ex: annulation planifiée, échec de paiement, réactivation)
     if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
         const subscription = event.data.object; 
         const userId = subscription.metadata.userId; 
 
         if (!userId) {
-            console.error("âš ï¸ Webhook abonnement ignorÃ© : userId absent des mÃ©tadonnÃ©es");
-            // On ne renvoie pas 400 pour deleted car l'user a pu Ãªtre supprimÃ© entre temps
+            console.error("⚠️ Webhook abonnement ignoré : userId absent des métadonnées");
+            // On ne renvoie pas 400 pour deleted car l'user a pu être supprimé entre temps
             if (event.type !== 'customer.subscription.deleted') {
                 return res.status(400).send("Metadata manquantes dans l'abonnement");
             }
         } else {
             try {
-                console.log(`ðŸ”„ Traitement de l'abonnement pour ${userId} - Statut : ${subscription.status}, Annulation fin pÃ©riode : ${subscription.cancel_at_period_end}`);
+                console.log(`🔄 Traitement de l'abonnement pour ${userId} - Statut : ${subscription.status}, Annulation fin période : ${subscription.cancel_at_period_end}`);
                 
                 const userRef = db.collection('users').doc(userId);
 
@@ -414,54 +413,54 @@ const daysToReset = isYearly ? 365 : 30;
                     const userDoc = await transaction.get(userRef);
                     
                     if (!userDoc.exists) {
-                        throw new Error(`Utilisateur ${userId} introuvable pour la mise Ã  jour de l'abonnement.`);
+                        throw new Error(`Utilisateur ${userId} introuvable pour la mise à jour de l'abonnement.`);
                     }
 
-                    // 1. DÃ‰TERMINATION DU STATUT DE PAIEMENT
+                    // 1. DÉTERMINATION DU STATUT DE PAIEMENT
                     let newStatus = subscription.status;
 
-                    // Cas : L'utilisateur a demandÃ© une rÃ©siliation, mais la pÃ©riode payÃ©e n'est pas finie
-                    // C'est 'canceling'. On arrÃªte les recharges automatiques, mais on garde l'accÃ¨s.
+                    // Cas : L'utilisateur a demandé une résiliation, mais la période payée n'est pas finie
+                    // C'est 'canceling'. On arrête les recharges automatiques, mais on garde l'accès.
                     if (subscription.cancel_at_period_end === true && subscription.status === 'active') {
                         newStatus = 'canceling'; 
                     }
 
-                    // 2. GESTION CRITIQUE DE L'ACCÃˆS (userPlan)
-                    // On ne downgrade l'utilisateur QUE si l'abonnement est COMPLÃ‰TEMENT TERMINÃ‰ (expired ou canceled)
+                    // 2. GESTION CRITIQUE DE L'ACCÈS (userPlan)
+                    // On ne downgrade l'utilisateur QUE si l'abonnement est COMPLÉTEMENT TERMINÉ (expired ou canceled)
                     
                     let userDocData = userDoc.data();
-                    let finalUserPlan = userDocData.userPlan; // Par dÃ©faut, on garde le plan actuel
+                    let finalUserPlan = userDocData.userPlan; // Par défaut, on garde le plan actuel
 
-                    // Objet pour stocker les champs Ã  mettre Ã  jour dans Firestore
+                    // Objet pour stocker les champs à mettre à jour dans Firestore
                     let updateFields = {
                         subscriptionStatus: newStatus, // Sera 'active', 'canceling' ou 'canceled'
-                        userPlan: finalUserPlan // CONSERVÃ‰ JUSQU'Ã€ LA FIN DE LA PÃ‰RIODE PAYÃ‰E, PUIS DOWNGRADÃ‰
+                        userPlan: finalUserPlan // CONSERVÉ JUSQU'À LA FIN DE LA PÉRIODE PAYÉE, PUIS DOWNGRADÉ
                     };
 
-                    // Si l'abonnement est complÃ©tement terminÃ©
+                    // Si l'abonnement est complétement terminé
                     if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
-                        console.log(`ðŸ”» L'abonnement de ${userId} est TERMINÃ‰. Downgrade vers 'dÃ©butant'.`);
-                        updateFields.userPlan = 'dÃ©butant';
+                        console.log(`🔻 L'abonnement de ${userId} est TERMINÉ. Downgrade vers 'débutant'.`);
+                        updateFields.userPlan = 'débutant';
                         updateFields.tokens = 0;
                         updateFields.tokensResetDate = null;
                     } 
-                    // Si l'annulation est planifiÃ©e Ã  la fin de la pÃ©riode, on conserve/met Ã  jour la vraie date de fin Stripe
+                    // Si l'annulation est planifiée à la fin de la période, on conserve/met à jour la vraie date de fin Stripe
                     else if (subscription.cancel_at_period_end === true) {
                         const periodEndTimestamp = subscription.current_period_end * 1000;
                         updateFields.tokensResetDate = Timestamp.fromDate(new Date(periodEndTimestamp));
-                        console.log(`ðŸ“… Annulation planifiÃ©e : tokensResetDate fixÃ© au ${new Date(periodEndTimestamp).toISOString()}`);
+                        console.log(`📅 Annulation planifiée : tokensResetDate fixé au ${new Date(periodEndTimestamp).toISOString()}`);
                     }
 
-                    // 3. MISE Ã€ JOUR FIRESTORE
-                    console.log(`ðŸ’¾ Mise Ã  jour Firestore ${userId} : Plan=${updateFields.userPlan}, StatutPaiement=${newStatus}`);
+                    // 3. MISE À JOUR FIRESTORE
+                    console.log(`💾 Mise à jour Firestore ${userId} : Plan=${updateFields.userPlan}, StatutPaiement=${newStatus}`);
                     
                     transaction.update(userRef, updateFields);
                 });
-                console.log(`âœ… Mise Ã  jour de l'abonnement traitÃ©e avec succÃ¨s pour ${userId}.`);
+                console.log(`✅ Mise à jour de l'abonnement traitée avec succès pour ${userId}.`);
 
             } catch (error) {
-                console.error(`âŒ Erreur lors du traitement de l'abonnement Webhook:`, error);
-                return res.status(500).json({ error: "Erreur base de donnÃ©es lors de la mise Ã  jour de l'abonnement" });
+                console.error(`❌ Erreur lors du traitement de l'abonnement Webhook:`, error);
+                return res.status(500).json({ error: "Erreur base de données lors de la mise à jour de l'abonnement" });
             }
         }
     }
@@ -472,7 +471,7 @@ const daysToReset = isYearly ? 365 : 30;
 app.use(express.json({ limit: '50mb' }));
 app.use(hpp());
 // ==========================================
-// ðŸ“ CONFIGURATION DE MULTER ET ROUTE D'UPLOAD
+// 📁 CONFIGURATION DE MULTER ET ROUTE D'UPLOAD
 // ==========================================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)){
@@ -493,51 +492,51 @@ const upload = multer({ storage: storage });
 // Rendre le dossier "uploads" accessible publiquement
 app.use('/uploads', express.static(uploadDir));
 
-// Route d'upload pour recevoir les vidÃ©os/images du front-end
+// Route d'upload pour recevoir les vidéos/images du front-end
 app.post('/api/upload', upload.single('file'), (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: "Aucun fichier reÃ§u." });
+            return res.status(400).json({ error: "Aucun fichier reçu." });
         }
 
         const protocol = req.protocol;
         const host = req.get('host');
         const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
 
-        console.log(`ðŸ“ Fichier uploadÃ© avec succÃ¨s : ${fileUrl}`);
+        console.log(`📁 Fichier uploadé avec succès : ${fileUrl}`);
         return res.json({ url: fileUrl });
 
     } catch (error) {
-        console.error("âŒ Erreur lors de l'upload :", error);
+        console.error("❌ Erreur lors de l'upload :", error);
         return res.status(500).json({ error: "Erreur serveur lors de l'upload." });
     }
 });
 // ==========================================
-// CONVERSION VIDÃ‰O WEBM â†’ MP4 H.264
+// CONVERSION VIDÉO WEBM → MP4 H.264
 // ==========================================
 
 app.post('/api/convert-video', async (req, res) => {
-    console.log('ðŸš¨ ROUTE CONVERT-VIDEO APPELÃ‰E');
-console.log('ðŸ“¦ BODY REÃ‡U :', req.body);
+    console.log('🚨 ROUTE CONVERT-VIDEO APPELÉE');
+console.log('📦 BODY REÇU :', req.body);
     try {
         const { url } = req.body;
 
         if (!url) {
             return res.status(400).json({
-                error: "Aucune URL vidÃ©o reÃ§ue."
+                error: "Aucune URL vidéo reçue."
             });
         }
 
-        console.log("ðŸŽ¬ Demande de conversion vidÃ©o :", url);
+        console.log("🎬 Demande de conversion vidéo :", url);
 
         const fileName = path.basename(new URL(url).pathname);
         const inputPath = path.join(uploadDir, fileName);
 
         if (!fs.existsSync(inputPath)) {
-            console.error("âŒ Fichier source introuvable :", inputPath);
+            console.error("❌ Fichier source introuvable :", inputPath);
 
             return res.status(404).json({
-                error: "Fichier vidÃ©o source introuvable."
+                error: "Fichier vidéo source introuvable."
             });
         }
 
@@ -545,8 +544,8 @@ console.log('ðŸ“¦ BODY REÃ‡U :', req.body);
         const outputFileName = `${baseName}-mp4-${Date.now()}.mp4`;
         const outputPath = path.join(uploadDir, outputFileName);
 
-        console.log("ðŸ“¥ Source :", inputPath);
-        console.log("ðŸ“¤ Destination :", outputPath);
+        console.log("📥 Source :", inputPath);
+        console.log("📤 Destination :", outputPath);
 
         const ffmpeg = spawn(ffmpegPath, [
             '-y',
@@ -576,12 +575,12 @@ console.log('ðŸ“¦ BODY REÃ‡U :', req.body);
                 message.includes('time=') ||
                 message.includes('speed=')
             ) {
-                process.stdout.write(`ðŸŽžï¸ ${message}`);
+                process.stdout.write(`🎞️ ${message}`);
             }
         });
 
         ffmpeg.on('error', (error) => {
-            console.error("âŒ Impossible de lancer FFmpeg :", error);
+            console.error("❌ Impossible de lancer FFmpeg :", error);
 
             return res.status(500).json({
                 error: "Impossible de lancer FFmpeg."
@@ -590,19 +589,19 @@ console.log('ðŸ“¦ BODY REÃ‡U :', req.body);
 
         ffmpeg.on('close', (code) => {
             if (code !== 0) {
-                console.error("âŒ FFmpeg a Ã©chouÃ©. Code :", code);
+                console.error("❌ FFmpeg a échoué. Code :", code);
                 console.error(stderr);
 
                 return res.status(500).json({
-                    error: "La conversion MP4 a Ã©chouÃ©."
+                    error: "La conversion MP4 a échoué."
                 });
             }
 
             if (!fs.existsSync(outputPath)) {
-                console.error("âŒ Le fichier MP4 n'a pas Ã©tÃ© crÃ©Ã©.");
+                console.error("❌ Le fichier MP4 n'a pas été créé.");
 
                 return res.status(500).json({
-                    error: "Le fichier MP4 n'a pas Ã©tÃ© crÃ©Ã©."
+                    error: "Le fichier MP4 n'a pas été créé."
                 });
             }
 
@@ -612,7 +611,7 @@ console.log('ðŸ“¦ BODY REÃ‡U :', req.body);
             const fileUrl =
                 `${protocol}://${host}/uploads/${outputFileName}`;
 
-            console.log("âœ… Conversion MP4 terminÃ©e :", fileUrl);
+            console.log("✅ Conversion MP4 terminée :", fileUrl);
 
             return res.json({
                 url: fileUrl,
@@ -623,10 +622,10 @@ console.log('ðŸ“¦ BODY REÃ‡U :', req.body);
         });
 
     } catch (error) {
-        console.error("âŒ Erreur conversion vidÃ©o :", error);
+        console.error("❌ Erreur conversion vidéo :", error);
 
         return res.status(500).json({
-            error: "Erreur serveur lors de la conversion vidÃ©o."
+            error: "Erreur serveur lors de la conversion vidéo."
         });
     }
 });
@@ -643,7 +642,7 @@ const ai = new GoogleGenAI({
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 fal.config({ apiKey: process.env.FAL_KEY });
-console.log("--- CONFIGURATION SDK VALIDÃ‰E ---");
+console.log("--- CONFIGURATION SDK VALIDÉE ---");
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -657,13 +656,13 @@ app.post('/test-simulate-video', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders(); // ðŸ’¡ Ajout recommandÃ© pour forcer l'envoi immÃ©diat des en-tÃªtes
+    res.flushHeaders(); // 💡 Ajout recommandé pour forcer l'envoi immédiat des en-têtes
 
     let percent = 0;
     const interval = setInterval(() => {
         percent += 20;
         
-        // SÃ©curitÃ© : on vÃ©rifie que la connexion est toujours ouverte avant d'Ã©crire
+        // Sécurité : on vérifie que la connexion est toujours ouverte avant d'écrire
         if (res.writableEnded) {
             clearInterval(interval);
             return;
@@ -672,7 +671,7 @@ app.post('/test-simulate-video', (req, res) => {
         if (percent <= 100) {
             res.write(`data: ${JSON.stringify({ 
                 percent: percent, 
-                message: percent < 100 ? "GÃ©nÃ©ration en cours..." : "GÃ©nÃ©ration terminÃ©e !" 
+                message: percent < 100 ? "Génération en cours..." : "Génération terminée !" 
             })}\n\n`);
         } else {
             clearInterval(interval);
@@ -684,13 +683,13 @@ app.post('/test-simulate-video', (req, res) => {
         }
     }, 1000);
 
-    // ðŸ›‘ SÃ‰CURITÃ‰ ABSOLUE : Si le client coupe la connexion en plein milieu
+    // 🛑 SÉCURITÉ ABSOLUE : Si le client coupe la connexion en plein milieu
     req.on('close', () => {
-        console.log("âš ï¸ Simulation : Le client s'est dÃ©connectÃ©. ArrÃªt de la boucle.");
+        console.log("⚠️ Simulation : Le client s'est déconnecté. Arrêt de la boucle.");
         clearInterval(interval);
     });
 });
-// --- ROUTE WEBHOOK (IMPÃ‰RATIF : AVANT express.json) ---
+// --- ROUTE WEBHOOK (IMPÉRATIF : AVANT express.json) ---
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || "whsec_xxxxxxxxxxxx"; 
 
 // --- CONFIGURATION DES ABONNEMENTS ---
@@ -703,40 +702,40 @@ const CREDITS_PER_MONTH = {
 };
 const STRIPE_PRICE_IDS = {
  // --- PLAN ESSENTIEL ---
-    // Mensuel : 12,99â‚¬ / mois
-    // Annuel : 124,99â‚¬ / an
+    // Mensuel : 12,99€ / mois
+    // Annuel : 124,99€ / an
     essentiel: {
         monthly: 'price_1UDmA0RupJs1FxZmYmxjcSQJ', // Ton ID mensuel existant
-        yearly: 'price_1UDmA0RupJs1FxZm6hmEmeKM' // ex: price_1TPm... (Ã  copier dans Stripe)
+        yearly: 'price_1UDmA0RupJs1FxZm6hmEmeKM' // ex: price_1TPm... (à copier dans Stripe)
     },
 
    // --- PLAN STANDARD ---
-    // Mensuel : 24,99â‚¬ / mois
-    // Annuel : 239,99â‚¬ / an
+    // Mensuel : 24,99€ / mois
+    // Annuel : 239,99€ / an
     standard: {
         monthly: 'price_1UDmA1RupJs1FxZmX0FFHIWU', // Ton ID mensuel existant
         yearly: 'price_1UDmA0RupJs1FxZm6xVFUg4C'
     },
 
    // --- PLAN MASTER ---
-    // Mensuel : 34,99â‚¬ / mois
-    // Annuel : 335,99â‚¬ / an
+    // Mensuel : 34,99€ / mois
+    // Annuel : 335,99€ / an
     master: {
         monthly: 'price_1UDmA0RupJs1FxZmvpmAORIc', // Ton ID mensuel existant
         yearly: 'price_1UDmA0RupJs1FxZmvpmAORIc'
     },
 
   // --- PLAN ELITE ---
-    // Mensuel : 59,99â‚¬ / mois
-    // Annuel : 575,99â‚¬ / an
+    // Mensuel : 59,99€ / mois
+    // Annuel : 575,99€ / an
     elite: {
         monthly: 'price_1UDmA2RupJs1FxZmu8pbvOpZ', // Ton ID mensuel existant
         yearly: 'price_1UDmA1RupJs1FxZm5kGQt37H'
     },
 
-   // --- PLAN LÃ‰GENDE ---
-    // Mensuel : 159,99â‚¬ / mois
-    // Annuel : 1535,99â‚¬ / an
+   // --- PLAN LÉGENDE ---
+    // Mensuel : 159,99€ / mois
+    // Annuel : 1535,99€ / an
     legende: {
         monthly: 'price_1UDmA0RupJs1FxZmVAKQBgwL', // Ton ID mensuel existant
         yearly: 'price_1UDmA0RupJs1FxZm0XFxv2qa'
@@ -747,7 +746,7 @@ const STRIPE_PRICE_IDS = {
 /*
 ============================================================
 ANCIEN TEST GOOGLE VEO
-CONSERVÃ‰ POUR RETOUR EN ARRIÃˆRE
+CONSERVÉ POUR RETOUR EN ARRIÈRE
 ============================================================
 
 app.get('/ping-veo', async (req, res) => {
@@ -757,10 +756,10 @@ app.get('/ping-veo', async (req, res) => {
             model: modelName,
             prompt: "A beautiful cinematic landscape, high quality, 8k", 
         });
-        res.json({ status: "ConnectÃ©", operationName: operation.name });
+        res.json({ status: "Connecté", operationName: operation.name });
     } catch (error) {
         res.status(500).json({ 
-            error: "Ã‰chec de connexion au modÃ¨le", 
+            error: "Échec de connexion au modèle", 
             message: error.message 
         });
     }
@@ -775,11 +774,11 @@ app.post('/create-checkout-session', limiter, authenticateUser, async (req, res)
     try {
         const { amount, plan } = req.body;
         
-        // ðŸ”’ SOURCE DE VÃ‰RITÃ‰ ABSOLUE : On rÃ©cupÃ¨re l'ID du token Firebase, plus du req.body !
+        // 🔒 SOURCE DE VÉRITÉ ABSOLUE : On récupère l'ID du token Firebase, plus du req.body !
         const userId = req.user.uid;
 
         if (amount === undefined || typeof amount !== 'number') {
-            return res.status(400).json({ error: "DonnÃ©es invalides" });
+            return res.status(400).json({ error: "Données invalides" });
         }
 
         const isSubscriber = plan && !['debutant', 'discovery', '0.00'].includes(plan.toLowerCase());
@@ -808,44 +807,44 @@ app.post('/create-checkout-session', limiter, authenticateUser, async (req, res)
         });
         res.json({ url: session.url });
     } catch (e) {
-        console.error("âŒ Erreur /create-checkout-session :", e.message);
-        res.status(500).json({ error: "Erreur lors de la crÃ©ation de session" });
+        console.error("❌ Erreur /create-checkout-session :", e.message);
+        res.status(500).json({ error: "Erreur lors de la création de session" });
     }
 });
 
 app.post('/create-subscription-session', limiter, authenticateUser, async (req, res) => {
         try {
-        // RÃ©cupÃ©ration des donnÃ©es envoyÃ©es par le Front-end
-      // RÃ©cupÃ©ration des donnÃ©es envoyÃ©es par le Front-end (le userId vient de l'authentification serveur)
+        // Récupération des données envoyées par le Front-end
+      // Récupération des données envoyées par le Front-end (le userId vient de l'authentification serveur)
       const { planId, interval = 'monthly', userId: bodyUserId } = req.body;
         const userId = req.user?.uid || bodyUserId;
 
-        // VÃ©rification de sÃ©curitÃ© : les donnÃ©es obligatoires sont-elles lÃ  ?
-        if (!planId) return res.status(400).json({ error: "DonnÃ©es manquantes (planId)" });
+        // Vérification de sécurité : les données obligatoires sont-elles là ?
+        if (!planId) return res.status(400).json({ error: "Données manquantes (planId)" });
         // 1. Normalisation du nom du plan (retrait des accents et minuscules)
-        // Ex: "LÃ©gende" -> "legende"
+        // Ex: "Légende" -> "legende"
         const cleanPlanId = planId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-        // 2. RÃ©cupÃ©ration de la configuration dans VOTRE NOUVEL OBJET "STRIPE_PRICE_IDS"
-        // On cherche d'abord avec le nom normalisÃ© (ex: 'legende'), sinon avec l'original (ex: 'legende' au cas oÃ¹)
+        // 2. Récupération de la configuration dans VOTRE NOUVEL OBJET "STRIPE_PRICE_IDS"
+        // On cherche d'abord avec le nom normalisé (ex: 'legende'), sinon avec l'original (ex: 'legende' au cas où)
         const planPrices = STRIPE_PRICE_IDS[cleanPlanId] || STRIPE_PRICE_IDS[planId.toLowerCase()];
 
         let stripePriceId;
 
-        // 3. DÃ©termination de l'ID de prix Stripe (mensuel ou annuel)
+        // 3. Détermination de l'ID de prix Stripe (mensuel ou annuel)
         if (planPrices) {
-            // Si le plan existe, on choisit 'yearly' ou 'monthly' (par dÃ©faut)
+            // Si le plan existe, on choisit 'yearly' ou 'monthly' (par défaut)
             stripePriceId = planPrices[interval] || planPrices['monthly'];
         }
         // Si planPrices est undefined, stripePriceId restera undefined
 
-        // VÃ©rification de sÃ©curitÃ© : avons-nous trouvÃ© un prix valide ?
+        // Vérification de sécurité : avons-nous trouvé un prix valide ?
         if (!stripePriceId) {
-            console.error(`âŒ [ROUTER] Prix Stripe introuvable pour : planId="${planId}" (nettoyÃ©: "${cleanPlanId}"), interval="${interval}"`);
-            return res.status(400).json({ error: "Ce plan d'abonnement ou cet intervalle n'est pas configurÃ©." });
+            console.error(`❌ [ROUTER] Prix Stripe introuvable pour : planId="${planId}" (nettoyé: "${cleanPlanId}"), interval="${interval}"`);
+            return res.status(400).json({ error: "Ce plan d'abonnement ou cet intervalle n'est pas configuré." });
         }
 
-        // 4. CrÃ©ation de la session Stripe
+        // 4. Création de la session Stripe
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [{ price: stripePriceId, quantity: 1 }],
@@ -853,7 +852,7 @@ app.post('/create-subscription-session', limiter, authenticateUser, async (req, 
             success_url: `${FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${FRONTEND_URL}/pricing`, // Redirection si l'utilisateur annule
             
-            // IMPORTANT : Ces mÃ©tadonnÃ©es sont envoyÃ©es Ã  votre Webhook pour livrer les tokens
+            // IMPORTANT : Ces métadonnées sont envoyées à votre Webhook pour livrer les tokens
             metadata: { 
                 type: 'subscription', 
                 planId: cleanPlanId, // On envoie le nom propre du plan (ex: 'essentiel')
@@ -878,7 +877,7 @@ app.post('/create-subscription-session', limiter, authenticateUser, async (req, 
 
     } catch (e) {
         // Gestion des erreurs critiques
-        console.error("âŒ [ROUTER] Erreur critique lors de la crÃ©ation de la session d'abonnement :", e);
+        console.error("❌ [ROUTER] Erreur critique lors de la création de la session d'abonnement :", e);
         res.status(500).json({ error: "Une erreur est survenue lors de la communication avec le service de paiement." });
     }
 })
@@ -892,9 +891,9 @@ app.post('/create-subscription-session', limiter, authenticateUser, async (req, 
     try {
         const session = await stripe.checkout.sessions.retrieve(session_id);
         
-        // ðŸ”’ SÃ‰CURITÃ‰ : VÃ©rifier que la session Stripe appartient bien Ã  l'utilisateur connectÃ©
+        // 🔒 SÉCURITÉ : Vérifier que la session Stripe appartient bien à l'utilisateur connecté
         if (session.metadata?.userId && session.metadata.userId !== req.user.uid) {
-            console.warn(`ðŸ›‘ Tentative d'usurpation de paiement ! L'utilisateur ${req.user.uid} tente d'utiliser la session de ${session.metadata.userId}`);
+            console.warn(`🛑 Tentative d'usurpation de paiement ! L'utilisateur ${req.user.uid} tente d'utiliser la session de ${session.metadata.userId}`);
             return res.status(403).json({ error: "Cette transaction ne vous appartient pas." });
         }
 
@@ -904,10 +903,10 @@ app.post('/create-subscription-session', limiter, authenticateUser, async (req, 
                 mode: session.mode 
             });
         } else {
-            res.status(403).json({ success: false, error: "Non payÃ©" });
+            res.status(403).json({ success: false, error: "Non payé" });
         }
     } catch (e) {
-        console.error("âŒ Erreur /verify-payment :", e.message);
+        console.error("❌ Erreur /verify-payment :", e.message);
         res.status(500).json({ error: "Erreur synchronisation" });
     }
 });
@@ -915,17 +914,17 @@ app.post('/create-subscription-session', limiter, authenticateUser, async (req, 
 // --- ROUTE DE REMBOURSEMENT INTERNE ---
 
 app.post('/refund', limiter, async (req, res) => {
-    // ðŸ”’ 1. VÃ©rification de la clÃ© secrÃ¨te interne (le front-end ne l'a pas, seul le serveur la connaÃ®t)
+    // 🔒 1. Vérification de la clé secrète interne (le front-end ne l'a pas, seul le serveur la connaît)
     const internalKey = req.headers['x-internal-key'];
     if (!internalKey || internalKey !== process.env.INTERNAL_REFUND_KEY) {
-        console.warn("âš ï¸ Tentative d'accÃ¨s non autorisÃ© Ã  la route /refund bloquÃ©e.");
-        return res.status(403).json({ error: "AccÃ¨s strictement interdit." });
+        console.warn("⚠️ Tentative d'accès non autorisé à la route /refund bloquée.");
+        return res.status(403).json({ error: "Accès strictement interdit." });
     }
 
     const { userId, cost, costType } = req.body;
 
     if (!userId || !cost || !costType) {
-        return res.status(400).json({ error: "ParamÃ¨tres de remboursement manquants." });
+        return res.status(400).json({ error: "Paramètres de remboursement manquants." });
     }
 
     try {
@@ -936,10 +935,10 @@ app.post('/refund', limiter, async (req, res) => {
             [fieldToIncrement]: FieldValue.increment(parseInt(cost))
         });
 
-        console.log(`ðŸ’° [Remboursement] ${cost} ${costType} recrÃ©ditÃ©s Ã  l'utilisateur ${userId}`);
-        return res.json({ success: true, message: "Remboursement effectuÃ© avec succÃ¨s." });
+        console.log(`💰 [Remboursement] ${cost} ${costType} recrédités à l'utilisateur ${userId}`);
+        return res.json({ success: true, message: "Remboursement effectué avec succès." });
     } catch (error) {
-        console.error("âŒ Ã‰chec lors du remboursement sur le serveur :", error.message);
+        console.error("❌ Échec lors du remboursement sur le serveur :", error.message);
         return res.status(500).json({ error: "Erreur interne lors du remboursement." });
     }
 });
@@ -953,11 +952,11 @@ app.post('/intelligence', limiter, authenticateUser, async (req, res) => {
 
         const chatCompletion = await groq.chat.completions.create({
         messages: [
-    { role: "system", content: "Tu es un expert en prompt engineering. AmÃ©liore le prompt de l'utilisateur pour qu'il soit plus dÃ©taillÃ© et artistique. Donne UNIQUEMENT le prompt amÃ©liorÃ©, sans introduction ni guillemets." },
+    { role: "system", content: "Tu es un expert en prompt engineering. Améliore le prompt de l'utilisateur pour qu'il soit plus détaillé et artistique. Donne UNIQUEMENT le prompt amélioré, sans introduction ni guillemets." },
     { role: "user", content: prompt }
 
             ],
-            model: "openai/gpt-oss-120b", // ðŸ‘ˆ Testez celui-ci ou le GPT-OSS 120B de votre console
+            model: "openai/gpt-oss-120b", // 👈 Testez celui-ci ou le GPT-OSS 120B de votre console
             max_tokens: 150,
         });
 
@@ -995,7 +994,7 @@ const {
     uploadedImage
 } = req.body;
 
-// ðŸ–¼ï¸ On accepte les diffÃ©rents noms utilisÃ©s par le frontend
+// 🖼️ On accepte les différents noms utilisés par le frontend
 const referenceImage =
     startImage ||
     start_image_url ||
@@ -1005,51 +1004,51 @@ const referenceImage =
 
 console.log(
     referenceImage
-        ? "ðŸ–¼ï¸ Image de rÃ©fÃ©rence reÃ§ue par le serveur"
-        : "â„¹ï¸ Aucune image de rÃ©fÃ©rence"
+        ? "🖼️ Image de référence reçue par le serveur"
+        : "ℹ️ Aucune image de référence"
 );
-// ðŸ”’ Source de vÃ©ritÃ© absolue (impossible Ã  falsifier depuis le front)
+// 🔒 Source de vérité absolue (impossible à falsifier depuis le front)
 
 
    const userId = req.user.uid;
 
-    // ðŸ›¡ï¸ 2. VÃ‰RIFICATION RECAPTCHA (Bloque les robots avant toute utilisation de crÃ©dits)
- // ðŸ›¡ï¸ 2. VÃ‰RIFICATION RECAPTCHA
+    // 🛡️ 2. VÉRIFICATION RECAPTCHA (Bloque les robots avant toute utilisation de crédits)
+ // 🛡️ 2. VÉRIFICATION RECAPTCHA
 const isHuman = await verifyRecaptcha(recaptchaToken);
 
-// BROWSER_ERROR = problÃ¨me temporaire cÃ´tÃ© navigateur/rÃ©seau.
-// On ne considÃ¨re pas cela comme un bot.
+// BROWSER_ERROR = problème temporaire côté navigateur/réseau.
+// On ne considère pas cela comme un bot.
 if (isHuman === "retry") {
     return res.status(403).json({
-        error: "La vÃ©rification de sÃ©curitÃ© a Ã©chouÃ© temporairement. Veuillez actualiser la page puis rÃ©essayer."
+        error: "La vérification de sécurité a échoué temporairement. Veuillez actualiser la page puis réessayer."
     });
 }
 
-// Token rÃ©ellement invalide ou score insuffisant
+// Token réellement invalide ou score insuffisant
 if (isHuman === false) {
     return res.status(403).json({
-        error: "Ã‰chec de la vÃ©rification de sÃ©curitÃ© (bot dÃ©tectÃ©)."
+        error: "Échec de la vérification de sécurité (bot détecté)."
     });
 }
 if (!prompt || !engineId) {
         return res.status(400).json({ 
-            error: "ParamÃ¨tres manquants." 
+            error: "Paramètres manquants." 
         });
     }
 
 
-    // Refuser immÃ©diatement les identifiants qui ne correspondent pas aux moteurs image exposÃ©s par le frontend.
-    // Cette validation prÃ©cÃ¨de le dÃ©bit de crÃ©dits : un moteur invalide ne peut pas provoquer de dÃ©bit.
+    // Refuser immédiatement les identifiants qui ne correspondent pas aux moteurs image exposés par le frontend.
+    // Cette validation précède le débit de crédits : un moteur invalide ne peut pas provoquer de débit.
     const supportedImageEngineIds = new Set(["gpt_image2", "flux2pro", "nano_banana2_lite"]);
     if (!supportedImageEngineIds.has(engineId)) {
         return res.status(400).json({ error: `Moteur image non pris en charge : ${String(engineId).slice(0, 100)}` });
     }
 
-    // ðŸ”’ SÃ‰CURITÃ‰ : Calcul ou validation du coÃ»t cÃ´tÃ© serveur (on ne fait pas confiance au req.body.cost)
+    // 🔒 SÉCURITÉ : Calcul ou validation du coût côté serveur (on ne fait pas confiance au req.body.cost)
     // Adapte cette ligne selon la structure exacte de ton dictionnaire de prix d'images
-// 1. RÃ©cupÃ©rer le plan de l'utilisateur (par exemple depuis sa base de donnÃ©es ou req.user, ici on met "0.00" par dÃ©faut ou on rÃ©cupÃ¨re son pack)
+// 1. Récupérer le plan de l'utilisateur (par exemple depuis sa base de données ou req.user, ici on met "0.00" par défaut ou on récupère son pack)
 // Adapte "userDoc.data().plan" selon le nom du champ de ton plan utilisateur dans Firestore
-// ðŸ”’ SÃ‰CURITÃ‰ : RÃ©cupÃ©ration du plan utilisateur en BDD pour appliquer le bon tarif
+// 🔒 SÉCURITÉ : Récupération du plan utilisateur en BDD pour appliquer le bon tarif
     const userRef = db.collection('users').doc(userId);
     const initialUserDoc = await userRef.get();
     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};
@@ -1072,14 +1071,14 @@ const userPlanKey =
     imagePlanToPrice[rawUserPlan] ||
     (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
 
-console.log("ðŸ”Ž DEBUG PRICING_DATA", {
+console.log("🔎 DEBUG PRICING_DATA", {
     pricingDataExists: Boolean(PRICING_DATA),
     planKeys: Object.keys(PRICING_DATA || {}),
     zeroPlanKeys: Object.keys(PRICING_DATA?.["0.00"] || {}),
     flux2proZero: PRICING_DATA?.["0.00"]?.flux2pro,
     flux2proEssentiel: PRICING_DATA?.["12.99"]?.flux2pro
 });
-console.log("ðŸ”§ DIAGNOSTIC TARIFS RENDER", {
+console.log("🔧 DIAGNOSTIC TARIFS RENDER", {
     pricingDataType: typeof PRICING_DATA,
     pricingDataIsObject:
         PRICING_DATA !== null &&
@@ -1096,15 +1095,15 @@ const userPricingTable =
     PRICING_DATA?.[userPlanKey] ||
     PRICING_DATA?.["0.00"];
 
-console.log("ðŸ”Ž DEBUG TARIF SÃ‰LECTIONNÃ‰", {
+console.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {
     rawUserPlan,
     userPlanKey,
     flux2pro: userPricingTable?.flux2pro,
     mp1: userPricingTable?.flux2pro?.mp1
 });
 
-    // Tarification serveur dÃ©diÃ©e aux trois moteurs image rÃ©cents.
-    // Les clÃ©s doivent correspondre Ã  celles de pricingConfig.js : ne pas rabattre ces modÃ¨les sur l'ancien tarif FLUX.
+    // Tarification serveur dédiée aux trois moteurs image récents.
+    // Les clés doivent correspondre à celles de pricingConfig.js : ne pas rabattre ces modèles sur l'ancien tarif FLUX.
     const rawReferenceImage =
         startImage || start_image_url || image_url || uploadedImage || null;
     const requestedReferenceImages = Array.isArray(referenceImages) ? referenceImages : [];
@@ -1141,7 +1140,7 @@ console.log("ðŸ”Ž DEBUG TARIF SÃ‰LECTIONNÃ‰", {
     } else if (engineId === "nano_banana2_lite") {
         officialCost = userPricingTable?.nanoBanana2Lite?.[(hasReferenceImage || hasReferenceVideo) ? "reference1k" : "k1"];
     }
-console.log("ðŸ”Ž DEBUG TARIFICATION IMAGE", {
+console.log("🔎 DEBUG TARIFICATION IMAGE", {
     engineId,
     rawUserPlan,
     userPlanKey,
@@ -1154,19 +1153,19 @@ console.log("ðŸ”Ž DEBUG TARIFICATION IMAGE", {
     officialCost
 });
     if (officialCost === undefined || officialCost === null || !Number.isFinite(Number(officialCost)) || Number(officialCost) <= 0) {
-        console.error(`âŒ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {
+        console.error(`❌ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {
             expectedPricingKey: engineId === "gpt_image2" ? "gptImage2" : engineId === "flux2pro" ? "flux2pro" : "nanoBanana2Lite",
             hasReferenceImage,
             hasReferenceVideo
         });
         return res.status(400).json({
-            error: "Tarification serveur introuvable pour ce moteur. VÃ©rifiez les tarifs dans pricingConfig.js."
+            error: "Tarification serveur introuvable pour ce moteur. Vérifiez les tarifs dans pricingConfig.js."
         });
     }
 
     const finalCost = Number(officialCost);
 
-    // ðŸ”’ VALIDATION DU X-REQUEST-ID
+    // 🔒 VALIDATION DU X-REQUEST-ID
     const suppliedRequestId = req.headers['x-request-id'];
 
     if (
@@ -1181,7 +1180,7 @@ console.log("ðŸ”Ž DEBUG TARIFICATION IMAGE", {
         });
     }
 
-    // ðŸ”’ ID unique gÃ©nÃ©rÃ© cÃ´tÃ© serveur si absent
+    // 🔒 ID unique généré côté serveur si absent
     const requestId =
         suppliedRequestId ||
         `${userId}_${Date.now()}_${crypto.randomUUID()}`;
@@ -1189,34 +1188,34 @@ console.log("ðŸ”Ž DEBUG TARIFICATION IMAGE", {
     const lockRef =
         db.collection('imageLocks').doc(requestId);
 
- // DÃ©termination dynamique du champ Ã  dÃ©biter avec bascule automatique sur les diamants
+ // Détermination dynamique du champ à débiter avec bascule automatique sur les diamants
     let fieldToDecrement = costType === "diamonds" ? "packTokens" : "tokens";
 
-// Le dÃ©bit est validÃ© Ã  100%// Variables de sÃ©curitÃ© (Ã  placer au dÃ©but de la route)
+// Le débit est validé à 100%// Variables de sécurité (à placer au début de la route)
 let creditsDebited = false;
 let generationFinished = false;
 let lockCreated = false;
 
 try {
-    // ðŸ”’ TRANSACTION : UNE SEULE DÃ‰DUCTION PAR REQUEST ID
+    // 🔒 TRANSACTION : UNE SEULE DÉDUCTION PAR REQUEST ID
     await db.runTransaction(async (transaction) => {
 
         const lockDoc = await transaction.get(lockRef);
 
         if (lockDoc.exists) {
-            throw new Error("GÃ©nÃ©ration dÃ©jÃ  en cours");
+            throw new Error("Génération déjà en cours");
         }
 
  const userDocTx = await transaction.get(userRef);
 
         if (!userDocTx.exists) {
-            throw new Error("Utilisateur non trouvÃ©");
+            throw new Error("Utilisateur non trouvé");
         }
         
         const userData = userDocTx.data();
         let balance = userData[fieldToDecrement] || 0;
 
-        // ðŸ§  Si l'utilisateur n'a pas assez de tokens classiques, on vÃ©rifie s'il a assez de diamants (packTokens)
+        // 🧠 Si l'utilisateur n'a pas assez de tokens classiques, on vérifie s'il a assez de diamants (packTokens)
         if (balance < finalCost && fieldToDecrement === "tokens") {
             if ((userData["packTokens"] || 0) >= finalCost) {
                 fieldToDecrement = "packTokens";
@@ -1225,7 +1224,7 @@ try {
         }
 
         if (balance < finalCost) { 
-            throw new Error("CrÃ©dits insuffisants");
+            throw new Error("Crédits insuffisants");
         }
 
             transaction.set(lockRef, {
@@ -1246,16 +1245,16 @@ try {
 
     });
 
-    // âš¡ Le dÃ©bit est rÃ©ellement validÃ© en BDD Ã  partir d'ICI
+    // ⚡ Le débit est réellement validé en BDD à partir d'ICI
     creditsDebited = true;
 
 
-// âš¡ Le dÃ©bit est rÃ©ellement validÃ© en BDD Ã  partir d'ICI
+// ⚡ Le débit est réellement validé en BDD à partir d'ICI
 creditsDebited = true;
 
 // ============================================================
-// ANCIEN SYSTÃˆME GOOGLE IMAGEN
-// CONSERVÃ‰ POUR RETOUR EN ARRIÃˆRE
+// ANCIEN SYSTÈME GOOGLE IMAGEN
+// CONSERVÉ POUR RETOUR EN ARRIÈRE
 // ============================================================
 
 /*
@@ -1277,7 +1276,7 @@ if (isGoogleImg) {
         response.generatedImages?.[0];
 
     if (!generatedImage?.image?.imageBytes) {
-        throw new Error("RÃ©ponse Google vide.");
+        throw new Error("Réponse Google vide.");
     }
 
     finalImageUrl =
@@ -1286,8 +1285,8 @@ if (isGoogleImg) {
 */
 
 // ============================================================
-// RUNWARE â€” GPT IMAGE 2 / FLUX.2 PRO / NANO BANANA 2 LITE
-// Fal est rÃ©servÃ© Ã  Seedance 1.5 Pro dans la route vidÃ©o.
+// RUNWARE — GPT IMAGE 2 / FLUX.2 PRO / NANO BANANA 2 LITE
+// Fal est réservé à Seedance 1.5 Pro dans la route vidéo.
 // ============================================================
 const imageModelMap = {
     gpt_image2: "openai:gpt-image@2",
@@ -1296,7 +1295,7 @@ const imageModelMap = {
 };
 const runwareImageModel = imageModelMap[engineId];
 if (!runwareImageModel) {
-    throw new Error(`ModÃ¨le image non pris en charge par Runware : ${engineId}`);
+    throw new Error(`Modèle image non pris en charge par Runware : ${engineId}`);
 }
 
 const toPublicMediaUrl = (url) => {
@@ -1311,7 +1310,7 @@ const referenceImageList = [...new Set([
     ...(Array.isArray(referenceImages) ? referenceImages : []),
     referenceImage
 ].filter(url => typeof url === "string" && url.trim()).map(toPublicMediaUrl).filter(Boolean))];
-// Nano Banana 2 Lite accepte au maximum une vidÃ©o de rÃ©fÃ©rence.
+// Nano Banana 2 Lite accepte au maximum une vidéo de référence.
 const referenceVideoList = engineId === "nano_banana2_lite"
     ? [...new Set(
         (Array.isArray(referenceVideos) ? referenceVideos : [])
@@ -1375,7 +1374,7 @@ if (engineId === "flux2pro") {
         ? Number(rawSafetyTolerance)
         : 2;
     runwareImageRequest.providerSettings = { bfl: {
-        // 0 est une valeur valide : ne pas la remplacer par 2 avec un opÃ©rateur ||.
+        // 0 est une valeur valide : ne pas la remplacer par 2 avec un opérateur ||.
         safetyTolerance: Number.isFinite(parsedSafetyTolerance)
             ? Math.max(0, Math.min(5, Math.round(parsedSafetyTolerance)))
             : 2
@@ -1396,18 +1395,18 @@ if (referenceImageList.length) {
     runwareImageRequest.inputs = { referenceImages: referenceImageList.slice(0, maxImages) };
 }
 if (engineId === "nano_banana2_lite" && referenceVideoList.length) {
-    // La vidÃ©o doit Ãªtre une URL publique accessible par Runware.
-    // Elle est transmise dans inputs.referenceVideos, sÃ©parÃ©ment des images de rÃ©fÃ©rence.
+    // La vidéo doit être une URL publique accessible par Runware.
+    // Elle est transmise dans inputs.referenceVideos, séparément des images de référence.
     runwareImageRequest.inputs = {
         ...(runwareImageRequest.inputs || {}),
         referenceVideos: referenceVideoList
     };
 }
 
-console.log("ðŸŽ¨ [RUNWARE IMAGE] ModÃ¨le :", runwareImageModel);
-console.log("ðŸ–¼ï¸ [RUNWARE IMAGE] RÃ©fÃ©rences image :", referenceImageList.length);
-console.log("ðŸŽžï¸ [RUNWARE IMAGE] RÃ©fÃ©rences vidÃ©o :", referenceVideoList.length);
-console.log("ðŸ“¦ [RUNWARE IMAGE] RequÃªte :", JSON.stringify(runwareImageRequest, null, 2));
+console.log("🎨 [RUNWARE IMAGE] Modèle :", runwareImageModel);
+console.log("🖼️ [RUNWARE IMAGE] Références image :", referenceImageList.length);
+console.log("🎞️ [RUNWARE IMAGE] Références vidéo :", referenceVideoList.length);
+console.log("📦 [RUNWARE IMAGE] Requête :", JSON.stringify(runwareImageRequest, null, 2));
 
 const runware = await getRunwareClient();
 const [imageResult] = await runware.run(runwareImageRequest);
@@ -1417,7 +1416,7 @@ if (!finalImageUrl && imageResult.imageBase64Data) {
 }
 
 if (!finalImageUrl) {
-    throw new Error("Runware n'a retournÃ© aucune URL d'image.");
+    throw new Error("Runware n'a retourné aucune URL d'image.");
 }
 
 await lockRef.update({
@@ -1444,19 +1443,19 @@ if (userId && typeof finalImageUrl === "string" && /^https?:\/\//i.test(finalIma
 }
 
 generationFinished = true;
-console.log("ðŸ“¤ REPONSE IMAGE RUNWARE ENVOYEE AU FRONT :", finalImageUrl);
+console.log("📤 REPONSE IMAGE RUNWARE ENVOYEE AU FRONT :", finalImageUrl);
 return res.json({ success: true, imageUrl: finalImageUrl, url: finalImageUrl, imageUUID: imageResult.imageUUID, taskUUID: imageResult.taskUUID, cost: imageResult.cost });
     } 
     
     catch (error) {
-        console.error("âŒ Erreur dans le flux de gÃ©nÃ©ration :", error.message);
+        console.error("❌ Erreur dans le flux de génération :", error.message);
 
-        // ðŸ”„ Remboursement automatique uniquement si dÃ©bitÃ© ET pas terminÃ©
+        // 🔄 Remboursement automatique uniquement si débité ET pas terminé
         if (creditsDebited && !generationFinished) {
             await userRef.update({
               [fieldToDecrement]: FieldValue.increment(finalCost)
-            }).catch(err => console.error("Ã‰chec du remboursement:", err));
-            console.log("ðŸª™ CrÃ©dits remboursÃ©s suite Ã  l'erreur.");
+            }).catch(err => console.error("Échec du remboursement:", err));
+            console.log("🪙 Crédits remboursés suite à l'erreur.");
         }
 
         // Suppression du verrou
@@ -1470,39 +1469,39 @@ if (creditsDebited && !generationFinished) {
 });
 
 // --- UNIFICATION DE LA ROUTE GENERATE VIDEO ---
-// âš ï¸ Ajout de authenticateUser pour s'assurer que l'utilisateur est connectÃ© et authentifiÃ© par Firebase
+// ⚠️ Ajout de authenticateUser pour s'assurer que l'utilisateur est connecté et authentifié par Firebase
 app.post('/generate-video', limiter, authenticateUser, async (req, res) => {
-    // ðŸ›¡ï¸ 1. RÃ©cupÃ©ration de l'IP et vÃ©rification de la blacklist Firestore en premier
+    // 🛡️ 1. Récupération de l'IP et vérification de la blacklist Firestore en premier
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
     const isBlocked = await isIpBlacklisted(clientIp);
     if (isBlocked) {
-        console.warn(`ðŸ›‘ Tentative de requÃªte bloquÃ©e provenant d'une IP blacklistÃ©e : ${clientIp}`);
-        return res.status(403).json({ error: "AccÃ¨s refusÃ©. Votre adresse IP a Ã©tÃ© restreinte." });
+        console.warn(`🛑 Tentative de requête bloquée provenant d'une IP blacklistée : ${clientIp}`);
+        return res.status(403).json({ error: "Accès refusé. Votre adresse IP a été restreinte." });
     }
     // =============================================================
-    // ðŸ›¡ï¸ SECURITY TEST MODE
+    // 🛡️ SECURITY TEST MODE
     // =============================================================
     // IMPORTANT :
-    // Ce bloc doit Ãªtre AVANT :
+    // Ce bloc doit être AVANT :
     // - la transaction Firestore
-    // - le dÃ©bit des crÃ©dits
+    // - le débit des crédits
     // - Fal.ai
     // - Google Veo
 console.log(
-    "ðŸ–¼ï¸ [DEBUG] REFERENCE IMAGES REÃ‡UES PAR LE SERVEUR :",
+    "🖼️ [DEBUG] REFERENCE IMAGES REÇUES PAR LE SERVEUR :",
     JSON.stringify(req.body.referenceImages || [], null, 2)
 );
     if (SECURITY_TEST_MODE) {
         console.log("");
-        console.log("ðŸ›¡ï¸ ========================================");
-        console.log("ðŸ›¡ï¸ SECURITY_TEST_MODE ACTIVÃ‰");
-        console.log("ðŸ›¡ï¸ /generate-video");
-        console.log("ðŸ›¡ï¸ Google Veo : BLOQUÃ‰");
-        console.log("ðŸ›¡ï¸ Fal.ai     : BLOQUÃ‰");
-        console.log("ðŸ›¡ï¸ DÃ©bit      : BLOQUÃ‰");
-        console.log("ðŸ›¡ï¸ GÃ©nÃ©ration : SIMULÃ‰E");
-        console.log("ðŸ›¡ï¸ ========================================");
+        console.log("🛡️ ========================================");
+        console.log("🛡️ SECURITY_TEST_MODE ACTIVÉ");
+        console.log("🛡️ /generate-video");
+        console.log("🛡️ Google Veo : BLOQUÉ");
+        console.log("🛡️ Fal.ai     : BLOQUÉ");
+        console.log("🛡️ Débit      : BLOQUÉ");
+        console.log("🛡️ Génération : SIMULÉE");
+        console.log("🛡️ ========================================");
         console.log("");
 
         return res.status(200).json({
@@ -1510,14 +1509,14 @@ console.log(
             securityTest: true,
             simulated: true,
             videoUrl: "https://security-test.local/simulated-video.mp4",
-            message: "GÃ©nÃ©ration vidÃ©o simulÃ©e â€” aucun fournisseur IA appelÃ©"
+            message: "Génération vidéo simulée — aucun fournisseur IA appelé"
         });
     }
 
-    // ðŸ”’ SOURCE DE VÃ‰RITÃ‰ ABSOLUE : On rÃ©cupÃ¨re le userId depuis le token Firebase dÃ©codÃ©, JAMAIS du req.body !
+    // 🔒 SOURCE DE VÉRITÉ ABSOLUE : On récupère le userId depuis le token Firebase décodé, JAMAIS du req.body !
     const userId = req.user.uid;
 
-    // 2. DÃ©structuration du body (SANS userId, puisqu'on le rÃ©cupÃ¨re de maniÃ¨re sÃ©curisÃ©e au-dessus)
+    // 2. Déstructuration du body (SANS userId, puisqu'on le récupère de manière sécurisée au-dessus)
     console.log(
     "DEBUG BODY:",
     JSON.stringify(
@@ -1543,11 +1542,11 @@ console.log(
     } = req.body;
 
 
-    // On vÃ©rifie maintenant engineId et cost (userId est garanti puisqu'il vient de req.user.uid)
+    // On vérifie maintenant engineId et cost (userId est garanti puisqu'il vient de req.user.uid)
     if (!engineId || cost === undefined) {
-        return res.status(400).json({ error: "DonnÃ©es manquantes" });
+        return res.status(400).json({ error: "Données manquantes" });
     }
-// RÃ©cupÃ©ration sÃ©curisÃ©e du plan utilisateur dans Firestore
+// Récupération sécurisée du plan utilisateur dans Firestore
 const userDoc = await db.collection('users').doc(userId).get();
 if (!userDoc.exists) {
     return res.status(404).json({ error: "Utilisateur introuvable." });
@@ -1561,69 +1560,69 @@ const userPlanFromDb = (
     "debutant"
 ).toLowerCase();
 
-// Conversion du nom du plan vers la clÃ© tarifaire serveur
+// Conversion du nom du plan vers la clé tarifaire serveur
 const userPlanPrice = PLAN_TO_PRICE[userPlanFromDb] || "0.00";
 
 // =============================================================
-// ðŸ›¡ï¸ RECALCUL DES PRIX CÃ”TÃ‰ SERVEUR (Anti-triche)
+// 🛡️ RECALCUL DES PRIX CÔTÉ SERVEUR (Anti-triche)
 // =============================================================
 const enginePricing = PRICING_DATA[userPlanPrice]?.[engineId];
 
 if (enginePricing) {
-    // ðŸŸ¢ CORRECTION 2 : On s'assure d'aller chercher la bonne clÃ© (qualitÃ©, durÃ©e, ou valeur par dÃ©faut)
+    // 🟢 CORRECTION 2 : On s'assure d'aller chercher la bonne clé (qualité, durée, ou valeur par défaut)
     const officialCost = enginePricing[qualityKey] !== undefined 
         ? enginePricing[qualityKey] 
         : (enginePricing[duration] !== undefined ? enginePricing[duration] : enginePricing.default);
 
     if (officialCost !== undefined && parseInt(cost, 10) !== parseInt(officialCost, 10)) {
-        console.warn(`ðŸ›‘ Tentative de fraude sur les prix dÃ©tectÃ©e ! ReÃ§u: ${cost}, Attendu: ${officialCost}`);
+        console.warn(`🛑 Tentative de fraude sur les prix détectée ! Reçu: ${cost}, Attendu: ${officialCost}`);
         
         const userEmail = userData.email || req.body.email || "Non fourni";
         const userIdVal = userId || "Non fourni";
 
         await sendSecurityAlert(
             clientIp, 
-            "Modification frauduleuse du coÃ»t de gÃ©nÃ©ration", 
-            "RequÃªte bloquÃ©e (403)", 
+            "Modification frauduleuse du coût de génération", 
+            "Requête bloquée (403)", 
             userEmail, 
             userIdVal
         );
 
-        await detectSuspicious(req, "Modification frauduleuse du coÃ»t de gÃ©nÃ©ration");
-        return res.status(403).json({ error: "Erreur de validation du coÃ»t de la gÃ©nÃ©ration." });
+        await detectSuspicious(req, "Modification frauduleuse du coût de génération");
+        return res.status(403).json({ error: "Erreur de validation du coût de la génération." });
     }
 }
 // =============================================================
-// ðŸ›¡ï¸ VÃ‰RIFICATION RECAPTCHA (Unique et complÃ¨te)
+// 🛡️ VÉRIFICATION RECAPTCHA (Unique et complète)
 // =============================================================
 const isHuman = await verifyRecaptcha(recaptchaToken);
 
-// DÃ©tection de l'environnement local pour Ã©viter les faux positifs de ban IP
+// Détection de l'environnement local pour éviter les faux positifs de ban IP
 const isLocalhost = clientIp === '::1' || clientIp === '127.0.0.1' || clientIp === '::ffff:127.0.0.1';
 
 // Si reCAPTCHA retourne explicitement false et qu'on n'est pas en local
 if (isHuman === false && !isLocalhost) {
-    // Bannit l'IP pour 24h en cas de bot avÃ©rÃ©
-    await blacklistIp(clientIp, "Ã‰chec reCAPTCHA / Bot dÃ©tectÃ©", 24);
+    // Bannit l'IP pour 24h en cas de bot avéré
+    await blacklistIp(clientIp, "Échec reCAPTCHA / Bot détecté", 24);
 
-    // Remplacement sÃ©curisÃ© sans appel Ã  sendSecurityAlert
-    console.warn(`ðŸš¨ [ALERTE SÃ‰CURITÃ‰] Ã‰chec reCAPTCHA / Bot dÃ©tectÃ© pour l'IP ${clientIp}`);
+    // Remplacement sécurisé sans appel à sendSecurityAlert
+    console.warn(`🚨 [ALERTE SÉCURITÉ] Échec reCAPTCHA / Bot détecté pour l'IP ${clientIp}`);
 
-    return res.status(403).json({ error: "Ã‰chec de la vÃ©rification de sÃ©curitÃ© (bot dÃ©tectÃ©)." });
+    return res.status(403).json({ error: "Échec de la vérification de sécurité (bot détecté)." });
 }
 
 if (isHuman === false && isLocalhost) {
-    console.warn("âš ï¸ [DEV LOCAL] Ã‰chec reCAPTCHA ignorÃ© pour localhost.");
+    console.warn("⚠️ [DEV LOCAL] Échec reCAPTCHA ignoré pour localhost.");
 }
-// Si isHuman vaut 'bypass' ou 'true' suite Ã  une erreur technique de l'API Google, 
-// la requÃªte continue normalement sans bannir l'utilisateur.
+// Si isHuman vaut 'bypass' ou 'true' suite à une erreur technique de l'API Google, 
+// la requête continue normalement sans bannir l'utilisateur.
     // -------------------------------------------------------------
-    // 1. ðŸ›¡ï¸ VÃ‰RIFICATION PREALABLE DES CRÃ‰DITS (SANS DÃ‰CLENCHER LE LOADER)
+    // 1. 🛡️ VÉRIFICATION PREALABLE DES CRÉDITS (SANS DÉCLENCHER LE LOADER)
     // -------------------------------------------------------------
     try {
         const userDoc = await db.collection('users').doc(userId).get();
         if (!userDoc.exists) {
-            return res.status(404).json({ error: "Utilisateur non trouvÃ©." });
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
         }
 
         const userData = userDoc.data();
@@ -1639,26 +1638,26 @@ if (isHuman === false && isLocalhost) {
             hasEnough = (tokensAvailable + diamondsAvailable) >= requiredCost;
         }
 
-        // ðŸ›‘ S'il n'a pas assez de crÃ©dits -> On stoppe TOUT de suite (erreur 400 JSON)
+        // 🛑 S'il n'a pas assez de crédits -> On stoppe TOUT de suite (erreur 400 JSON)
         if (!hasEnough) {
-            return res.status(400).json({ error: "CrÃ©dits insuffisants pour gÃ©nÃ©rer cette vidÃ©o." });
+            return res.status(400).json({ error: "Crédits insuffisants pour générer cette vidéo." });
         }
 
-console.log("ðŸ‘‰ 2. CrÃ©dits validÃ©s avec succÃ¨s");
+console.log("👉 2. Crédits validés avec succès");
     } catch (checkErr) {
-        console.error("Erreur vÃ©rification solde :", checkErr);
-        return res.status(500).json({ error: "Impossible de vÃ©rifier le solde utilisateur." });
+        console.error("Erreur vérification solde :", checkErr);
+        return res.status(500).json({ error: "Impossible de vérifier le solde utilisateur." });
     }
 
     // -------------------------------------------------------------
-    // 2. ðŸŸ¢ SEULEMENT S'IL A ASSEZ DE CRÃ‰DITS : On ouvre le flux SSE !
+    // 2. 🟢 SEULEMENT S'IL A ASSEZ DE CRÉDITS : On ouvre le flux SSE !
     // -------------------------------------------------------------
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    res.write(`data: ${JSON.stringify({ status: "processing", message: "VÃ©rification des crÃ©dits..." })}\n\n`);
+    res.write(`data: ${JSON.stringify({ status: "processing", message: "Vérification des crédits..." })}\n\n`);
 const requestId = `${userId}_${Date.now()}`;
 
 const userRef = db.collection('users').doc(userId);
@@ -1668,17 +1667,17 @@ let isAlreadyLocked = false;
 let generationFinished = false; 
 let refundDone = false;
 
-// âš¡ AJOUT : Variables indispensables pour savoir combien rembourser en cas d'erreur
+// ⚡ AJOUT : Variables indispensables pour savoir combien rembourser en cas d'erreur
 let deductedTokens = 0;
 let deductedDiamonds = 0;
 let usedWallet = "tokens";
 
-    // ðŸš¨ SÃ‰CURITÃ‰ RÃ‰SEAU INTERCEPTÃ‰E (Si le navigateur coupe le flux ou crash sur le Content-Length)
+    // 🚨 SÉCURITÉ RÉSEAU INTERCEPTÉE (Si le navigateur coupe le flux ou crash sur le Content-Length)
 req.on('close', () => {
-    console.log("âš ï¸ Client dÃ©connectÃ© pendant la gÃ©nÃ©ration");
+    console.log("⚠️ Client déconnecté pendant la génération");
 
     // On NE rembourse PAS ici.
-    // Fal.ai peut continuer et la gÃ©nÃ©ration reste facturÃ©e.
+    // Fal.ai peut continuer et la génération reste facturée.
 });
 
    try {
@@ -1692,15 +1691,15 @@ req.on('close', () => {
 
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists) {
-                throw new Error("Utilisateur non trouvÃ©.");
+                throw new Error("Utilisateur non trouvé.");
             }
 
             const userData = userDoc.data();
-            const tokensAvailable = userData.tokens || 0;       // âš¡ Ã‰clairs
-            const diamondsAvailable = userData.packTokens || 0; // ðŸ’Ž Diamants
+            const tokensAvailable = userData.tokens || 0;       // ⚡ Éclairs
+            const diamondsAvailable = userData.packTokens || 0; // 💎 Diamants
             const requiredCost = parseInt(cost, 10);
 
-            // ðŸ”„ DÃ‰BIT INTELLIGENT (Ã‰CLAIRS D'ABORD, PUIS DIAMANTS)
+            // 🔄 DÉBIT INTELLIGENT (ÉCLAIRS D'ABORD, PUIS DIAMANTS)
             let newTokens = tokensAvailable;
             let newDiamonds = diamondsAvailable;
             let usedWallet = "tokens"; // Pour le suivi dans le verrou
@@ -1712,12 +1711,12 @@ req.on('close', () => {
                 usedWallet = "packTokens";
             } else {
                 if (tokensAvailable >= requiredCost) {
-                    // Cas 1 : Assez d'Ã©clairs
+                    // Cas 1 : Assez d'éclairs
                     newTokens -= requiredCost;
                     deductedTokens = requiredCost;
                     usedWallet = "tokens";
                 } else if ((tokensAvailable + diamondsAvailable) >= requiredCost) {
-                    // Cas 2 : Hybride (Vider les Ã©clairs + complÃ©ter en diamants)
+                    // Cas 2 : Hybride (Vider les éclairs + compléter en diamants)
                     const missingCost = requiredCost - tokensAvailable;
                     deductedTokens = tokensAvailable; 
         deductedDiamonds = missingCost;
@@ -1725,7 +1724,7 @@ req.on('close', () => {
                     newDiamonds -= missingCost;
                     usedWallet = "hybrid";
                 } else {
-                    throw new Error("CrÃ©dits insuffisants.");
+                    throw new Error("Crédits insuffisants.");
                 }
             }
 
@@ -1735,7 +1734,7 @@ req.on('close', () => {
                 packTokens: newDiamonds
             });
 
-            // 2. CrÃ©ation du verrou de sÃ©curitÃ©
+            // 2. Création du verrou de sécurité
             transaction.set(lockRef, {
                 userId,
                 requestId,
@@ -1749,24 +1748,24 @@ req.on('close', () => {
             });
         });
 
- // 3. ðŸ›‘ SI DÃ‰JÃ€ EN COURS
+ // 3. 🛑 SI DÉJÀ EN COURS
         if (isAlreadyLocked) {
-            console.log("âš ï¸ RequÃªte bloquÃ©e : Un verrou existe dÃ©jÃ .");
-            res.write(`data: ${JSON.stringify({ error: "GÃ©nÃ©ration dÃ©jÃ  en cours. Veuillez patienter.", status: "failed" })}\n\n`);
-            // On laisse 100ms au rÃ©seau pour transmettre le message SSE au front avant de fermer
+            console.log("⚠️ Requête bloquée : Un verrou existe déjà.");
+            res.write(`data: ${JSON.stringify({ error: "Génération déjà en cours. Veuillez patienter.", status: "failed" })}\n\n`);
+            // On laisse 100ms au réseau pour transmettre le message SSE au front avant de fermer
             setTimeout(() => {
                 if (!res.writableEnded) res.end();
             }, 100);
             return;
         }
 
-        // Le dÃ©bit est validÃ© Ã  100%
+        // Le débit est validé à 100%
         creditsDebited = true;
 
         // Finalisation commune des moteurs Runware : ferme le verrou et enregistre l'historique.
         const completeRunwareVideo = async (result, modelName = engineId) => {
             const generatedVideoUrl = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
-            if (!generatedVideoUrl) throw new Error(`Runware n'a retournÃ© aucune URL vidÃ©o pour ${modelName}.`);
+            if (!generatedVideoUrl) throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
             const isPersistableUrl = typeof generatedVideoUrl === "string" && /^https?:\/\//i.test(generatedVideoUrl);
             const lockUpdate = {
                 status: "completed",
@@ -1808,7 +1807,7 @@ req.on('close', () => {
 
     // ============================================================
     // ============================================================
-// ðŸŽ¬ RUNWARE â€” GOOGLE VEO 3.1
+// 🎬 RUNWARE — GOOGLE VEO 3.1
 // ============================================================
 // Modes pris en charge :
 // - Text to Video
@@ -1822,14 +1821,14 @@ req.on('close', () => {
 
 if (engineId.toLowerCase().includes("veo3.1")) {
 
-    console.log("ðŸŽ¬ [RUNWARE] Veo 3.1 dÃ©tectÃ©");
+    console.log("🎬 [RUNWARE] Veo 3.1 détecté");
 
     try {
 
         const runware = await getRunwareClient();
 
         // --------------------------------------------------------
-        // DONNÃ‰ES ENTRANTES
+        // DONNÉES ENTRANTES
         // --------------------------------------------------------
 
         const requestedResolution =
@@ -1862,7 +1861,7 @@ if (engineId.toLowerCase().includes("veo3.1")) {
                     .slice(0, 3)
                 : [];
 console.log(
-    "ðŸ–¼ï¸ [DEBUG] REFERENCE IMAGES REÃ‡UES PAR LE SERVEUR :",
+    "🖼️ [DEBUG] REFERENCE IMAGES REÇUES PAR LE SERVEUR :",
     JSON.stringify(veoReferenceImages, null, 2)
 );
         const requestedOperation =
@@ -1873,7 +1872,7 @@ console.log(
             ).toLowerCase();
 
         // --------------------------------------------------------
-        // DÃ‰TECTION DU MODE
+        // DÉTECTION DU MODE
         // --------------------------------------------------------
 
         let veoOperation = "text-to-video";
@@ -1899,7 +1898,7 @@ console.log(
         }
 
         console.log(
-            `ðŸŽ¬ [RUNWARE] Mode Veo 3.1 : ${veoOperation}`
+            `🎬 [RUNWARE] Mode Veo 3.1 : ${veoOperation}`
         );
 
         // --------------------------------------------------------
@@ -1910,7 +1909,7 @@ console.log(
             enable_audio !== false;
 
         // --------------------------------------------------------
-        // DURÃ‰E
+        // DURÉE
         // --------------------------------------------------------
 
         let safeDuration =
@@ -1919,13 +1918,13 @@ console.log(
         if (veoVideoSource) {
 
             // Runware impose 7 secondes
-            // lorsqu'une vidÃ©o source est utilisÃ©e.
+            // lorsqu'une vidéo source est utilisée.
             safeDuration = 7;
 
         } else if (veoReferenceImages.length > 0) {
 
             // Runware impose 8 secondes
-            // avec des images de rÃ©fÃ©rence.
+            // avec des images de référence.
             safeDuration = 8;
 
         } else {
@@ -1936,7 +1935,7 @@ console.log(
         }
 
         // --------------------------------------------------------
-        // REQUÃŠTE RUNWARE DE BASE
+        // REQUÊTE RUNWARE DE BASE
         // --------------------------------------------------------
 
    const isVeoFast =
@@ -1949,7 +1948,7 @@ const runwareModel =
         : "google:3@2";
 
 console.log(
-    `ðŸ¤– [RUNWARE] ModÃ¨le Veo sÃ©lectionnÃ© : ${runwareModel}`
+    `🤖 [RUNWARE] Modèle Veo sélectionné : ${runwareModel}`
 );
 
 const runwareRequest = {
@@ -1970,13 +1969,13 @@ const runwareRequest = {
         };
 
         // ========================================================
-        // 1ï¸âƒ£ VIDEO â†’ VIDEO
+        // 1️⃣ VIDEO → VIDEO
         // ========================================================
-        // Extension ou modification d'une vidÃ©o existante.
+        // Extension ou modification d'une vidéo existante.
         //
         // IMPORTANT :
         // Avec inputs.video :
-        // - durÃ©e = 7 secondes
+        // - durée = 7 secondes
         // - pas de width
         // - pas de height
         // - pas de resolution
@@ -1992,15 +1991,15 @@ const runwareRequest = {
             };
 
             console.log(
-                `ðŸŽ¬ [RUNWARE] VidÃ©o source dÃ©tectÃ©e â€” mode : ${veoOperation}`
+                `🎬 [RUNWARE] Vidéo source détectée — mode : ${veoOperation}`
             );
 
         }
 
         // ========================================================
-        // 2ï¸âƒ£ REFERENCE IMAGES â†’ VIDEO
+        // 2️⃣ REFERENCE IMAGES → VIDEO
         // ========================================================
-        // Jusqu'Ã  3 images de rÃ©fÃ©rence.
+        // Jusqu'à 3 images de référence.
         //
         // IMPORTANT :
         // Runware impose 8 secondes avec referenceImages.
@@ -2010,7 +2009,7 @@ const runwareRequest = {
 
             runwareRequest.duration = 8;
 
-            // Dimensions selon rÃ©solution + format
+            // Dimensions selon résolution + format
             const safeResolution =
                 requestedResolution === "1080p" ||
                 requestedResolution === "Full HD"
@@ -2048,15 +2047,15 @@ const runwareRequest = {
             };
 
             console.log(
-                `ðŸ–¼ï¸ [RUNWARE] ${veoReferenceImages.length} image(s) de rÃ©fÃ©rence`
+                `🖼️ [RUNWARE] ${veoReferenceImages.length} image(s) de référence`
             );
         }
 
         // ========================================================
-        // 3ï¸âƒ£ IMAGE â†’ VIDEO
+        // 3️⃣ IMAGE → VIDEO
         // ========================================================
-        // PremiÃ¨re image seule
-        // OU premiÃ¨re + derniÃ¨re image.
+        // Première image seule
+        // OU première + dernière image.
         // ========================================================
 
         else if (veoStartImage || veoEndImage) {
@@ -2123,15 +2122,15 @@ const runwareRequest = {
             };
 
             console.log(
-                `ðŸ–¼ï¸ [RUNWARE] ${frameImages.length} frame(s) configurÃ©e(s)`
+                `🖼️ [RUNWARE] ${frameImages.length} frame(s) configurée(s)`
             );
         }
 
         // ========================================================
-        // 4ï¸âƒ£ TEXT â†’ VIDEO
+        // 4️⃣ TEXT → VIDEO
         // ========================================================
-        // Aucun input image/vidÃ©o.
-        // width + height dÃ©finissent le format.
+        // Aucun input image/vidéo.
+        // width + height définissent le format.
         // ========================================================
 
         else {
@@ -2168,7 +2167,7 @@ const runwareRequest = {
             }
 
             console.log(
-                "ðŸ“ [RUNWARE] Mode Text to Video"
+                "📝 [RUNWARE] Mode Text to Video"
             );
         }
 
@@ -2177,7 +2176,7 @@ const runwareRequest = {
         // --------------------------------------------------------
 
         console.log(
-            "ðŸš€ [RUNWARE] RequÃªte Veo 3.1 :",
+            "🚀 [RUNWARE] Requête Veo 3.1 :",
             JSON.stringify(
                 {
                     taskType:
@@ -2218,7 +2217,7 @@ const runwareRequest = {
         );
 
         // --------------------------------------------------------
-        // SSE â€” DÃ‰MARRAGE
+        // SSE — DÉMARRAGE
         // --------------------------------------------------------
 
         res.write(
@@ -2227,10 +2226,10 @@ const runwareRequest = {
 
                 message:
                     veoOperation === "edit"
-                        ? "Veo 3.1 : modification de la vidÃ©o..."
+                        ? "Veo 3.1 : modification de la vidéo..."
                         : veoOperation === "extend"
-                            ? "Veo 3.1 : extension de la vidÃ©o..."
-                            : "Veo 3.1 : gÃ©nÃ©ration en cours..."
+                            ? "Veo 3.1 : extension de la vidéo..."
+                            : "Veo 3.1 : génération en cours..."
             })}\n\n`
         );
 
@@ -2242,12 +2241,12 @@ const runwareRequest = {
             await runware.run(runwareRequest);
 
         console.log(
-            "âœ… [RUNWARE] RÃ©ponse Veo 3.1 :",
+            "✅ [RUNWARE] Réponse Veo 3.1 :",
             JSON.stringify(result, null, 2)
         );
 
         // --------------------------------------------------------
-        // URL VIDÃ‰O
+        // URL VIDÉO
         // --------------------------------------------------------
 
         const generatedVideoUrl =
@@ -2256,12 +2255,12 @@ const runwareRequest = {
         if (!generatedVideoUrl) {
 
             throw new Error(
-                "Runware n'a pas retournÃ© de videoURL."
+                "Runware n'a pas retourné de videoURL."
             );
         }
 
         // --------------------------------------------------------
-        // GÃ‰NÃ‰RATION TERMINÃ‰E
+        // GÉNÉRATION TERMINÉE
         // --------------------------------------------------------
 
         generationFinished = true;
@@ -2322,19 +2321,19 @@ const runwareRequest = {
                 });
 
             console.log(
-                "ðŸ’¾ VidÃ©o Runware ajoutÃ©e Ã  l'historique."
+                "💾 Vidéo Runware ajoutée à l'historique."
             );
 
         } catch (historyError) {
 
             console.error(
-                "âš ï¸ Erreur historique Runware :",
+                "⚠️ Erreur historique Runware :",
                 historyError.message
             );
         }
 
         // --------------------------------------------------------
-        // LIBÃ‰RATION DU LOCK
+        // LIBÉRATION DU LOCK
         // --------------------------------------------------------
 
         await lockRef
@@ -2342,7 +2341,7 @@ const runwareRequest = {
             .catch(() => {});
 
         // --------------------------------------------------------
-        // RÃ‰PONSE FRONTEND
+        // RÉPONSE FRONTEND
         // --------------------------------------------------------
 
         res.write(
@@ -2362,10 +2361,10 @@ const runwareRequest = {
 
                 message:
                     veoOperation === "edit"
-                        ? "Veo 3.1 : vidÃ©o modifiÃ©e !"
+                        ? "Veo 3.1 : vidéo modifiée !"
                         : veoOperation === "extend"
-                            ? "Veo 3.1 : vidÃ©o Ã©tendue !"
-                            : "Veo 3.1 : vidÃ©o prÃªte !"
+                            ? "Veo 3.1 : vidéo étendue !"
+                            : "Veo 3.1 : vidéo prête !"
 
             })}\n\n`
         );
@@ -2377,7 +2376,7 @@ const runwareRequest = {
     } catch (runwareError) {
 
         console.error(
-            "âŒ [RUNWARE] Erreur Veo 3.1 :",
+            "❌ [RUNWARE] Erreur Veo 3.1 :",
             runwareError
         );
 
@@ -2385,7 +2384,7 @@ const runwareRequest = {
     }
 }
 // ============================================================
-// KLING 2.6 MOTION CONTROL â€” RUNWARE
+// KLING 2.6 MOTION CONTROL — RUNWARE
 // ============================================================
 if (
     engineId.toLowerCase() === "kling26_motion" ||
@@ -2394,7 +2393,7 @@ if (
 ) {
 
     console.log(
-        "ðŸŽ¬ [RUNWARE] Kling 2.6 Motion Control dÃ©tectÃ©"
+        "🎬 [RUNWARE] Kling 2.6 Motion Control détecté"
     );
 
     const runwareModel =
@@ -2412,7 +2411,7 @@ if (
         null;
 
     // ========================================================
-    // VIDÃ‰O DE MOUVEMENT
+    // VIDÉO DE MOUVEMENT
     // ========================================================
 
     const motionVideo =
@@ -2436,7 +2435,7 @@ if (
     if (!motionVideo) {
 
         throw new Error(
-            "Kling 2.6 Motion Control requiert une vidÃ©o de mouvement."
+            "Kling 2.6 Motion Control requiert une vidéo de mouvement."
         );
     }
 
@@ -2472,7 +2471,7 @@ if (
                 : true;
 
     // ========================================================
-    // REQUÃŠTE RUNWARE
+    // REQUÊTE RUNWARE
     // ========================================================
 
   const klingMotionRequest = {
@@ -2523,7 +2522,7 @@ if (
     );
 
     console.log(
-        "ðŸŽ¬ KLING 2.6 MOTION CONTROL â€” RUNWARE"
+        "🎬 KLING 2.6 MOTION CONTROL — RUNWARE"
     );
 
     console.log(
@@ -2531,32 +2530,32 @@ if (
     );
 
     console.log(
-        "ðŸ–¼ï¸ Image personnage :",
+        "🖼️ Image personnage :",
         motionImage
     );
 
     console.log(
-        "ðŸŽ¥ VidÃ©o mouvement :",
+        "🎥 Vidéo mouvement :",
         motionVideo
     );
 
     console.log(
-        "ðŸ§­ Orientation :",
+        "🧭 Orientation :",
         orientation
     );
 
     console.log(
-        "ðŸ”Š Son original :",
+        "🔊 Son original :",
         keepOriginalSound
     );
 
     console.log(
-        "ðŸ¤– ModÃ¨le :",
+        "🤖 Modèle :",
         runwareModel
     );
 
     console.log(
-        "ðŸ“¦ RequÃªte Runware :",
+        "📦 Requête Runware :",
         JSON.stringify(
             klingMotionRequest,
             null,
@@ -2578,13 +2577,13 @@ if (
         );
 
     console.log(
-        "âœ… [KLING 2.6 MOTION] GÃ©nÃ©ration terminÃ©e"
+        "✅ [KLING 2.6 MOTION] Génération terminée"
     );
 
     return await completeRunwareVideo(result, engineId);
 }
 // ============================================================
-// KLING 2.6 PRO â€” RUNWARE
+// KLING 2.6 PRO — RUNWARE
 // ============================================================
 if (
     engineId.toLowerCase() === "kling2.6" ||
@@ -2592,13 +2591,13 @@ if (
     engineId.toLowerCase() === "kling2.6-pro"
 ) {
 
-    console.log("ðŸŽ¬ [RUNWARE] Kling 2.6 Pro dÃ©tectÃ©");
+    console.log("🎬 [RUNWARE] Kling 2.6 Pro détecté");
 
     const runwareModel =
         "klingai:kling-video@2.6-pro";
 
     console.log(
-        `ðŸ¤– [RUNWARE] ModÃ¨le Kling sÃ©lectionnÃ© : ${runwareModel}`
+        `🤖 [RUNWARE] Modèle Kling sélectionné : ${runwareModel}`
     );
 
     // ========================================================
@@ -2622,7 +2621,7 @@ if (
         Boolean(videoInput);
 
     // ========================================================
-    // DURÃ‰E KLING 2.6
+    // DURÉE KLING 2.6
     // ========================================================
 
     const safeKlingDuration =
@@ -2631,7 +2630,7 @@ if (
             : 5;
 
     // ========================================================
-    // VIDEO â†’ VIDEO
+    // VIDEO → VIDEO
     // ========================================================
     // Runware interdit duration + sound avec referenceVideos.
     // On ne met donc PAS width/height non plus.
@@ -2672,11 +2671,11 @@ if (
         };
 
         console.log(
-            "ðŸŽ¥ [KLING 2.6] Mode VIDEO â†’ VIDEO"
+            "🎥 [KLING 2.6] Mode VIDEO → VIDEO"
         );
 
         console.log(
-            "ðŸŽ¬ [KLING 2.6] RequÃªte Runware :",
+            "🎬 [KLING 2.6] Requête Runware :",
             JSON.stringify(
                 klingRequest,
                 null,
@@ -2690,14 +2689,14 @@ if (
             );
 
         console.log(
-            "âœ… [KLING 2.6] Video â†’ Video terminÃ©e"
+            "✅ [KLING 2.6] Video → Video terminée"
         );
 
         return await completeRunwareVideo(result, engineId);
     }
 
     // ========================================================
-    // IMAGE â†’ VIDEO
+    // IMAGE → VIDEO
     // ========================================================
     // Une image = premier frame.
     // frameImages est obligatoire pour ce workflow.
@@ -2741,18 +2740,18 @@ if (
         };
 
         console.log(
-            "ðŸ–¼ï¸ [KLING 2.6] Mode IMAGE â†’ VIDEO"
+            "🖼️ [KLING 2.6] Mode IMAGE → VIDEO"
         );
 
         console.log(
-            "ðŸ”Š [KLING 2.6] Audio natif :",
+            "🔊 [KLING 2.6] Audio natif :",
             enable_audio !== false
                 ? "OUI"
                 : "NON"
         );
 
         console.log(
-            "ðŸŽ¬ [KLING 2.6] RequÃªte Runware :",
+            "🎬 [KLING 2.6] Requête Runware :",
             JSON.stringify(
                 klingRequest,
                 null,
@@ -2766,14 +2765,14 @@ if (
             );
 
         console.log(
-            "âœ… [KLING 2.6] Image â†’ Video terminÃ©e"
+            "✅ [KLING 2.6] Image → Video terminée"
         );
 
         return await completeRunwareVideo(result, engineId);
     }
 
     // ========================================================
-    // TEXT â†’ VIDEO
+    // TEXT → VIDEO
     // ========================================================
 
     const klingRequest = {
@@ -2810,18 +2809,18 @@ if (
     };
 
     console.log(
-        "ðŸ“ [KLING 2.6] Mode TEXT â†’ VIDEO"
+        "📝 [KLING 2.6] Mode TEXT → VIDEO"
     );
 
     console.log(
-        "ðŸ”Š [KLING 2.6] Audio natif :",
+        "🔊 [KLING 2.6] Audio natif :",
         enable_audio !== false
             ? "OUI"
             : "NON"
     );
 
     console.log(
-        "ðŸŽ¬ [KLING 2.6] RequÃªte Runware :",
+        "🎬 [KLING 2.6] Requête Runware :",
         JSON.stringify(
             klingRequest,
             null,
@@ -2835,7 +2834,7 @@ if (
         );
 
     console.log(
-        "âœ… [KLING 2.6] Text â†’ Video terminÃ©e"
+        "✅ [KLING 2.6] Text → Video terminée"
     );
 
     return await completeRunwareVideo(result, engineId);
@@ -2843,7 +2842,7 @@ if (
 /*
 ============================================================
 ANCIEN CODE GOOGLE VEO / VERTEX AI
-CONSERVÃ‰ POUR RETOUR EN ARRIÃˆRE
+CONSERVÉ POUR RETOUR EN ARRIÈRE
 ============================================================
 
 
@@ -2851,7 +2850,7 @@ CONSERVÃ‰ POUR RETOUR EN ARRIÃˆRE
 const isGoogleVideo = Boolean(engineId && (engineId.startsWith("veo") || engineId.includes("google")));
 
 if (isGoogleVideo) {
-    // ðŸ” SÃ‰CURITÃ‰ : Validation du modÃ¨le
+    // 🔐 SÉCURITÉ : Validation du modèle
     let officialGoogleModel;
   if (engineId === "veo3_lite") {
         officialGoogleModel = "veo-3.1 lite-generate-001";
@@ -2859,29 +2858,29 @@ if (isGoogleVideo) {
         officialGoogleModel = "veo-3.1-generate-001";
     }
 
-    console.log(`ðŸ”’ [SÃ©curisÃ©] Appel Google SDK | ModÃ¨le : ${officialGoogleModel}`);
+    console.log(`🔒 [Sécurisé] Appel Google SDK | Modèle : ${officialGoogleModel}`);
 
-    // ðŸ•’ SÃ‰CURISATION DURÃ‰E (Validations strictes)
+    // 🕒 SÉCURISATION DURÉE (Validations strictes)
     const allowedDurations = (engineId === "veo3_lite") ? [4, 8] : [4, 6, 8];
     let safeDuration = parseInt(duration);
 
-    console.log(`[DEBUG] DurÃ©e brute reÃ§ue: ${duration}, DurÃ©e parsÃ©e: ${safeDuration}, Moteur: ${engineId}`);
+    console.log(`[DEBUG] Durée brute reçue: ${duration}, Durée parsée: ${safeDuration}, Moteur: ${engineId}`);
 
     if (isNaN(safeDuration) || !allowedDurations.includes(safeDuration)) {
         safeDuration = allowedDurations[0]; 
-        console.warn(`âš ï¸ DurÃ©e invalide, rÃ©initialisÃ©e Ã  ${safeDuration}s`);
+        console.warn(`⚠️ Durée invalide, réinitialisée à ${safeDuration}s`);
     }
 
-    // ðŸ“ SÃ‰CURISATION ASPECT RATIO (CalculÃ© avant utilisation)
+    // 📐 SÉCURISATION ASPECT RATIO (Calculé avant utilisation)
     const safeAspect = ["16:9", "9:16", "1:1"].includes(aspect_ratio) ? aspect_ratio : "16:9";
 
-    // âš™ï¸ CONSTRUCTION DE L'OBJET CONFIG (DÃ©clarÃ© une seule fois)
+    // ⚙️ CONSTRUCTION DE L'OBJET CONFIG (Déclaré une seule fois)
     const videoConfig = { 
         aspectRatio: safeAspect, 
         durationSeconds: safeDuration 
     };
 
-    console.log(`[DEBUG] Valeur finale injectÃ©e dans videoConfig : ${safeDuration}s`);
+    console.log(`[DEBUG] Valeur finale injectée dans videoConfig : ${safeDuration}s`);
 
     // Enrichissement du prompt
     let enrichedPrompt = enable_audio === false 
@@ -2898,10 +2897,10 @@ if (isGoogleVideo) {
     }
 };
 // =============================================================
-// ðŸ“¸ IMAGE DE RÃ‰FÃ‰RENCE VEO
+// 📸 IMAGE DE RÉFÉRENCE VEO
 // =============================================================
 
-// PrioritÃ© : startImage â†’ start_image_url â†’ image_url â†’ image_urls[0]
+// Priorité : startImage → start_image_url → image_url → image_urls[0]
 const veoImageUrl =
     (typeof startImage === "string" && startImage.trim()) ? startImage.trim() :
     (typeof start_image_url === "string" && start_image_url.trim()) ? start_image_url.trim() :
@@ -2911,11 +2910,11 @@ const veoImageUrl =
         : null;
 
 if (veoImageUrl) {
-    console.log("ðŸ“¸ Image de rÃ©fÃ©rence dÃ©tectÃ©e pour Veo :", veoImageUrl);
+    console.log("📸 Image de référence détectée pour Veo :", veoImageUrl);
 
     try {
         // ---------------------------------------------------------
-        // CAS 1 : image dÃ©jÃ  au format Data URI
+        // CAS 1 : image déjà au format Data URI
         // ---------------------------------------------------------
         if (veoImageUrl.startsWith("data:image/")) {
 
@@ -2936,25 +2935,25 @@ if (veoImageUrl) {
             };
 
             console.log(
-                "âœ… Image Data URI convertie pour Veo | MIME :",
+                "✅ Image Data URI convertie pour Veo | MIME :",
                 mimeType
             );
         }
 
         // ---------------------------------------------------------
-        // CAS 2 : image hÃ©bergÃ©e sur Render / URL HTTPS
+        // CAS 2 : image hébergée sur Render / URL HTTPS
         // ---------------------------------------------------------
         else if (
             veoImageUrl.startsWith("http://") ||
             veoImageUrl.startsWith("https://")
         ) {
-            console.log("ðŸŒ TÃ©lÃ©chargement de l'image de rÃ©fÃ©rence...");
+            console.log("🌐 Téléchargement de l'image de référence...");
 
             const imageResponse = await fetch(veoImageUrl);
 
             if (!imageResponse.ok) {
                 throw new Error(
-                    `Impossible de rÃ©cupÃ©rer l'image (${imageResponse.status} ${imageResponse.statusText})`
+                    `Impossible de récupérer l'image (${imageResponse.status} ${imageResponse.statusText})`
                 );
             }
 
@@ -2963,7 +2962,7 @@ if (veoImageUrl) {
 
             if (!contentType.startsWith("image/")) {
                 throw new Error(
-                    `Le fichier rÃ©cupÃ©rÃ© n'est pas une image : ${contentType}`
+                    `Le fichier récupéré n'est pas une image : ${contentType}`
                 );
             }
 
@@ -2972,7 +2971,7 @@ if (veoImageUrl) {
             );
 
             if (!imageBuffer.length) {
-                throw new Error("L'image rÃ©cupÃ©rÃ©e est vide.");
+                throw new Error("L'image récupérée est vide.");
             }
 
             const base64Data = imageBuffer.toString("base64");
@@ -2983,7 +2982,7 @@ if (veoImageUrl) {
             };
 
             console.log(
-                "âœ… Image tÃ©lÃ©chargÃ©e et convertie pour Veo |",
+                "✅ Image téléchargée et convertie pour Veo |",
                 `${imageBuffer.length} octets | MIME : ${contentType.split(";")[0]}`
             );
         }
@@ -2994,25 +2993,25 @@ if (veoImageUrl) {
             );
         }
 
-        console.log("ðŸŽ¯ Image de rÃ©fÃ©rence rÃ©ellement injectÃ©e dans la requÃªte Veo.");
+        console.log("🎯 Image de référence réellement injectée dans la requête Veo.");
 
     } catch (imgError) {
         console.error(
-            "âŒ Erreur lors de la prÃ©paration de l'image Veo :",
+            "❌ Erreur lors de la préparation de l'image Veo :",
             imgError.message
         );
 
         // IMPORTANT :
-        // On arrÃªte la gÃ©nÃ©ration plutÃ´t que de lancer une vidÃ©o
-        // sans l'image demandÃ©e.
+        // On arrête la génération plutôt que de lancer une vidéo
+        // sans l'image demandée.
         throw new Error(
-            "Impossible de prÃ©parer l'image de rÃ©fÃ©rence pour Veo."
+            "Impossible de préparer l'image de référence pour Veo."
         );
     }
 } else {
-    console.log("â„¹ï¸ Aucune image de rÃ©fÃ©rence fournie pour Veo.");
+    console.log("ℹ️ Aucune image de référence fournie pour Veo.");
 }
-// 1. Flush immÃ©diat des headers pour activer le flux SSE
+// 1. Flush immédiat des headers pour activer le flux SSE
 res.flushHeaders();
 
 // 2. Heartbeat pour maintenir la connexion SSE active toutes les 15s
@@ -3022,56 +3021,56 @@ const heartbeat = setInterval(() => {
 
 let operation = await ai.models.generateVideos(generateOptions);
 
-console.log("â³ RequÃªte acceptÃ©e par Google. ID OpÃ©ration :", operation.name);
-console.log("ðŸ¿ GÃ©nÃ©ration de la vidÃ©o en cours sur les serveurs de Google (Attente active 1 Ã  3 minutes)...");
+console.log("⏳ Requête acceptée par Google. ID Opération :", operation.name);
+console.log("🍿 Génération de la vidéo en cours sur les serveurs de Google (Attente active 1 à 3 minutes)...");
 
-// ðŸ”„ Boucle d'attente (Polling) optimisÃ©e pour le SDK @google/genai 2.x
+// 🔄 Boucle d'attente (Polling) optimisée pour le SDK @google/genai 2.x
 let attempts = 0;
-console.log("â³ DÃ©but de la surveillance de l'opÃ©ration Google...");
+console.log("⏳ Début de la surveillance de l'opération Google...");
 
 while (!operation.done) {
     attempts++;
-    console.log(`ðŸ”„ [Tentative ${attempts}] VÃ©rification du statut auprÃ¨s de Google...`);
+    console.log(`🔄 [Tentative ${attempts}] Vérification du statut auprès de Google...`);
 
     // 1. Attendre 15 secondes
     await new Promise(resolve => setTimeout(resolve, 15000));
     
-    // 2. Mise Ã  jour de l'opÃ©ration (Appel unique et propre)
+    // 2. Mise à jour de l'opération (Appel unique et propre)
     try {
-        // ðŸ”¥ FIX : RafraÃ®chissement rÃ©el de l'Ã©tat de l'opÃ©ration (indispensable pour sortir du while)
+        // 🔥 FIX : Rafraîchissement réel de l'état de l'opération (indispensable pour sortir du while)
         operation = await ai.operations.get({ operation: operation });
         
-        // 3. Mise Ã  jour de la progression vers le frontend
-        const progressMessage = `GÃ©nÃ©ration IA en cours (Tentative ${attempts})...`;
+        // 3. Mise à jour de la progression vers le frontend
+        const progressMessage = `Génération IA en cours (Tentative ${attempts})...`;
 res.write(`data: ${JSON.stringify({ percent: 50, message: progressMessage })}\n\n`);
-        console.log(`âœ… [Tentative ${attempts}] RÃ©ponse reÃ§ue. OpÃ©ration terminÃ©e : ${operation.done}`);
+        console.log(`✅ [Tentative ${attempts}] Réponse reçue. Opération terminée : ${operation.done}`);
         
     } catch (err) {
-        console.error("âŒ Erreur lors du polling de l'opÃ©ration :", err.message);
+        console.error("❌ Erreur lors du polling de l'opération :", err.message);
         clearInterval(heartbeat); // Nettoyage en cas d'erreur
         throw err; // On stoppe tout si l'API Google renvoie une erreur critique
     }
 
-    // SÃ©curitÃ© : Timeout global aprÃ¨s 20 tentatives (soit 5 minutes)
+    // Sécurité : Timeout global après 20 tentatives (soit 5 minutes)
     if (attempts >= 20) {
         clearInterval(heartbeat);
-        throw new Error("Le dÃ©lai de gÃ©nÃ©ration a Ã©tÃ© dÃ©passÃ© (Timeout).");
+        throw new Error("Le délai de génération a été dépassé (Timeout).");
     }
 }
 
 // Nettoyage final
 clearInterval(heartbeat);
-console.log("âœ… GOOGLE A TERMINÃ‰ LA GÃ‰NÃ‰RATION !");
-// Si Google a renvoyÃ© une erreur dans l'opÃ©ration terminÃ©e
+console.log("✅ GOOGLE A TERMINÉ LA GÉNÉRATION !");
+// Si Google a renvoyé une erreur dans l'opération terminée
 if (operation.error) {
     throw new Error(`Google Cloud Error [${operation.error.code}]: ${operation.error.message}`);
 }
-// Extraction de la rÃ©ponse finale
+// Extraction de la réponse finale
 const response = operation.response;
 console.log("STRUCTURE FINALE ACCESSIBLE :", JSON.stringify(response, null, 2));
 let generatedVideoUrl = null;
 // ============================================================
-// ðŸ›¡ï¸ VIDÃ‰O FILTRÃ‰E PAR LES RÃˆGLES DE SÃ‰CURITÃ‰ GOOGLE
+// 🛡️ VIDÉO FILTRÉE PAR LES RÈGLES DE SÉCURITÉ GOOGLE
 // ============================================================
 if (
     response?.raiMediaFilteredCount > 0 ||
@@ -3080,22 +3079,22 @@ if (
     const reasons = response.raiMediaFilteredReasons || [];
 
     console.warn(
-        "ðŸ›¡ï¸ Google a filtrÃ© la vidÃ©o pour des raisons de sÃ©curitÃ©."
+        "🛡️ Google a filtré la vidéo pour des raisons de sécurité."
     );
 
     console.warn(
-        "ðŸ›¡ï¸ Raisons du filtrage :",
+        "🛡️ Raisons du filtrage :",
         reasons
     );
 
     const errorMsg =
-        "Google a bloquÃ© cette gÃ©nÃ©ration pour des raisons de sÃ©curitÃ©. Veuillez modifier le prompt puis rÃ©essayer.";
+        "Google a bloqué cette génération pour des raisons de sécurité. Veuillez modifier le prompt puis réessayer.";
 
     res.write(
         `data: ${JSON.stringify({
             error: errorMsg,
             status: "filtered",
-            reason: reasons[0] || "Contenu filtrÃ© par Google"
+            reason: reasons[0] || "Contenu filtré par Google"
         })}\n\n`
     );
 
@@ -3103,41 +3102,41 @@ if (
 
     throw new Error(errorMsg);
 }
-// Extraction et conversion immÃ©diate en fichier local
+// Extraction et conversion immédiate en fichier local
 if (response?.generatedVideos?.[0]?.video?.videoBytes) {
     const videoBytes = response.generatedVideos[0].video.videoBytes;
     const buffer = Buffer.from(videoBytes, "base64");
 
     const fileName = `video-${Date.now()}.mp4`;
-    // On dÃ©finit le dossier proprement
+    // On définit le dossier proprement
     const dir = path.join(__dirname, 'public', 'videos');
     
-    // CrÃ©e le dossier s'il n'existe pas
+    // Crée le dossier s'il n'existe pas
     if (!fs.existsSync(dir)){
         fs.mkdirSync(dir, { recursive: true });
     }
 
     const filePath = path.join(dir, fileName);
     fs.writeFileSync(filePath, buffer);
-// --- DÃ‰COUPAGE ET REDIMENSIONNEMENT FFMPEG ---
+// --- DÉCOUPAGE ET REDIMENSIONNEMENT FFMPEG ---
 const finalFileName = `final-${Date.now()}.mp4`;
 const outputPath = path.join(dir, finalFileName);
 
-res.write(`data: ${JSON.stringify({ percent: 80, message: "Traitement vidÃ©o et application des filtres..." })}\n\n`);
+res.write(`data: ${JSON.stringify({ percent: 80, message: "Traitement vidéo et application des filtres..." })}\n\n`);
 
-// ðŸ” VARIABLES DE SÃ‰CURITÃ‰
+// 🔐 VARIABLES DE SÉCURITÉ
 let finished = false;
 let fakePercent = 80;
 let fakeProgressInterval;
 let timeout;
 
-// ðŸ§¹ CLEANUP CENTRALISÃ‰
+// 🧹 CLEANUP CENTRALISÉ
 const cleanup = () => {
     if (fakeProgressInterval) clearInterval(fakeProgressInterval);
     if (timeout) clearTimeout(timeout);
 };
 
-// ðŸ§  SAFE FINISH (ANTI DOUBLE EXECUTION)
+// 🧠 SAFE FINISH (ANTI DOUBLE EXECUTION)
 const safeFinish = (cb) => {
     if (finished) return;
     finished = true;
@@ -3145,17 +3144,17 @@ const safeFinish = (cb) => {
     cb();
 };
 
-// ðŸ“Š FAKE PROGRESS (UX FLUIDE)
+// 📊 FAKE PROGRESS (UX FLUIDE)
 fakeProgressInterval = setInterval(() => {
     if (fakePercent < 85) fakePercent += 1;
     else if (fakePercent < 92) fakePercent += 0.3;
 
     // Utilisation directe de res.write
-    // Assure-toi que 'res' est bien accessible dans la portÃ©e de cette fonction
+    // Assure-toi que 'res' est bien accessible dans la portée de cette fonction
     if (!res.writableEnded) {
         res.write(`data: ${JSON.stringify({ 
             percent: Math.min(92, Math.round(fakePercent)), 
-            message: "Encodage vidÃ©o en cours (FFMPEG)..." 
+            message: "Encodage vidéo en cours (FFMPEG)..." 
         })}\n\n`);
     }
 }, 2000);
@@ -3164,7 +3163,7 @@ const targetSize =
         ? "1920x1080"
         : "1280x720";
 
-// ðŸ§ª LOGS DEBUG// ðŸ“ RÃ©cupÃ©ration dynamique du format et de la rÃ©solution choisis sur l'interface
+// 🧪 LOGS DEBUG// 📐 Récupération dynamique du format et de la résolution choisis sur l'interface
 const aspectRatio = req.body.aspect_ratio || "9:16";
 const isHD = req.body.resolution === "1080p";
 
@@ -3178,41 +3177,41 @@ if (aspectRatio === "1:1") {
     targetWidth = isHD ? 1920 : 1280;
     targetHeight = isHD ? 1080 : 720;
 } else {
-    // 9:16 par dÃ©faut
+    // 9:16 par défaut
     targetWidth = isHD ? 1080 : 720;
     targetHeight = isHD ? 1920 : 1280;
 }
 
-// ðŸ§ª LOGS DEBUG
-console.log(`ðŸ” Diagnostic FFMPEG :`);
+// 🧪 LOGS DEBUG
+console.log(`🔍 Diagnostic FFMPEG :`);
 console.log(`   - Dossier cible : ${dir}`);
-console.log(`   - Fichier Ã©crit : ${filePath}`);
-console.log(`   - Format demandÃ© : ${aspectRatio} (${targetWidth}x${targetHeight})`);
+console.log(`   - Fichier écrit : ${filePath}`);
+console.log(`   - Format demandé : ${aspectRatio} (${targetWidth}x${targetHeight})`);
 console.log(
-    `   - VÃ©rification accÃ¨s disque : ${
-        fs.existsSync(filePath) ? "OUI âœ…" : "NON âŒ"
+    `   - Vérification accès disque : ${
+        fs.existsSync(filePath) ? "OUI ✅" : "NON ❌"
     }`
 );
 
 await new Promise((resolve, reject) => {
 
-    // â±ï¸ TIMEOUT SÃ‰CURISÃ‰
+    // ⏱️ TIMEOUT SÉCURISÉ
     timeout = setTimeout(() => {
-        console.error("âŒ FFMPEG : TIMEOUT aprÃ¨s 1200 secondes");
+        console.error("❌ FFMPEG : TIMEOUT après 1200 secondes");
 
         safeFinish(() => {
-            reject(new Error("Timeout FFMPEG : dÃ©passement 1200s"));
+            reject(new Error("Timeout FFMPEG : dépassement 1200s"));
         });
     }, 120000);
 
-    console.log("ðŸŽ¬ PrÃ©paration du lancement FFMPEG...");
-    console.log("ðŸ“¥ Fichier source :", filePath);
-    console.log("ðŸ“¤ Fichier destination :", outputPath);
-    console.log("â±ï¸ DurÃ©e demandÃ©e :", duration);
-    console.log("ðŸ“ RÃ©solution cible :", `${targetWidth}x${targetHeight}`);
+    console.log("🎬 Préparation du lancement FFMPEG...");
+    console.log("📥 Fichier source :", filePath);
+    console.log("📤 Fichier destination :", outputPath);
+    console.log("⏱️ Durée demandée :", duration);
+    console.log("📐 Résolution cible :", `${targetWidth}x${targetHeight}`);
 
-    console.log("ðŸ”Ž Chemin FFmpeg configurÃ© :", ffmpegPath);
-    console.log("ðŸ”Ž FFmpeg existe :", fs.existsSync(ffmpegPath));
+    console.log("🔎 Chemin FFmpeg configuré :", ffmpegPath);
+    console.log("🔎 FFmpeg existe :", fs.existsSync(ffmpegPath));
 
     if (!fs.existsSync(ffmpegPath)) {
         throw new Error(`FFmpeg introuvable sur Render : ${ffmpegPath}`);
@@ -3220,11 +3219,11 @@ await new Promise((resolve, reject) => {
 
     ffmpeg.setFfmpegPath(ffmpegPath);
 
-    console.log("âœ… Chemin FFmpeg appliquÃ© Ã  fluent-ffmpeg.");
+    console.log("✅ Chemin FFmpeg appliqué à fluent-ffmpeg.");
 
     const ffmpegProcess = ffmpeg(filePath)
         .videoFilters([
-            // âœ… Filtre dynamique avec bandes noires (padding) sans dÃ©formation
+            // ✅ Filtre dynamique avec bandes noires (padding) sans déformation
             `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,setsar=1`
         ])
         .outputOptions([
@@ -3237,12 +3236,12 @@ await new Promise((resolve, reject) => {
         .output(outputPath)
 
         .on("start", (cmd) => {
-            console.log("ðŸš€ FFMPEG commande lancÃ©e :", cmd);
+            console.log("🚀 FFMPEG commande lancée :", cmd);
         })
 
         .on("progress", (progress) => {
             console.log(
-                `ðŸŽžï¸ FFMPEG progression : ${progress.percent || 0}%`
+                `🎞️ FFMPEG progression : ${progress.percent || 0}%`
             );
         })
 
@@ -3251,13 +3250,13 @@ await new Promise((resolve, reject) => {
             safeFinish(async () => {
 
                 console.log(
-                    `âœ‚ï¸ VidÃ©o traitÃ©e : ${duration}s, RÃ©solution : ${targetWidth}x${targetHeight}`
+                    `✂️ Vidéo traitée : ${duration}s, Résolution : ${targetWidth}x${targetHeight}`
                 );
 
                 fs.unlink(filePath, (err) => {
                     if (err) {
                         console.error(
-                            "âš ï¸ Impossible de supprimer le fichier temporaire :",
+                            "⚠️ Impossible de supprimer le fichier temporaire :",
                             err.message
                         );
                     }
@@ -3280,13 +3279,13 @@ await new Promise((resolve, reject) => {
                         });
 
                         console.log(
-                            "ðŸ”’ Verrou imageLocks mis Ã  jour et finalisÃ© avec succÃ¨s pour Veo."
+                            "🔒 Verrou imageLocks mis à jour et finalisé avec succès pour Veo."
                         );
 
                     } catch (lockErr) {
 
                         console.error(
-                            "âš ï¸ Erreur lors de la mise Ã  jour finale du verrou imageLocks :",
+                            "⚠️ Erreur lors de la mise à jour finale du verrou imageLocks :",
                             lockErr.message
                         );
                     }
@@ -3296,7 +3295,7 @@ await new Promise((resolve, reject) => {
                     `data: ${JSON.stringify({
                         videoUrl: finalUrl,
                         percent: 100,
-                        message: "VidÃ©o prÃªte !"
+                        message: "Vidéo prête !"
                     })}\n\n`
                 );
 
@@ -3308,17 +3307,17 @@ await new Promise((resolve, reject) => {
 
         .on("error", (err, stdout, stderr) => {
 
-            console.error("âŒ ERREUR FFMPEG :", err.message);
-            console.error("âŒ CODE FFMPEG :", err.code);
-            console.error("âŒ STDOUT FFMPEG :", stdout);
-            console.error("âŒ STDERR FFMPEG :", stderr);
+            console.error("❌ ERREUR FFMPEG :", err.message);
+            console.error("❌ CODE FFMPEG :", err.code);
+            console.error("❌ STDOUT FFMPEG :", stdout);
+            console.error("❌ STDERR FFMPEG :", stderr);
 
             safeFinish(() => {
 
                 if (!res.writableEnded) {
                     res.write(
                         `data: ${JSON.stringify({
-                            error: "Erreur traitement vidÃ©o final.",
+                            error: "Erreur traitement vidéo final.",
                             details: err.message
                         })}\n\n`
                     );
@@ -3330,7 +3329,7 @@ await new Promise((resolve, reject) => {
             });
         });
 
-    console.log("â–¶ï¸ Appel de .run() FFMPEG maintenant...");
+    console.log("▶️ Appel de .run() FFMPEG maintenant...");
 
     ffmpegProcess.run();
 });
@@ -3340,11 +3339,11 @@ await new Promise((resolve, reject) => {
 
 } else if (response?.generatedVideos?.[0]?.video?.uri) {
     const videoUrl = response.generatedVideos[0].video.uri;
-    console.log("ðŸŽ‰ URI Google dÃ©tectÃ©e â†’ vidÃ©o prÃªte :", videoUrl);
+    console.log("🎉 URI Google détectée → vidéo prête :", videoUrl);
 
     generationFinished = true;
 
-    // 1ï¸âƒ£ Mise Ã  jour du verrou
+    // 1️⃣ Mise à jour du verrou
     await lockRef.update({
         status: "completed",
         videoUrl: videoUrl,
@@ -3352,7 +3351,7 @@ await new Promise((resolve, reject) => {
         completedAt: FieldValue.serverTimestamp()
     });
 
-    // 2ï¸âƒ£ ðŸ’¾ SAUVEGARDE FIRESTORE : Ajout Ã  l'historique utilisateur (Prompt + VidÃ©o)
+    // 2️⃣ 💾 SAUVEGARDE FIRESTORE : Ajout à l'historique utilisateur (Prompt + Vidéo)
     if (userId) {
         try {
             await db.collection("users").doc(userId).collection("generations").add({
@@ -3361,22 +3360,22 @@ await new Promise((resolve, reject) => {
                 engine: engineId || "google-veo",
                 createdAt: FieldValue.serverTimestamp()
             });
-            console.log(`ðŸ’¾ VidÃ©o URI ajoutÃ©e Ã  l'historique de l'utilisateur : ${userId}`);
+            console.log(`💾 Vidéo URI ajoutée à l'historique de l'utilisateur : ${userId}`);
         } catch (fsErr) {
-            console.error("âŒ Erreur lors de la sauvegarde Firestore de l'historique vidÃ©o URI :", fsErr.message);
+            console.error("❌ Erreur lors de la sauvegarde Firestore de l'historique vidéo URI :", fsErr.message);
         }
     } else {
-        console.warn("âš ï¸ Impossible d'enregistrer la vidÃ©o : userId est introuvable.");
+        console.warn("⚠️ Impossible d'enregistrer la vidéo : userId est introuvable.");
     }
 
-    // 3ï¸âƒ£ Suppression du verrou pour libÃ©rer l'utilisateur
+    // 3️⃣ Suppression du verrou pour libérer l'utilisateur
     await lockRef.delete().catch(() => {});
 
-    // âœ… RÃ‰PONSE SSE PROPRE
+    // ✅ RÉPONSE SSE PROPRE
     res.write(`data: ${JSON.stringify({ 
         videoUrl: videoUrl, 
         percent: 100, 
-        message: "VidÃ©o prÃªte !" 
+        message: "Vidéo prête !" 
     })}\n\n`);
     
     res.end(); 
@@ -3384,37 +3383,37 @@ await new Promise((resolve, reject) => {
     
 }
 else {
-    // Si tu es dans une erreur, utilise aussi le flux SSE pour que le client reÃ§oive l'info
-    const errorMsg = "Impossible d'extraire la vidÃ©o de la rÃ©ponse finale de Google.";
+    // Si tu es dans une erreur, utilise aussi le flux SSE pour que le client reçoive l'info
+    const errorMsg = "Impossible d'extraire la vidéo de la réponse finale de Google.";
     res.write(`data: ${JSON.stringify({ error: errorMsg, status: "failed" })}\n\n`);
     res.end();
    throw new Error(errorMsg);
 }
 
-} // <--- Ferme le grand "if (isGoogleVideo)" du dÃ©but
+} // <--- Ferme le grand "if (isGoogleVideo)" du début
 
 
 */
 
 
-// --- ROUTAGE DES MOTEURS VIDÃ‰O RESTANTS ---
+// --- ROUTAGE DES MOTEURS VIDÉO RESTANTS ---
 
-console.log("ETAPE 1 : entrÃ©e traitement vidÃ©o");
-console.log(`ðŸŽ¬ Routage du moteur : ${engineId}`);
+console.log("ETAPE 1 : entrée traitement vidéo");
+console.log(`🎬 Routage du moteur : ${engineId}`);
 
 let targetEngineId = req.body.modelEndpoint || engineId;
 let finalInput = { prompt, aspect_ratio: aspect_ratio || "16:9", resolution: req.body.resolution || "720p" };
 
 
-// ðŸ› ï¸ CONVERSION URL LOCALE â†’ URL PUBLIQUE DU SERVEUR
+// 🛠️ CONVERSION URL LOCALE → URL PUBLIQUE DU SERVEUR
 const localVideoUrl = req.body.video_url || req.body.videoSource || req.body.videoUrl;
 if (localVideoUrl && localVideoUrl.includes('localhost:5000')) {
 const ngrokBaseUrl = process.env.PUBLIC_API_URL || 'https://eclipse-ai.onrender.com';
     finalInput.video_url = localVideoUrl.replace('http://localhost:5000', ngrokBaseUrl);
 }
 
-console.log("ðŸš€ ETAPE 2 : finalInput initial crÃ©Ã©");
-console.log("ðŸ‘‰ 1. EntrÃ©e dans /generate-video");
+console.log("🚀 ETAPE 2 : finalInput initial créé");
+console.log("👉 1. Entrée dans /generate-video");
 console.log(JSON.stringify(finalInput, null, 2));
 // Nettoyage : si l'URL pointe vers un .mp4, on l'annule pour forcer le mode text-to-video
 const rawImg = image_urls?.[0] || req.body.image_url || req.body.start_image_url;
@@ -3429,7 +3428,7 @@ if (validImg) {
 // 1. KLING 3.0
 // Standard & Pro
 // Text-to-Video & Image-to-Video
-// Image dÃ©but + Image fin
+// Image début + Image fin
 // ============================================================
 if (
 
@@ -3439,22 +3438,22 @@ if (
     engineId.includes("kling-video/v3")
 ) {
 
-    console.log("ðŸš€ KLING 3.0 : configuration RUNWARE");
+    console.log("🚀 KLING 3.0 : configuration RUNWARE");
 
     // ========================================================
-    // 0. SÃ‰CURITÃ‰ : MOTION CONTROL EST TRAITÃ‰ PLUS BAS
+    // 0. SÉCURITÉ : MOTION CONTROL EST TRAITÉ PLUS BAS
     // ========================================================
 
     if (
         engineId.toLowerCase().includes("motion")
     ) {
         throw new Error(
-            "Kling 3.0 Motion Control doit utiliser son bloc dÃ©diÃ©."
+            "Kling 3.0 Motion Control doit utiliser son bloc dédié."
         );
     }
 
     // ========================================================
-    // 1. RÃ‰CUPÃ‰RATION DES IMAGES
+    // 1. RÉCUPÉRATION DES IMAGES
     // ========================================================
 
     const sourceStartImage =
@@ -3471,7 +3470,7 @@ if (
         null;
 
     // ========================================================
-    // 2. DÃ‰TECTION RÃ‰SOLUTION
+    // 2. DÉTECTION RÉSOLUTION
     // ========================================================
 
     const requestedResolution =
@@ -3497,7 +3496,7 @@ if (
             : "STANDARD / 720p";
 
     // ========================================================
-    // 3. DURÃ‰E
+    // 3. DURÉE
     // ========================================================
 
     const requestedDuration =
@@ -3587,7 +3586,7 @@ if (
             sourceStartImage
         ];
 
-        // Deux images = premiÃ¨re + derniÃ¨re image
+        // Deux images = première + dernière image
         if (sourceEndImage) {
 
             frameImages.push(
@@ -3607,9 +3606,9 @@ if (
         // IMPORTANT :
         // La documentation Runware indique que duration
         // est disponible pour Kling 3.0 mais que les
-        // paramÃ¨tres doivent respecter les dÃ©pendances
-        // du mode image. On vÃ©rifie donc le mode image
-        // sÃ©parÃ©ment avant gÃ©nÃ©ration.
+        // paramètres doivent respecter les dépendances
+        // du mode image. On vérifie donc le mode image
+        // séparément avant génération.
 
         klingRequest.duration =
             klingDuration;
@@ -3701,58 +3700,58 @@ if (
 
     console.log("");
     console.log("==============================================");
-    console.log("ðŸŽ¬ KLING 3.0 â€” RUNWARE");
+    console.log("🎬 KLING 3.0 — RUNWARE");
     console.log("==============================================");
 
     console.log(
-        "âž¡ï¸ Engine ID :",
+        "➡️ Engine ID :",
         engineId
     );
 
     console.log(
-        "âž¡ï¸ ModÃ¨le :",
+        "➡️ Modèle :",
         klingModel
     );
 
     console.log(
-        "âž¡ï¸ Niveau :",
+        "➡️ Niveau :",
         klingTier
     );
 
     console.log(
-        "âž¡ï¸ Mode :",
+        "➡️ Mode :",
         sourceStartImage
             ? (
                 sourceEndImage
-                    ? "IMAGE â†’ VIDEO / FIRST + LAST"
-                    : "IMAGE â†’ VIDEO"
+                    ? "IMAGE → VIDEO / FIRST + LAST"
+                    : "IMAGE → VIDEO"
             )
-            : "TEXT â†’ VIDEO"
+            : "TEXT → VIDEO"
     );
 
     console.log(
-        "âž¡ï¸ DurÃ©e :",
+        "➡️ Durée :",
         klingDuration,
         "secondes"
     );
 
     console.log(
-        "âž¡ï¸ Audio :",
+        "➡️ Audio :",
         generateAudio
     );
 
     console.log(
-        "âž¡ï¸ Image dÃ©but :",
-        sourceStartImage || "âŒ aucune"
+        "➡️ Image début :",
+        sourceStartImage || "❌ aucune"
     );
 
     console.log(
-        "âž¡ï¸ Image fin :",
-        sourceEndImage || "âŒ aucune"
+        "➡️ Image fin :",
+        sourceEndImage || "❌ aucune"
     );
 
     console.log(
-        "ðŸ“¦ RequÃªte Runware :",
+        "📦 Requête Runware :",
         JSON.stringify(
             klingRequest,
             null,
@@ -3774,11 +3773,11 @@ if (
             );
 
         console.log(
-            "âœ… [KLING 3.0] GÃ©nÃ©ration terminÃ©e"
+            "✅ [KLING 3.0] Génération terminée"
         );
 
         console.log(
-            "ðŸ“¦ RÃ©sultat :",
+            "📦 Résultat :",
             JSON.stringify(
                 result,
                 null,
@@ -3791,7 +3790,7 @@ if (
     } catch (error) {
 
         console.error(
-            "âŒ [KLING 3.0 / RUNWARE]",
+            "❌ [KLING 3.0 / RUNWARE]",
             error
         );
 
@@ -3800,31 +3799,31 @@ if (
 }
 
 // ============================================================
-// 2. KLING MOTION CONTROL â€” STANDARD / PRO
+// 2. KLING MOTION CONTROL — STANDARD / PRO
 // ============================================================
 
 else if (engineId.includes("kling") && engineId.includes("motion")) {
-    // Ce cas doit Ãªtre traitÃ© par le bloc Kling Motion Control Runware situÃ© plus haut.
-    throw new Error("Kling Motion Control non traitÃ© par son gestionnaire Runware.");
+    // Ce cas doit être traité par le bloc Kling Motion Control Runware situé plus haut.
+    throw new Error("Kling Motion Control non traité par son gestionnaire Runware.");
 }
 
 // ============================================================
-// 3. KLING 2.6 PRO (Strictement isolÃ© des versions 3)
+// 3. KLING 2.6 PRO (Strictement isolé des versions 3)
 // ============================================================
 else if (engineId.includes("kling26") || (engineId.includes("kling") && !engineId.includes("v3") && !engineId.includes("30"))) {
-    // Les versions Kling 2.6 doivent avoir Ã©tÃ© interceptÃ©es par les branches Runware plus haut.
-    throw new Error("Kling 2.6 non traitÃ© par son gestionnaire Runware.");
+    // Les versions Kling 2.6 doivent avoir été interceptées par les branches Runware plus haut.
+    throw new Error("Kling 2.6 non traité par son gestionnaire Runware.");
 }
 
 // ============================================================
-// HAILUO 2.3 â€” RUNWARE
+// HAILUO 2.3 — RUNWARE
 // Text-to-Video + Image-to-Video
 // ============================================================
 else if (engineId.includes("hailuo")) {
-    console.log("ðŸš€ HAILUO 2.3 : configuration RUNWARE");
+    console.log("🚀 HAILUO 2.3 : configuration RUNWARE");
 
     // ========================================================
-    // 1. IMAGE DE DÃ‰PART
+    // 1. IMAGE DE DÉPART
     // ========================================================
 
     const hailuoImg =
@@ -3845,7 +3844,7 @@ else if (engineId.includes("hailuo")) {
             : null;
 
     // ========================================================
-    // 2. RÃ‰SOLUTION
+    // 2. RÉSOLUTION
     // ========================================================
 
     const requestedResolution =
@@ -3863,7 +3862,7 @@ else if (engineId.includes("hailuo")) {
         requestedResolution === "fullhd";
 
     // ========================================================
-    // 3. DURÃ‰E
+    // 3. DURÉE
     // ========================================================
 
     const requestedDuration =
@@ -3938,7 +3937,7 @@ else if (engineId.includes("hailuo")) {
     };
 
     // ========================================================
-    // 6. IMAGE â†’ VIDEO
+    // 6. IMAGE → VIDEO
     // ========================================================
 
     if (cleanHailuoImg) {
@@ -3952,11 +3951,11 @@ else if (engineId.includes("hailuo")) {
         };
 
         // Avec frameImages, on ne fournit PAS width/height.
-        // Hailuo utilise l'image comme premiÃ¨re frame.
+        // Hailuo utilise l'image comme première frame.
     }
 
     // ========================================================
-    // 7. TEXT â†’ VIDEO
+    // 7. TEXT → VIDEO
     // ========================================================
 
     else {
@@ -3985,46 +3984,46 @@ else if (engineId.includes("hailuo")) {
 
     console.log("");
     console.log("==============================================");
-    console.log("ðŸŽ¬ HAILUO 2.3 â€” RUNWARE");
+    console.log("🎬 HAILUO 2.3 — RUNWARE");
     console.log("==============================================");
 
     console.log(
-        "âž¡ï¸ Engine ID :",
+        "➡️ Engine ID :",
         engineId
     );
 
     console.log(
-        "âž¡ï¸ ModÃ¨le :",
+        "➡️ Modèle :",
         "minimax:4@1"
     );
 
     console.log(
-        "âž¡ï¸ Mode :",
+        "➡️ Mode :",
         cleanHailuoImg
-            ? "IMAGE â†’ VIDEO"
-            : "TEXT â†’ VIDEO"
+            ? "IMAGE → VIDEO"
+            : "TEXT → VIDEO"
     );
 
     console.log(
-        "âž¡ï¸ RÃ©solution :",
+        "➡️ Résolution :",
         is1080p
             ? "1080p"
             : "768p"
     );
 
     console.log(
-        "âž¡ï¸ DurÃ©e :",
+        "➡️ Durée :",
         hailuoDuration,
         "secondes"
     );
 
     console.log(
-        "âž¡ï¸ Image de dÃ©part :",
-        cleanHailuoImg || "âŒ aucune"
+        "➡️ Image de départ :",
+        cleanHailuoImg || "❌ aucune"
     );
 
     console.log(
-        "ðŸ“¦ RequÃªte Runware :",
+        "📦 Requête Runware :",
         JSON.stringify(
             hailuoRequest,
             null,
@@ -4046,11 +4045,11 @@ else if (engineId.includes("hailuo")) {
             );
 
         console.log(
-            "âœ… [HAILUO 2.3] GÃ©nÃ©ration terminÃ©e"
+            "✅ [HAILUO 2.3] Génération terminée"
         );
 
         console.log(
-            "ðŸ“¦ RÃ©sultat :",
+            "📦 Résultat :",
             JSON.stringify(
                 result,
                 null,
@@ -4063,7 +4062,7 @@ else if (engineId.includes("hailuo")) {
     } catch (error) {
 
         console.error(
-            "âŒ [HAILUO 2.3 / RUNWARE]",
+            "❌ [HAILUO 2.3 / RUNWARE]",
             error
         );
 
@@ -4071,7 +4070,7 @@ else if (engineId.includes("hailuo")) {
     }
 }
 // ============================================================
-// MINIMAX H3 â€” RUNWARE
+// MINIMAX H3 — RUNWARE
 // Text-to-Video
 // Image-to-Video
 // First + Last Frame
@@ -4079,7 +4078,7 @@ else if (engineId.includes("hailuo")) {
 // ============================================================
 else if (engineId.includes("minimax_h3")) {
 
-    console.log("ðŸš€ MINIMAX H3 : configuration RUNWARE");
+    console.log("🚀 MINIMAX H3 : configuration RUNWARE");
 
     // ========================================================
     // 1. PROMPT
@@ -4113,7 +4112,7 @@ else if (engineId.includes("minimax_h3")) {
     }
 
     // ========================================================
-    // 2. DURÃ‰E
+    // 2. DURÉE
     // ========================================================
 
     const h3Duration = Math.max(
@@ -4130,7 +4129,7 @@ else if (engineId.includes("minimax_h3")) {
     );
 
     // ========================================================
-    // 3. RÃ‰SOLUTION
+    // 3. RÉSOLUTION
     // ========================================================
 
     const requestedResolution =
@@ -4152,7 +4151,7 @@ else if (engineId.includes("minimax_h3")) {
             : "768p";
 
     // ========================================================
-    // 4. RÃ‰CUPÃ‰RATION DES IMAGES
+    // 4. RÉCUPÉRATION DES IMAGES
     // ========================================================
 
     const h3Images = [];
@@ -4193,7 +4192,7 @@ else if (engineId.includes("minimax_h3")) {
         );
     }
 
-    // Suppression des doublons + exclusion des vidÃ©os
+    // Suppression des doublons + exclusion des vidéos
     const uniqueH3Images = [
         ...new Set(
             h3Images.filter(
@@ -4207,7 +4206,7 @@ else if (engineId.includes("minimax_h3")) {
     const publicH3Images = uniqueH3Images.map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 5. VIDÃ‰OS DE RÃ‰FÃ‰RENCE
+    // 5. VIDÉOS DE RÉFÉRENCE
     // ========================================================
 
 const sourceH3Video =
@@ -4235,7 +4234,7 @@ const uniqueH3Videos = [
 ].slice(0, 3).map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 6. AUDIOS DE RÃ‰FÃ‰RENCE
+    // 6. AUDIOS DE RÉFÉRENCE
     // ========================================================
 
     const h3Audios = [];
@@ -4264,7 +4263,7 @@ const uniqueH3Videos = [
     const publicH3Audios = uniqueH3Audios.map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 7. IMAGES DE RÃ‰FÃ‰RENCE
+    // 7. IMAGES DE RÉFÉRENCE
     // ========================================================
 
     const h3ReferenceImages = [];
@@ -4293,7 +4292,7 @@ const uniqueH3Videos = [
     const publicH3ReferenceImages = uniqueH3ReferenceImages.map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
-    // 8. CONSTRUCTION DE LA REQUÃŠTE RUNWARE
+    // 8. CONSTRUCTION DE LA REQUÊTE RUNWARE
     // ========================================================
 
   
@@ -4314,10 +4313,10 @@ const h3Request = {
 const h3Inputs = {};
 
 // --------------------------------------------------------
-// RÃ©fÃ©rences multimodales : 12 fichiers au total maximum
+// Références multimodales : 12 fichiers au total maximum
 // --------------------------------------------------------
 if (publicH3ReferenceImages.length + uniqueH3Videos.length + publicH3Audios.length > 12) {
-    throw new Error("MiniMax H3 : 12 fichiers de rÃ©fÃ©rence maximum au total (images, vidÃ©os et audios combinÃ©s).");
+    throw new Error("MiniMax H3 : 12 fichiers de référence maximum au total (images, vidéos et audios combinés).");
 }
 const effectiveH3ReferenceImages = publicH3ReferenceImages.slice(0, 9);
 let h3RemainingFiles = Math.max(0, 12 - effectiveH3ReferenceImages.length);
@@ -4332,7 +4331,7 @@ const hasH3VisualReferences =
     hasH3ReferenceImages || hasH3ReferenceVideos;
 
 if (uniqueH3Audios.length > 0 && !hasH3VisualReferences) {
-    throw new Error("MiniMax H3 : une rÃ©fÃ©rence audio nÃ©cessite aussi au moins une image ou une vidÃ©o dans les rÃ©fÃ©rences visuelles.");
+    throw new Error("MiniMax H3 : une référence audio nécessite aussi au moins une image ou une vidéo dans les références visuelles.");
 }
 
 if (hasH3VisualReferences) {
@@ -4353,8 +4352,8 @@ if (hasH3VisualReferences) {
 }
 
 // --------------------------------------------------------
-// PremiÃ¨re et derniÃ¨re image
-// Uniquement sans rÃ©fÃ©rences multimodales
+// Première et dernière image
+// Uniquement sans références multimodales
 // --------------------------------------------------------
 
 else if (uniqueH3Images.length > 0) {
@@ -4385,7 +4384,7 @@ const h3Dimensions = {
 };
 
 if (Object.keys(h3Inputs).length > 0) {
-    // Mode avec image ou vidÃ©o de rÃ©fÃ©rence
+    // Mode avec image ou vidéo de référence
     h3Request.resolution = h3Resolution;
 } else {
     // Mode texte seul : largeur et hauteur obligatoires
@@ -4403,65 +4402,65 @@ if (Object.keys(h3Inputs).length > 0) {
 
     console.log("");
     console.log("==============================================");
-    console.log("ðŸŽ¬ MINIMAX H3 â€” RUNWARE");
+    console.log("🎬 MINIMAX H3 — RUNWARE");
     console.log("==============================================");
 
     console.log(
-        "âž¡ï¸ Engine ID :",
+        "➡️ Engine ID :",
         engineId
     );
 
     console.log(
-        "âž¡ï¸ ModÃ¨le :",
+        "➡️ Modèle :",
         "minimax:h3@0"
     );
 
     console.log(
-        "âž¡ï¸ Mode :",
+        "➡️ Mode :",
         uniqueH3Videos.length > 0
-            ? "VIDEO â†’ VIDEO"
+            ? "VIDEO → VIDEO"
             : uniqueH3Audios.length > 0
-                ? "AUDIO â†’ VIDEO"
+                ? "AUDIO → VIDEO"
                 : uniqueH3Images.length >= 2
                     ? "FIRST + LAST FRAME"
                     : uniqueH3Images.length === 1
-                        ? "IMAGE â†’ VIDEO"
-                        : "TEXT â†’ VIDEO"
+                        ? "IMAGE → VIDEO"
+                        : "TEXT → VIDEO"
     );
 
     console.log(
-        "âž¡ï¸ RÃ©solution :",
+        "➡️ Résolution :",
         h3Resolution
     );
 
     console.log(
-        "âž¡ï¸ DurÃ©e :",
+        "➡️ Durée :",
         h3Duration,
         "secondes"
     );
 
     console.log(
-        "âž¡ï¸ Images frame :",
+        "➡️ Images frame :",
         uniqueH3Images.length
     );
 
     console.log(
-        "âž¡ï¸ Images rÃ©fÃ©rence :",
+        "➡️ Images référence :",
         uniqueH3ReferenceImages.length
     );
 
     console.log(
-        "âž¡ï¸ VidÃ©os rÃ©fÃ©rence :",
+        "➡️ Vidéos référence :",
         uniqueH3Videos.length
     );
 
     console.log(
-        "âž¡ï¸ Audios rÃ©fÃ©rence :",
+        "➡️ Audios référence :",
         effectiveH3ReferenceAudios.length
     );
 
     console.log(
-        "ðŸ“¦ RequÃªte Runware :",
+        "📦 Requête Runware :",
         JSON.stringify(
             h3Request,
             null,
@@ -4485,11 +4484,11 @@ if (Object.keys(h3Inputs).length > 0) {
             );
 
         console.log(
-            "âœ… [MINIMAX H3] GÃ©nÃ©ration terminÃ©e"
+            "✅ [MINIMAX H3] Génération terminée"
         );
 
         console.log(
-            "ðŸ“¦ RÃ©sultat :",
+            "📦 Résultat :",
             JSON.stringify(
                 result,
                 null,
@@ -4502,7 +4501,7 @@ if (Object.keys(h3Inputs).length > 0) {
     } catch (error) {
 
         console.error(
-            "âŒ [MINIMAX H3 / RUNWARE]",
+            "❌ [MINIMAX H3 / RUNWARE]",
             error
         );
 
@@ -4510,7 +4509,7 @@ if (Object.keys(h3Inputs).length > 0) {
     }
 }
 // ============================================================
-// PIXVERSE V6 â€” RUNWARE
+// PIXVERSE V6 — RUNWARE
 // Text-to-video, first/last frames, video-to-video, native audio.
 // ============================================================
 else if (engineId === "pixverse6") {
@@ -4566,16 +4565,16 @@ else if (engineId === "pixverse6") {
         request.height = baseH;
     }
     if (!request.positivePrompt) throw new Error("PixVerse V6 : le prompt est vide.");
-    console.log("ðŸŽ¬ [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
+    console.log("🎬 [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
     const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
-    if (!videoURL) throw new Error("Runware PixVerse V6 n'a retournÃ© aucune vidÃ©o.");
+    if (!videoURL) throw new Error("Runware PixVerse V6 n'a retourné aucune vidéo.");
     return await completeRunwareVideo(result, engineId);
 }
 
 // ============================================================
-// SEEDANCE 2.5 â€” RUNWARE
-// Jusqu'Ã  30 images, 10 vidÃ©os et 10 audios de rÃ©fÃ©rence.
+// SEEDANCE 2.5 — RUNWARE
+// Jusqu'à 30 images, 10 vidéos et 10 audios de référence.
 // ============================================================
 else if (engineId === "seedance25") {
     const runware = await getRunwareClient();
@@ -4629,11 +4628,11 @@ else if (engineId === "seedance25") {
     };
 
     if (sourceVideo) {
-        // Video-to-video : la rÃ©solution choisit la qualitÃ©, l'aspect reste celui de la vidÃ©o source.
+        // Video-to-video : la résolution choisit la qualité, l'aspect reste celui de la vidéo source.
         request.inputs = { video: sourceVideo };
         request.resolution = safeResolution;
     } else if (start || end) {
-        // frameImages exige toujours une premiÃ¨re image. Une image de fin seule est traitÃ©e comme rÃ©fÃ©rence.
+        // frameImages exige toujours une première image. Une image de fin seule est traitée comme référence.
         if (start) {
             request.inputs = { frameImages: start && end
                 ? [{ image: start, frame: "first" }, { image: end, frame: "last" }]
@@ -4676,16 +4675,16 @@ else if (engineId === "seedance25") {
         [request.width, request.height] = sizesByTier[safeResolution][aspect] || sizesByTier[safeResolution]["16:9"];
     }
 
-    if (!request.positivePrompt && !request.inputs) throw new Error("Seedance 2.5 : le prompt est obligatoire sans mÃ©dia de rÃ©fÃ©rence.");
-    console.log("ðŸŽ¬ [RUNWARE SEEDANCE 2.5]", JSON.stringify(request, null, 2));
+    if (!request.positivePrompt && !request.inputs) throw new Error("Seedance 2.5 : le prompt est obligatoire sans média de référence.");
+    console.log("🎬 [RUNWARE SEEDANCE 2.5]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
     const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
-    if (!videoURL) throw new Error("Runware Seedance 2.5 n'a retournÃ© aucune vidÃ©o.");
+    if (!videoURL) throw new Error("Runware Seedance 2.5 n'a retourné aucune vidéo.");
     return await completeRunwareVideo(result, engineId);
 }
 // ============================================================
-// SEEDANCE 2.0 â€” RUNWARE
-// Jusqu'Ã  9 images, 3 vidÃ©os et 3 audios de rÃ©fÃ©rence.
+// SEEDANCE 2.0 — RUNWARE
+// Jusqu'à 9 images, 3 vidéos et 3 audios de référence.
 // ============================================================
 else if (engineId === "seedance20") {
     const runware = await getRunwareClient();
@@ -4700,7 +4699,7 @@ else if (engineId === "seedance20") {
     const requestedAudios = cleanList(req.body.referenceAudios, 3);
     const sourceVideo = toPublicUrl(req.body.video_url || req.body.videoSource || null);
     if (images.length + requestedVideos.length + requestedAudios.length + (sourceVideo ? 1 : 0) > 12) {
-        throw new Error("Seedance 2.0 : 12 fichiers de rÃ©fÃ©rence maximum au total (images, vidÃ©os et audios combinÃ©s).");
+        throw new Error("Seedance 2.0 : 12 fichiers de référence maximum au total (images, vidéos et audios combinés).");
     }
     let referenceBudget = Math.max(0, 12 - images.length - (sourceVideo ? 1 : 0));
     const videos = requestedVideos.slice(0, Math.min(sourceVideo ? 2 : 3, referenceBudget));
@@ -4721,7 +4720,7 @@ else if (engineId === "seedance20") {
         // Seedance 2.0 audio-reference mode requires at least one image or video reference.
         const referenceVideos = [...new Set([...(sourceVideo ? [sourceVideo] : []), ...videos])].slice(0, 3);
         const hasVisual = images.length > 0 || referenceVideos.length > 0;
-        if (audios.length && !hasVisual) throw new Error("Seedance 2.0 : une rÃ©fÃ©rence audio nÃ©cessite au moins une image ou une vidÃ©o de rÃ©fÃ©rence.");
+        if (audios.length && !hasVisual) throw new Error("Seedance 2.0 : une référence audio nécessite au moins une image ou une vidéo de référence.");
         request.inputs = {
             ...(images.length ? { referenceImages: images } : {}),
             ...(referenceVideos.length ? { referenceVideos } : {}),
@@ -4753,10 +4752,10 @@ else if (engineId === "seedance20") {
         [request.width, request.height] = (sizesByTier[tier][aspect] || sizesByTier[tier]["16:9"]);
     }
     if (!request.positivePrompt) throw new Error("Seedance 2.0 : le prompt est obligatoire.");
-    console.log("ðŸŽ¬ [RUNWARE SEEDANCE 2.0]", JSON.stringify(request, null, 2));
+    console.log("🎬 [RUNWARE SEEDANCE 2.0]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
     const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
-    if (!videoURL) throw new Error("Runware Seedance 2.0 n'a retournÃ© aucune vidÃ©o.");
+    if (!videoURL) throw new Error("Runware Seedance 2.0 n'a retourné aucune vidéo.");
     return await completeRunwareVideo(result, engineId);
 }
 
@@ -4788,20 +4787,20 @@ else if (engineId === "seedance") {
 
 
 
-// Fal.ai est volontairement rÃ©servÃ© au seul moteur Seedance 1.5 Pro.
+// Fal.ai est volontairement réservé au seul moteur Seedance 1.5 Pro.
         if (engineId !== "seedance") {
-            throw new Error(`Moteur vidÃ©o non raccordÃ© Ã  Runware : ${engineId}`);
+            throw new Error(`Moteur vidéo non raccordé à Runware : ${engineId}`);
         }
 
 // --- APPEL FAL.AI : SEEDANCE 1.5 PRO UNIQUEMENT ---
-        res.write(`data: ${JSON.stringify({ percent: 30, message: "Envoi Ã  la file de rendu..." })}\n\n`);
+        res.write(`data: ${JSON.stringify({ percent: 30, message: "Envoi à la file de rendu..." })}\n\n`);
 
         const falResult = await fal.subscribe(targetEngineId, {
             input: finalInput,
             logs: true,
             onQueueUpdate: (update) => {
                 if (update.status === "IN_PROGRESS") {
-                    res.write(`data: ${JSON.stringify({ percent: 60, message: "Rendu vidÃ©o en cours..." })}\n\n`);
+                    res.write(`data: ${JSON.stringify({ percent: 60, message: "Rendu vidéo en cours..." })}\n\n`);
                 }
             }
         });
@@ -4814,10 +4813,10 @@ const falVideoUrl =
     falResult.url;
 
 if (!falVideoUrl) {
-    throw new Error("Fal.ai n'a renvoyÃ© aucune URL de vidÃ©o.");
+    throw new Error("Fal.ai n'a renvoyé aucune URL de vidéo.");
 }
 
-     // 1ï¸âƒ£ Mise Ã  jour du verrou
+     // 1️⃣ Mise à jour du verrou
         await lockRef.update({
             status: "completed",
             videoUrl: falVideoUrl,
@@ -4827,7 +4826,7 @@ if (!falVideoUrl) {
             completedAt: FieldValue.serverTimestamp()
         });
 
-        // 2ï¸âƒ£ ðŸ’¾ SAUVEGARDE FIRESTORE : Ajout Ã  l'historique utilisateur
+        // 2️⃣ 💾 SAUVEGARDE FIRESTORE : Ajout à l'historique utilisateur
         if (userId) {
             await db.collection("users").doc(userId).collection("generations").add({
                 videoUrl: falVideoUrl,
@@ -4836,39 +4835,39 @@ if (!falVideoUrl) {
                 engine: targetEngineId || engineId || "fal.ai",
                 createdAt: FieldValue.serverTimestamp()
             });
-            console.log(`ðŸ’¾ VidÃ©o ajoutÃ©e Ã  l'historique de l'utilisateur : ${userId}`);
+            console.log(`💾 Vidéo ajoutée à l'historique de l'utilisateur : ${userId}`);
         } else {
-            console.warn("âš ï¸ Impossible d'enregistrer la vidÃ©o : userId est introuvable.");
+            console.warn("⚠️ Impossible d'enregistrer la vidéo : userId est introuvable.");
         }
 
-        // 3ï¸âƒ£ Envoi du message SSE de fin au client
+        // 3️⃣ Envoi du message SSE de fin au client
         res.write(`data: ${JSON.stringify({ 
             percent: 100, 
             videoUrl: falVideoUrl, 
             url: falVideoUrl, 
             status: "completed", 
-            message: "GÃ©nÃ©ration terminÃ©e !" 
+            message: "Génération terminée !" 
         })}\n\n`);
 
         res.end();
         
 
 } catch (error) {
-        console.error("âŒ Erreur dans le flux de gÃ©nÃ©ration :", error.message);
+        console.error("❌ Erreur dans le flux de génération :", error.message);
 
-// ðŸ›¡ï¸ SÃ‰CURITÃ‰ : Remboursement SEULEMENT si dÃ©bitÃ© ET non terminÃ© ET pas encore remboursÃ©
+// 🛡️ SÉCURITÉ : Remboursement SEULEMENT si débité ET non terminé ET pas encore remboursé
         if (creditsDebited && !generationFinished && !refundDone) {
             refundDone = true;
-            console.log("ðŸ”„ Ã‰chec aprÃ¨s dÃ©bit -> Remboursement des crÃ©dits...");
+            console.log("🔄 Échec après débit -> Remboursement des crédits...");
             try {
                 await db.runTransaction(async (transaction) => {
                     const uDoc = await transaction.get(userRef);
                     if (uDoc.exists) {
-                        // ðŸŽ¯ CALCUL CHIRURGICAL DU MONTANT Ã€ REMBOURSER
+                        // 🎯 CALCUL CHIRURGICAL DU MONTANT À REMBOURSER
                         const amountToRefund = Number(cost) || 15;
 
-                        // Si deductedDiamonds a une valeur > 0 OU si usedWallet Ã©tait packTokens, on crÃ©dite les diamants.
-                        // Sinon, si on sait que les tokens Ã©taient Ã  0, c'Ã©tait forcÃ©ment les packTokens !
+                        // Si deductedDiamonds a une valeur > 0 OU si usedWallet était packTokens, on crédite les diamants.
+                        // Sinon, si on sait que les tokens étaient à 0, c'était forcément les packTokens !
                         const wasPackTokens = usedWallet === "packTokens" || (deductedDiamonds && deductedDiamonds > 0) || (uDoc.data()?.tokens === 0);
 
                         if (usedWallet === "hybrid") {
@@ -4887,12 +4886,12 @@ if (!falVideoUrl) {
                         }
                     }
                 });
-                console.log("ðŸª™ Remboursement effectuÃ© avec succÃ¨s.");
+                console.log("🪙 Remboursement effectué avec succès.");
             } catch (refundErr) {
-                console.error("âŒ Ã‰chec lors du remboursement :", refundErr.message);
+                console.error("❌ Échec lors du remboursement :", refundErr.message);
             }
         } else if (!creditsDebited) {
-            console.log("ðŸ›‘ Aucun remboursement : Les crÃ©dits n'avaient pas Ã©tÃ© dÃ©bitÃ©s.");
+            console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
         }
 
         // Nettoyage du verrou
@@ -4909,7 +4908,7 @@ if (!falVideoUrl) {
 });
 
 // ==========================================
-// ðŸ“Œ ROUTES OTP 
+// 📌 ROUTES OTP 
 // ==========================================
 app.post('/api/send-otp', limiter, async (req, res) => {
     const { email } = req.body;
@@ -4925,11 +4924,11 @@ app.post('/api/send-otp', limiter, async (req, res) => {
         let userId;
 
         if (snapshot.empty) {
-            // ðŸš€ Si le document n'existe pas encore dans Firestore, on le crÃ©e automatiquement
-            const newUserRef = usersRef.doc(); // CrÃ©e un nouvel ID automatique
+            // 🚀 Si le document n'existe pas encore dans Firestore, on le crée automatiquement
+            const newUserRef = usersRef.doc(); // Crée un nouvel ID automatique
             await newUserRef.set({
                 email: trimmedEmail,
-                userPlan: 'dÃ©butant',
+                userPlan: 'débutant',
                 tokens: 0,
                 createdAt: new Date()
             });
@@ -4950,7 +4949,7 @@ app.post('/api/send-otp', limiter, async (req, res) => {
         });
 
 
-// ðŸš€ 1. Envoi du code de vÃ©rification Ã  l'utilisateur
+// 🚀 1. Envoi du code de vérification à l'utilisateur
 const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -4961,8 +4960,8 @@ const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     body: JSON.stringify({
         sender: { name: "Ovortex", email: process.env.SENDER_EMAIL },
         to: [{ email: trimmedEmail }],
-        subject: 'Votre code de vÃ©rification Ovortex',
-        htmlContent: `<p>Votre code de sÃ©curitÃ© Ã  usage unique est : <strong>${otpCode}</strong>. Il est valable 5 minutes.</p>`
+        subject: 'Votre code de vérification Ovortex',
+        htmlContent: `<p>Votre code de sécurité à usage unique est : <strong>${otpCode}</strong>. Il est valable 5 minutes.</p>`
     })
 });
 
@@ -4972,7 +4971,7 @@ if (!brevoResponse.ok) {
     throw new Error(brevoData.message || "Erreur lors de l'envoi de l'e-mail via Brevo");
 }
 
-// ðŸš€ 2. Envoi d'une notification Ã  l'administrateur
+// 🚀 2. Envoi d'une notification à l'administrateur
 await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -4982,21 +4981,21 @@ await fetch('https://api.brevo.com/v3/smtp/email', {
     },
     body: JSON.stringify({
         sender: { name: "Ovortex Alerte", email: process.env.SENDER_EMAIL },
-        to: [{ email: process.env.ADMIN_EMAIL }], // ðŸ‘ˆ RÃ©cupÃ©rÃ© via les variables sÃ©curisÃ©es
+        to: [{ email: process.env.ADMIN_EMAIL }], // 👈 Récupéré via les variables sécurisées
         subject: 'Nouvelle tentative de connexion / inscription',
-        htmlContent: `<p>Une personne vient de demander un code de vÃ©rification sur Ovortex avec l'e-mail : <strong>${trimmedEmail}</strong></p>`
+        htmlContent: `<p>Une personne vient de demander un code de vérification sur Ovortex avec l'e-mail : <strong>${trimmedEmail}</strong></p>`
     })
 });
 
-        res.json({ success: true, message: "Code envoyÃ© par e-mail.", userId });
+        res.json({ success: true, message: "Code envoyé par e-mail.", userId });
     } catch (error) {
-        console.error("âŒ Erreur envoi OTP :", error);
+        console.error("❌ Erreur envoi OTP :", error);
         res.status(500).json({ error: "Erreur lors de l'envoi du code." });
     }
 });
 app.post('/api/verify-otp', limiter, async (req, res) => {
-    const { userId, code, rememberDevice } = req.body; // ðŸ‘ˆ 1. On rÃ©cupÃ¨re rememberDevice
-    if (!userId || !code) return res.status(400).json({ error: "DonnÃ©es manquantes" });
+    const { userId, code, rememberDevice } = req.body; // 👈 1. On récupère rememberDevice
+    if (!userId || !code) return res.status(400).json({ error: "Données manquantes" });
 
     try {
         const userRef = db.collection('users').doc(userId);
@@ -5009,7 +5008,7 @@ app.post('/api/verify-otp', limiter, async (req, res) => {
         const userData = userDoc.data();
 
         if (!userData.otpCode || userData.otpCode !== code || Date.now() > userData.otpExpires) {
-            return res.status(400).json({ error: "Code invalide ou expirÃ©." });
+            return res.status(400).json({ error: "Code invalide ou expiré." });
         }
 
         // Nettoyage de l'OTP
@@ -5020,14 +5019,14 @@ app.post('/api/verify-otp', limiter, async (req, res) => {
 
         let trustedToken = null;
 
-        // ðŸš€ 2. Si l'utilisateur a cochÃ© "Se souvenir de moi"
+        // 🚀 2. Si l'utilisateur a coché "Se souvenir de moi"
         if (rememberDevice) {
             const crypto = require('crypto');
             trustedToken = crypto.randomBytes(32).toString('hex');
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + 30); // 30 jours
 
-            // On stocke le jeton de confiance dans le document de l'utilisateur (ou une collection dÃ©diÃ©e)
+            // On stocke le jeton de confiance dans le document de l'utilisateur (ou une collection dédiée)
             updateData.trustedDeviceToken = trustedToken;
             updateData.trustedDeviceExpires = expiresAt;
         }
@@ -5037,16 +5036,16 @@ app.post('/api/verify-otp', limiter, async (req, res) => {
         // 3. On renvoie le token au client s'il existe
         res.json({ 
             success: true, 
-            message: "Code validÃ© avec succÃ¨s.",
-            trustedToken // ðŸ‘ˆ Transmis au frontend
+            message: "Code validé avec succès.",
+            trustedToken // 👈 Transmis au frontend
         });
     } catch (error) {
-        console.error("âŒ Erreur validation OTP :", error);
+        console.error("❌ Erreur validation OTP :", error);
         res.status(500).json({ error: "Erreur serveur lors de la validation." });
     }
 });
 
-// --- ROUTE DE RÃ‰SILIATION D'ABONNEMENT ---
+// --- ROUTE DE RÉSILIATION D'ABONNEMENT ---
 app.post('/cancel-subscription', limiter, authenticateUser, async (req, res) => {
     const userId = req.user.uid;
 
@@ -5055,36 +5054,36 @@ app.post('/cancel-subscription', limiter, authenticateUser, async (req, res) => 
         const userDoc = await userRef.get();
 
         if (!userDoc.exists) {
-            return res.status(404).json({ error: "Utilisateur non trouvÃ©." });
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
         }
 
         const userData = userDoc.data();
         const subscriptionId = userData.stripeSubscriptionId;
 
         if (!subscriptionId) {
-            return res.status(400).json({ error: "Aucun abonnement Stripe actif trouvÃ© pour cet utilisateur." });
+            return res.status(400).json({ error: "Aucun abonnement Stripe actif trouvé pour cet utilisateur." });
         }
 
-        // 1. CONFIGURER L'ANNULATION A LA FIN DE LA PÃ‰RIODE
-        // On ne supprime PAS l'abonnement immÃ©diatement. On dit Ã  Stripe d'arrÃªter le renouvellement.
+        // 1. CONFIGURER L'ANNULATION A LA FIN DE LA PÉRIODE
+        // On ne supprime PAS l'abonnement immédiatement. On dit à Stripe d'arrêter le renouvellement.
         await stripe.subscriptions.update(subscriptionId, {
-            cancel_at_period_end: true // ðŸ‘ˆ C'EST LA CLÃ‰
+            cancel_at_period_end: true // 👈 C'EST LA CLÉ
         });
 
-        // 2. MISE Ã€ JOUR FIRESTORE - ON NE TOUCHE PAS AU PLAN
-        // Le statut passe Ã  'canceling'. Ton webhook recevra bientÃ´t un Ã©vÃ©nement
-        // customer.subscription.updated confirmant que l'annulation est planifiÃ©e.
+        // 2. MISE À JOUR FIRESTORE - ON NE TOUCHE PAS AU PLAN
+        // Le statut passe à 'canceling'. Ton webhook recevra bientôt un événement
+        // customer.subscription.updated confirmant que l'annulation est planifiée.
         await userRef.update({
-            subscriptionStatus: 'canceling', // Statut intermÃ©diaire
-            // userPlan: 'dÃ©butant', // ðŸ‘ˆ COMMENTE OU SUPPRIME CETTE LIGNE
+            subscriptionStatus: 'canceling', // Statut intermédiaire
+            // userPlan: 'débutant', // 👈 COMMENTE OU SUPPRIME CETTE LIGNE
         });
 
-        console.log(`âœ… Annulation planifiÃ©e Ã  la fin de la pÃ©riode pour ${subscriptionId} (Utilisateur ${userId})`);
-        return res.json({ success: true, message: "Votre abonnement a Ã©tÃ© rÃ©siliÃ©. Vous continuerez d'en profiter jusqu'Ã  la fin de votre pÃ©riode payÃ©e." });
+        console.log(`✅ Annulation planifiée à la fin de la période pour ${subscriptionId} (Utilisateur ${userId})`);
+        return res.json({ success: true, message: "Votre abonnement a été résilié. Vous continuerez d'en profiter jusqu'à la fin de votre période payée." });
 
     } catch (error) {
-        console.error("âŒ Erreur lors de la rÃ©siliation Stripe :", error.message);
-        return res.status(500).json({ error: "Erreur interne lors de la rÃ©siliation de l'abonnement." });
+        console.error("❌ Erreur lors de la résiliation Stripe :", error.message);
+        return res.status(500).json({ error: "Erreur interne lors de la résiliation de l'abonnement." });
     }
 });
 
@@ -5108,11 +5107,11 @@ app.get('/api/check-active-generation', authenticateUser, async (req, res) => {
             lock: lockData
         });
     } catch (err) {
-        console.error("Erreur vÃ©rification verrou :", err);
+        console.error("Erreur vérification verrou :", err);
         return res.status(500).json({ error: "Erreur serveur" });
     }
 });
-// Route pour lister les vidÃ©os
+// Route pour lister les vidéos
 app.get('/api/list-videos', authenticateUser, (req, res) => {
         const videoDir = path.join(__dirname, 'public', 'videos');
     if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
@@ -5123,20 +5122,20 @@ app.get('/api/list-videos', authenticateUser, (req, res) => {
     });
 });
 
-// Route pour servir les fichiers vidÃ©o en statique
+// Route pour servir les fichiers vidéo en statique
 app.use('/videos', express.static(path.join(__dirname, 'public', 'videos')));
 
-// --- ROUTE POUR SUPPRIMER UNE GÃ‰NÃ‰RATION DE IMAGE-LOCKS ---
+// --- ROUTE POUR SUPPRIMER UNE GÉNÉRATION DE IMAGE-LOCKS ---
 app.delete('/api/generations/:userId/:generationId', authenticateUser, async (req, res) => {
     const { userId, generationId } = req.params;
 
-    // ðŸ›¡ï¸ SÃ©curitÃ© : On s'assure que l'utilisateur connectÃ© est bien celui qu'il prÃ©tend Ãªtre
+    // 🛡️ Sécurité : On s'assure que l'utilisateur connecté est bien celui qu'il prétend être
     if (req.user.uid !== userId) {
-        return res.status(403).json({ error: "AccÃ¨s refusÃ© : Action non autorisÃ©e." });
+        return res.status(403).json({ error: "Accès refusé : Action non autorisée." });
     }
 
     try {
-        // Optionnel mais conseillÃ© : vÃ©rifier dans Firestore si le document appartient bien Ã  cet utilisateur avant de le supprimer
+        // Optionnel mais conseillé : vérifier dans Firestore si le document appartient bien à cet utilisateur avant de le supprimer
         const lockRef = db.collection("imageLocks").doc(generationId);
         const lockDoc = await lockRef.get();
 
@@ -5145,33 +5144,33 @@ app.delete('/api/generations/:userId/:generationId', authenticateUser, async (re
         }
 
         await lockRef.delete();
-        console.log(`ðŸ—‘ï¸ Document ${generationId} supprimÃ© avec succÃ¨s de la collection imageLocks`);
+        console.log(`🗑️ Document ${generationId} supprimé avec succès de la collection imageLocks`);
         
         return res.json({ success: true });
     } catch (error) {
-        console.error("âŒ Erreur lors de la suppression dans imageLocks :", error);
+        console.error("❌ Erreur lors de la suppression dans imageLocks :", error);
         return res.status(500).json({ error: "Erreur serveur lors de la suppression" });
     }
 });
 
-// --- DÃ‰MARRAGE DU SERVEUR ---
+// --- DÉMARRAGE DU SERVEUR ---
 recoverInterruptedGenerations()
-    .then(() => console.log("âœ… VÃ©rification des gÃ©nÃ©rations interrompues terminÃ©e"))
-    .catch(err => console.error("âŒ Erreur rÃ©cupÃ©ration gÃ©nÃ©rations :", err));
+    .then(() => console.log("✅ Vérification des générations interrompues terminée"))
+    .catch(err => console.error("❌ Erreur récupération générations :", err));
 
 const PORT = process.env.PORT || 5000;
-// --- TÃ‚CHE PLANIFIÃ‰E : RECHARGEMENT DES CRÃ‰DITS ET EXPIRATION DES PACKS ---
-// S'exÃ©cute automatiquement au dÃ©but de chaque heure (ex: 14h00, 15h00...)
+// --- TÂCHE PLANIFIÉE : RECHARGEMENT DES CRÉDITS ET EXPIRATION DES PACKS ---
+// S'exécute automatiquement au début de chaque heure (ex: 14h00, 15h00...)
 
 cron.schedule('0 * * * *', async () => {
 
-    console.log("â° [CRON] VÃ©rification des rÃ©initialisations de crÃ©dits...");
+    console.log("⏰ [CRON] Vérification des réinitialisations de crédits...");
 
     const now = Timestamp.now();
 
     try {
 
-        // 1. RÃ©initialisation des abonnements actifs
+        // 1. Réinitialisation des abonnements actifs
         const expiredSubs = await db.collection('users')
             .where('subscriptionStatus', '==', 'active')
             .where('tokensResetDate', '<=', now)
@@ -5196,12 +5195,12 @@ cron.schedule('0 * * * *', async () => {
             const baseCredits = creditsByPlan[plan] || 3000;
 
 
-            // RÃ©cupÃ©ration du type d'abonnement
+            // Récupération du type d'abonnement
             const interval = data.subscriptionInterval || "month";
 
 
-            // Annuel = pack complet pour l'annÃ©e
-            // Mensuel = crÃ©dits du mois
+            // Annuel = pack complet pour l'année
+            // Mensuel = crédits du mois
             const tokensToAdd = interval === "yearly"
                 ? baseCredits * 12
                 : baseCredits;
@@ -5227,13 +5226,13 @@ cron.schedule('0 * * * *', async () => {
 
 
             console.log(
-                `âš¡ [CRON] Renouvellement ${interval} pour ${data.email} : ${tokensToAdd} Ã©clairs`
+                `⚡ [CRON] Renouvellement ${interval} pour ${data.email} : ${tokensToAdd} éclairs`
             );
         }
 
 
 
-        // 2. Expiration des Diamants aprÃ¨s 1 an
+        // 2. Expiration des Diamants après 1 an
         const expiredPacks = await db.collection('users')
             .where('packExpiryDate', '<=', now)
             .where('packTokens', '>', 0)
@@ -5246,12 +5245,12 @@ cron.schedule('0 * * * *', async () => {
                 packTokens: 0
             });
 
-            console.log(`ðŸ’Ž [CRON] Diamants expirÃ©s pour ${doc.id}`);
+            console.log(`💎 [CRON] Diamants expirés pour ${doc.id}`);
         }
 
 
 
-        // 3. Downgrade des abonnements rÃ©ellement terminÃ©s
+        // 3. Downgrade des abonnements réellement terminés
 const expiredCanceledSubs = await db.collection('users')
     .where('subscriptionStatus', 'in', [
         'canceled',
@@ -5266,13 +5265,13 @@ const expiredCanceledSubs = await db.collection('users')
         for (const doc of expiredCanceledSubs.docs) {
 
             console.log(
-                `â° [CRON] Fin abonnement, downgrade ${doc.id}`
+                `⏰ [CRON] Fin abonnement, downgrade ${doc.id}`
             );
 
 
             await doc.ref.update({
 
-                userPlan: 'dÃ©butant',
+                userPlan: 'débutant',
 
                 tokens: 0,
 
@@ -5286,7 +5285,7 @@ const expiredCanceledSubs = await db.collection('users')
     } catch(err){
 
         console.error(
-            "âŒ [CRON] Erreur lors de la vÃ©rification :",
+            "❌ [CRON] Erreur lors de la vérification :",
             err.message
         );
 
@@ -5294,15 +5293,15 @@ const expiredCanceledSubs = await db.collection('users')
 
 });
 const server = app.listen(PORT, () => {
-    console.log(`ðŸš€ Serveur en ligne et Ã  l'Ã©coute sur http://localhost:${PORT}`);
+    console.log(`🚀 Serveur en ligne et à l'écoute sur http://localhost:${PORT}`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('âŒ Rejet de promesse non gÃ©rÃ© :', reason);
+    console.error('❌ Rejet de promesse non géré :', reason);
 });
 
 process.on('uncaughtException', (error) => {
-    console.error('ðŸ’¥ Exception non capturÃ©e :', error);
+    console.error('💥 Exception non capturée :', error);
 });
 
 server.timeout = 600000;
