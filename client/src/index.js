@@ -117,7 +117,13 @@ async function verifyRecaptcha(token) {
         };
 
         const [response] = await recaptchaClient.createAssessment(request);
-
+console.log("🔎 Diagnostic reCAPTCHA :", {
+    valid: response.tokenProperties?.valid,
+    invalidReason: response.tokenProperties?.invalidReason,
+    hostname: response.tokenProperties?.hostname,
+    action: response.tokenProperties?.action,
+    score: response.riskAnalysis?.score
+});
         const tokenProperties = response.tokenProperties;
 
         if (!tokenProperties?.valid) {
