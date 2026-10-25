@@ -1779,9 +1779,19 @@ req.on('close', () => {
                 lockUpdate.videoUrl = generatedVideoUrl;
                 lockUpdate.url = generatedVideoUrl;
             }
+            // Sauvegarde Firestore : le verrou sert à l'état de génération et
+            // la sous-collection generations alimente l'historique utilisateur.
             await lockRef.update(lockUpdate);
+            console.log("💾 [RUNWARE] Verrou vidéo enregistré", {
+                requestId,
+                engine: modelName,
+                userId: userId || null,
+                hasPublicUrl: isPersistableUrl,
+                urlHost: isPersistableUrl ? (() => { try { return new URL(generatedVideoUrl).host; } catch { return null; } })() : null
+            });
+
             if (userId && isPersistableUrl) {
-                await db.collection("users").doc(userId).collection("generations").add({
+                const historyRef = await db.collection("users").doc(userId).collection("generations").add({
                     videoUrl: generatedVideoUrl,
                     url: generatedVideoUrl,
                     prompt: prompt || req.body.prompt || "",
@@ -1789,11 +1799,25 @@ req.on('close', () => {
                     engine: modelName,
                     provider: "runware",
                     type: "VIDEO",
-                    createdAt: FieldValue.serverTimestamp()
+                    status: "completed",
+                    createdAt: FieldValue.serverTimestamp(),
+                    completedAt: FieldValue.serverTimestamp()
+                });
+                console.log("✅ [RUNWARE] Vidéo enregistrée dans l'historique Firebase", {
+                    historyId: historyRef.id,
+                    userId,
+                    engine: modelName
+                });
+            } else {
+                console.error("❌ [RUNWARE] Historique utilisateur non enregistré :", {
+                    reason: !userId ? "userId absent" : "URL vidéo non HTTP(S)",
+                    engine: modelName,
+                    resultKeys: result && typeof result === "object" ? Object.keys(result) : []
                 });
             }
+
             generationFinished = true;
-            return res.json({
+            const completionPayload = {
                 success: true,
                 status: "completed",
                 videoURL: generatedVideoUrl,
@@ -1802,7 +1826,14 @@ req.on('close', () => {
                 videoUUID: result?.videoUUID,
                 taskUUID: result?.taskUUID,
                 cost: result?.cost
-            });
+            };
+
+            // Cette route a déjà envoyé des en-têtes SSE : ne jamais appeler res.json().
+            if (!res.writableEnded) {
+                res.write(`data: ${JSON.stringify(completionPayload)}\n\n`);
+                res.end();
+            }
+            return completionPayload;
         };
 
     // ============================================================
@@ -4567,8 +4598,15 @@ else if (engineId === "pixverse6") {
     if (!request.positivePrompt) throw new Error("PixVerse V6 : le prompt est vide.");
     console.log("🎬 [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
-    const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
-    if (!videoURL) throw new Error("Runware PixVerse V6 n'a retourné aucune vidéo.");
+    console.log("🔎 [RUNWARE PIXVERSE V6] Résultat reçu", {
+        hasResult: Boolean(result),
+        resultKeys: result && typeof result === "object" ? Object.keys(result) : [],
+        hasVideoURL: Boolean(result?.videoURL || result?.videoUrl),
+        hasVideoDataURI: Boolean(result?.videoDataURI || result?.videoBase64Data),
+        taskUUID: result?.taskUUID || null
+    });
+    const videoURL = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
+    if (!videoURL) throw new Error(`Runware PixVerse V6 : résultat sans URL vidéo finale (taskUUID: ${result?.taskUUID || "absent"}).`);
     return await completeRunwareVideo(result, engineId);
 }
 
