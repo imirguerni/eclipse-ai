@@ -117,13 +117,7 @@ async function verifyRecaptcha(token) {
         };
 
         const [response] = await recaptchaClient.createAssessment(request);
-console.log("🔎 Diagnostic reCAPTCHA :", {
-    valid: response.tokenProperties?.valid,
-    invalidReason: response.tokenProperties?.invalidReason,
-    hostname: response.tokenProperties?.hostname,
-    action: response.tokenProperties?.action,
-    score: response.riskAnalysis?.score
-});
+
         const tokenProperties = response.tokenProperties;
 
         if (!tokenProperties?.valid) {
@@ -1059,48 +1053,10 @@ if (!prompt || !engineId) {
     const initialUserDoc = await userRef.get();
     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};
 
-
-const rawUserPlan = String(
-    userData.userPlan || userData.plan || "debutant"
-).trim().toLowerCase();
-
-const imagePlanToPrice = {
-    debutant: "0.00",
-    essentiel: "12.99",
-    standard: "24.99",
-    master: "34.99",
-    elite: "59.99",
-    legende: "159.99"
-};
-
-const userPlanKey =
-    imagePlanToPrice[rawUserPlan] ||
-    (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
-
-console.log("🔎 DEBUG PRICING_DATA", {
-    pricingDataExists: Boolean(PRICING_DATA),
-    planKeys: Object.keys(PRICING_DATA || {}),
-    zeroPlanKeys: Object.keys(PRICING_DATA?.["0.00"] || {}),
-    flux2proZero: PRICING_DATA?.["0.00"]?.flux2pro,
-    flux2proEssentiel: PRICING_DATA?.["12.99"]?.flux2pro
-});
-
-// Le tarif doit suivre le portefeuille réellement demandé par le client :
-// diamants = grille gratuite/référence ; éclairs = grille du forfait utilisateur.
-if (!["diamonds", "tokens"].includes(costType)) {
-    return res.status(400).json({ error: "Type de crédit invalide. Choisissez diamonds ou tokens." });
-}
-const selectedPricingKey = costType === "diamonds" ? "0.00" : userPlanKey;
-const userPricingTable = PRICING_DATA?.[selectedPricingKey] || PRICING_DATA?.["0.00"];
-
-console.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {
-    rawUserPlan,
-    userPlanKey,
-    costType,
-    selectedPricingKey,
-    flux2pro: userPricingTable?.flux2pro,
-    mp1: userPricingTable?.flux2pro?.mp1
-});
+    const rawUserPlan = String(userData.userPlan || userData.plan || "debutant").toLowerCase();
+    const imagePlanToPrice = { debutant: "0.00", essentiel: "12.99", standard: "24.99", master: "34.99", elite: "59.99", legende: "159.99" };
+    const userPlanKey = imagePlanToPrice[rawUserPlan] || (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
+    const userPricingTable = PRICING_DATA[userPlanKey] || PRICING_DATA["0.00"];
 
     // Tarification serveur dédiée aux trois moteurs image récents.
     // Les clés doivent correspondre à celles de pricingConfig.js : ne pas rabattre ces modèles sur l'ancien tarif FLUX.
@@ -1140,18 +1096,7 @@ console.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {
     } else if (engineId === "nano_banana2_lite") {
         officialCost = userPricingTable?.nanoBanana2Lite?.[(hasReferenceImage || hasReferenceVideo) ? "reference1k" : "k1"];
     }
-console.log("🔎 DEBUG TARIFICATION IMAGE", {
-    engineId,
-    rawUserPlan,
-    userPlanKey,
-    pricingTableExists: Boolean(userPricingTable),
-    flux2pro: userPricingTable?.flux2pro,
-    gptImage2: userPricingTable?.gptImage2,
-    nanoBanana2Lite: userPricingTable?.nanoBanana2Lite,
-    pricingWidth,
-    pricingHeight,
-    officialCost
-});
+
     if (officialCost === undefined || officialCost === null || !Number.isFinite(Number(officialCost)) || Number(officialCost) <= 0) {
         console.error(`❌ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {
             expectedPricingKey: engineId === "gpt_image2" ? "gptImage2" : engineId === "flux2pro" ? "flux2pro" : "nanoBanana2Lite",
@@ -1215,8 +1160,13 @@ try {
         const userData = userDocTx.data();
         let balance = userData[fieldToDecrement] || 0;
 
-        // Pas de bascule silencieuse vers les diamants : le portefeuille débité
-        // doit rester celui dont la grille tarifaire a servi à calculer finalCost.
+        // 🧠 Si l'utilisateur n'a pas assez de tokens classiques, on vérifie s'il a assez de diamants (packTokens)
+        if (balance < finalCost && fieldToDecrement === "tokens") {
+            if ((userData["packTokens"] || 0) >= finalCost) {
+                fieldToDecrement = "packTokens";
+                balance = userData["packTokens"];
+            }
+        }
 
         if (balance < finalCost) { 
             throw new Error("Crédits insuffisants");
@@ -1372,7 +1322,7 @@ if (engineId === "flux2pro") {
         // 0 est une valeur valide : ne pas la remplacer par 2 avec un opérateur ||.
         safetyTolerance: Number.isFinite(parsedSafetyTolerance)
             ? Math.max(0, Math.min(5, Math.round(parsedSafetyTolerance)))
-            : 5
+            : 2
     }};
 }
 if (engineId === "nano_banana2_lite") {
@@ -1736,6 +1686,7 @@ req.on('close', () => {
                 cost: requiredCost,
                 field: usedWallet, // "tokens", "packTokens" ou "hybrid"
                 status: "processing",
+                type: "VIDEO",
                 provider: engineId === "seedance" ? "fal" : "runware",
                 engine: engineId,
                 createdAt: Timestamp.now(),
@@ -1760,44 +1711,67 @@ req.on('close', () => {
         // Finalisation commune des moteurs Runware : ferme le verrou et enregistre l'historique.
         const completeRunwareVideo = async (result, modelName = engineId) => {
             const generatedVideoUrl = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
-            if (!generatedVideoUrl) throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
-            const isPersistableUrl = typeof generatedVideoUrl === "string" && /^https?:\/\//i.test(generatedVideoUrl);
-            const lockUpdate = {
+            if (typeof generatedVideoUrl !== "string" || !generatedVideoUrl.trim()) {
+                throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
+            }
+            const isPersistableUrl = /^https?:\/\//i.test(generatedVideoUrl);
+            if (!isPersistableUrl) {
+                throw new Error(`Runware a retourné une vidéo sans URL HTTP persistante pour ${modelName}.`);
+            }
+
+            const finalPrompt = String(prompt || req.body.prompt || "");
+            // Le document imageLocks est aussi utilisé par l'historique : conserver le verrou terminé.
+            await lockRef.update({
                 status: "completed",
+                type: "VIDEO",
                 provider: "runware",
                 engine: modelName,
-                prompt: prompt || req.body.prompt || "",
-                description: prompt || req.body.prompt || "",
+                prompt: finalPrompt,
+                description: finalPrompt,
+                videoUrl: generatedVideoUrl,
+                url: generatedVideoUrl,
                 completedAt: FieldValue.serverTimestamp()
-            };
-            if (isPersistableUrl) {
-                lockUpdate.videoUrl = generatedVideoUrl;
-                lockUpdate.url = generatedVideoUrl;
-            }
-            await lockRef.update(lockUpdate);
-            if (userId && isPersistableUrl) {
-                await db.collection("users").doc(userId).collection("generations").add({
-                    videoUrl: generatedVideoUrl,
-                    url: generatedVideoUrl,
-                    prompt: prompt || req.body.prompt || "",
-                    description: prompt || req.body.prompt || "",
-                    engine: modelName,
-                    provider: "runware",
-                    type: "VIDEO",
-                    createdAt: FieldValue.serverTimestamp()
-                });
-            }
+            });
+            // Dès que le verrou porte la vidéo terminée, ne jamais rembourser ni supprimer ce résultat.
             generationFinished = true;
-            return res.json({
+
+            if (userId) {
+                try {
+                    await db.collection("users").doc(userId).collection("generations").add({
+                        videoUrl: generatedVideoUrl,
+                        url: generatedVideoUrl,
+                        prompt: finalPrompt,
+                        description: finalPrompt,
+                        engine: modelName,
+                        provider: "runware",
+                        type: "VIDEO",
+                        createdAt: FieldValue.serverTimestamp()
+                    });
+                } catch (historyError) {
+                    // Le résultat reste accessible via imageLocks même si la copie d'historique échoue.
+                    console.error("⚠️ Vidéo terminée, mais copie dans users/{uid}/generations échouée :", historyError.message);
+                }
+            }
+
+            const payload = {
                 success: true,
                 status: "completed",
+                percent: 100,
+                message: "Génération terminée !",
                 videoURL: generatedVideoUrl,
                 videoUrl: generatedVideoUrl,
                 url: generatedVideoUrl,
+                type: "VIDEO",
                 videoUUID: result?.videoUUID,
                 taskUUID: result?.taskUUID,
                 cost: result?.cost
-            });
+            };
+            // /generate-video utilise Server-Sent Events : ne pas répondre avec res.json().
+            if (!res.writableEnded) {
+                res.write(`data: ${JSON.stringify(payload)}\n\n`);
+                res.end();
+            }
+            return payload;
         };
 
     // ============================================================
@@ -4562,22 +4536,17 @@ else if (engineId === "pixverse6") {
     if (!request.positivePrompt) throw new Error("PixVerse V6 : le prompt est vide.");
     console.log("🎬 [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
-const videoURL =
-    result?.videoURL ||
-    result?.videoUrl ||
-    result?.videoDataURI ||
-    result?.videoBase64Data;
-
-if (!videoURL) {
-    throw new Error(
-        "Runware PixVerse V6 n'a retourné aucune vidéo."
-    );
-}
-
-return await completeRunwareVideo(
-    { ...result, videoURL },
-    engineId
-);
+    console.log("🔎 [PIXVERSE V6] Champs du résultat Runware :", Object.keys(result || {}));
+    const videoURL =
+        result?.videoURL ||
+        result?.videoUrl ||
+        result?.videoDataURI ||
+        result?.videoBase64Data;
+    if (typeof videoURL !== "string" || !videoURL.trim()) {
+        throw new Error("Runware PixVerse V6 n'a retourné aucune URL vidéo exploitable.");
+    }
+    console.log("✅ [PIXVERSE V6] URL vidéo reçue :", videoURL.slice(0, 180));
+    return await completeRunwareVideo({ ...result, videoURL }, engineId);
 }
 
 // ============================================================
@@ -4902,37 +4871,28 @@ if (!falVideoUrl) {
             console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
         }
 
-        // Nettoyage du verrou
-        await lockRef.delete().catch(() => {});
+        // Ne jamais supprimer un résultat déjà enregistré comme terminé.
+        // En cas d'échec avant finalisation, nettoyer le verrou de traitement.
+        if (!generationFinished) {
+            await lockRef.delete().catch(() => {});
+        } else {
+            console.warn("⚠️ Verrou conservé : la vidéo a déjà été enregistrée comme terminée.");
+        }
 
-        // Envoi de l'erreur au client
-  // 🛡️ Sécurité : ne pas écrire dans une réponse fermée
-if (res.writableEnded || res.destroyed) {
-    console.warn("⚠️ Flux SSE déjà fermé : impossible d'envoyer l'erreur.");
-    return;
-}
-
-try {
-    if (res.headersSent) {
-        res.write(
-            `event: error\ndata: ${JSON.stringify({
-                error: error.message,
-                status: "failed"
-            })}\n\n`
-        );
-        res.end();
-    } else {
-        res.status(500).json({
-            error: error.message,
-            status: "failed"
-        });
-    }
-} catch (writeErr) {
-    console.error(
-        "⚠️ Erreur lors de l'envoi de l'erreur finale :",
-        writeErr.message
-    );
-
+        // Envoi de l'erreur sans tenter d'écrire sur une connexion détruite/terminée.
+        if (res.destroyed || res.writableEnded) {
+            console.warn("⚠️ Flux SSE fermé : impossible de transmettre l'erreur au client.");
+            return;
+        }
+        try {
+            if (res.headersSent) {
+                res.write(`event: error\ndata: ${JSON.stringify({ error: error.message, status: "failed" })}\n\n`);
+                res.end();
+            } else {
+                res.status(500).json({ error: error.message, status: "failed" });
+            }
+        } catch (writeErr) {
+            console.error("⚠️ Erreur lors de l'envoi de l'erreur finale :", writeErr.message);
         }
     }
 });
