@@ -1053,54 +1053,10 @@ if (!prompt || !engineId) {
     const initialUserDoc = await userRef.get();
     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};
 
-
-const rawUserPlan = String(
-    userData.userPlan || userData.plan || "debutant"
-).toLowerCase();
-
-const imagePlanToPrice = {
-    debutant: "0.00",
-    essentiel: "12.99",
-    standard: "24.99",
-    master: "34.99",
-    elite: "59.99",
-    legende: "159.99"
-};
-
-const userPlanKey =
-    imagePlanToPrice[rawUserPlan] ||
-    (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
-
-console.log("🔎 DEBUG PRICING_DATA", {
-    pricingDataExists: Boolean(PRICING_DATA),
-    planKeys: Object.keys(PRICING_DATA || {}),
-    zeroPlanKeys: Object.keys(PRICING_DATA?.["0.00"] || {}),
-    flux2proZero: PRICING_DATA?.["0.00"]?.flux2pro,
-    flux2proEssentiel: PRICING_DATA?.["12.99"]?.flux2pro
-});
-console.log("🔧 DIAGNOSTIC TARIFS RENDER", {
-    pricingDataType: typeof PRICING_DATA,
-    pricingDataIsObject:
-        PRICING_DATA !== null &&
-        typeof PRICING_DATA === "object",
-    planKeys: Object.keys(PRICING_DATA || {}),
-    freePlanExists: Boolean(PRICING_DATA?.["0.00"]),
-    freePlanType: typeof PRICING_DATA?.["0.00"],
-    freePlanFlux2Pro: PRICING_DATA?.["0.00"]?.flux2pro,
-    freePlanFlux2ProMp1:
-        PRICING_DATA?.["0.00"]?.flux2pro?.mp1,
-    userPlanKey
-});
-const userPricingTable =
-    PRICING_DATA?.[userPlanKey] ||
-    PRICING_DATA?.["0.00"];
-
-console.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {
-    rawUserPlan,
-    userPlanKey,
-    flux2pro: userPricingTable?.flux2pro,
-    mp1: userPricingTable?.flux2pro?.mp1
-});
+    const rawUserPlan = String(userData.userPlan || userData.plan || "debutant").toLowerCase();
+    const imagePlanToPrice = { debutant: "0.00", essentiel: "12.99", standard: "24.99", master: "34.99", elite: "59.99", legende: "159.99" };
+    const userPlanKey = imagePlanToPrice[rawUserPlan] || (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
+    const userPricingTable = PRICING_DATA[userPlanKey] || PRICING_DATA["0.00"];
 
     // Tarification serveur dédiée aux trois moteurs image récents.
     // Les clés doivent correspondre à celles de pricingConfig.js : ne pas rabattre ces modèles sur l'ancien tarif FLUX.
@@ -1140,18 +1096,7 @@ console.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {
     } else if (engineId === "nano_banana2_lite") {
         officialCost = userPricingTable?.nanoBanana2Lite?.[(hasReferenceImage || hasReferenceVideo) ? "reference1k" : "k1"];
     }
-console.log("🔎 DEBUG TARIFICATION IMAGE", {
-    engineId,
-    rawUserPlan,
-    userPlanKey,
-    pricingTableExists: Boolean(userPricingTable),
-    flux2pro: userPricingTable?.flux2pro,
-    gptImage2: userPricingTable?.gptImage2,
-    nanoBanana2Lite: userPricingTable?.nanoBanana2Lite,
-    pricingWidth,
-    pricingHeight,
-    officialCost
-});
+
     if (officialCost === undefined || officialCost === null || !Number.isFinite(Number(officialCost)) || Number(officialCost) <= 0) {
         console.error(`❌ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {
             expectedPricingKey: engineId === "gpt_image2" ? "gptImage2" : engineId === "flux2pro" ? "flux2pro" : "nanoBanana2Lite",
@@ -1741,6 +1686,7 @@ req.on('close', () => {
                 cost: requiredCost,
                 field: usedWallet, // "tokens", "packTokens" ou "hybrid"
                 status: "processing",
+                type: "VIDEO",
                 provider: engineId === "seedance" ? "fal" : "runware",
                 engine: engineId,
                 createdAt: Timestamp.now(),
@@ -1765,75 +1711,67 @@ req.on('close', () => {
         // Finalisation commune des moteurs Runware : ferme le verrou et enregistre l'historique.
         const completeRunwareVideo = async (result, modelName = engineId) => {
             const generatedVideoUrl = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
-            if (!generatedVideoUrl) throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
-            const isPersistableUrl = typeof generatedVideoUrl === "string" && /^https?:\/\//i.test(generatedVideoUrl);
-            const lockUpdate = {
+            if (typeof generatedVideoUrl !== "string" || !generatedVideoUrl.trim()) {
+                throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
+            }
+            const isPersistableUrl = /^https?:\/\//i.test(generatedVideoUrl);
+            if (!isPersistableUrl) {
+                throw new Error(`Runware a retourné une vidéo sans URL HTTP persistante pour ${modelName}.`);
+            }
+
+            const finalPrompt = String(prompt || req.body.prompt || "");
+            // Le document imageLocks est aussi utilisé par l'historique : conserver le verrou terminé.
+            await lockRef.update({
                 status: "completed",
+                type: "VIDEO",
                 provider: "runware",
                 engine: modelName,
-                prompt: prompt || req.body.prompt || "",
-                description: prompt || req.body.prompt || "",
+                prompt: finalPrompt,
+                description: finalPrompt,
+                videoUrl: generatedVideoUrl,
+                url: generatedVideoUrl,
                 completedAt: FieldValue.serverTimestamp()
-            };
-            if (isPersistableUrl) {
-                lockUpdate.videoUrl = generatedVideoUrl;
-                lockUpdate.url = generatedVideoUrl;
-            }
-            // Sauvegarde Firestore : le verrou sert à l'état de génération et
-            // la sous-collection generations alimente l'historique utilisateur.
-            await lockRef.update(lockUpdate);
-            console.log("💾 [RUNWARE] Verrou vidéo enregistré", {
-                requestId,
-                engine: modelName,
-                userId: userId || null,
-                hasPublicUrl: isPersistableUrl,
-                urlHost: isPersistableUrl ? (() => { try { return new URL(generatedVideoUrl).host; } catch { return null; } })() : null
             });
+            // Dès que le verrou porte la vidéo terminée, ne jamais rembourser ni supprimer ce résultat.
+            generationFinished = true;
 
-            if (userId && isPersistableUrl) {
-                const historyRef = await db.collection("users").doc(userId).collection("generations").add({
-                    videoUrl: generatedVideoUrl,
-                    url: generatedVideoUrl,
-                    prompt: prompt || req.body.prompt || "",
-                    description: prompt || req.body.prompt || "",
-                    engine: modelName,
-                    provider: "runware",
-                    type: "VIDEO",
-                    status: "completed",
-                    createdAt: FieldValue.serverTimestamp(),
-                    completedAt: FieldValue.serverTimestamp()
-                });
-                console.log("✅ [RUNWARE] Vidéo enregistrée dans l'historique Firebase", {
-                    historyId: historyRef.id,
-                    userId,
-                    engine: modelName
-                });
-            } else {
-                console.error("❌ [RUNWARE] Historique utilisateur non enregistré :", {
-                    reason: !userId ? "userId absent" : "URL vidéo non HTTP(S)",
-                    engine: modelName,
-                    resultKeys: result && typeof result === "object" ? Object.keys(result) : []
-                });
+            if (userId) {
+                try {
+                    await db.collection("users").doc(userId).collection("generations").add({
+                        videoUrl: generatedVideoUrl,
+                        url: generatedVideoUrl,
+                        prompt: finalPrompt,
+                        description: finalPrompt,
+                        engine: modelName,
+                        provider: "runware",
+                        type: "VIDEO",
+                        createdAt: FieldValue.serverTimestamp()
+                    });
+                } catch (historyError) {
+                    // Le résultat reste accessible via imageLocks même si la copie d'historique échoue.
+                    console.error("⚠️ Vidéo terminée, mais copie dans users/{uid}/generations échouée :", historyError.message);
+                }
             }
 
-            generationFinished = true;
-            const completionPayload = {
+            const payload = {
                 success: true,
                 status: "completed",
+                percent: 100,
+                message: "Génération terminée !",
                 videoURL: generatedVideoUrl,
                 videoUrl: generatedVideoUrl,
                 url: generatedVideoUrl,
+                type: "VIDEO",
                 videoUUID: result?.videoUUID,
                 taskUUID: result?.taskUUID,
                 cost: result?.cost
             };
-
-            // Cette route a déjà envoyé des en-têtes SSE : ne jamais appeler res.json().
+            // /generate-video utilise Server-Sent Events : ne pas répondre avec res.json().
             if (!res.writableEnded) {
-                res.write(`data: ${JSON.stringify(completionPayload)}\n\n`);
+                res.write(`data: ${JSON.stringify(payload)}\n\n`);
                 res.end();
             }
-            return completionPayload;
+            return payload;
         };
 
     // ============================================================
@@ -4598,15 +4536,8 @@ else if (engineId === "pixverse6") {
     if (!request.positivePrompt) throw new Error("PixVerse V6 : le prompt est vide.");
     console.log("🎬 [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
-    console.log("🔎 [RUNWARE PIXVERSE V6] Résultat reçu", {
-        hasResult: Boolean(result),
-        resultKeys: result && typeof result === "object" ? Object.keys(result) : [],
-        hasVideoURL: Boolean(result?.videoURL || result?.videoUrl),
-        hasVideoDataURI: Boolean(result?.videoDataURI || result?.videoBase64Data),
-        taskUUID: result?.taskUUID || null
-    });
-    const videoURL = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
-    if (!videoURL) throw new Error(`Runware PixVerse V6 : résultat sans URL vidéo finale (taskUUID: ${result?.taskUUID || "absent"}).`);
+    const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
+    if (!videoURL) throw new Error("Runware PixVerse V6 n'a retourné aucune vidéo.");
     return await completeRunwareVideo(result, engineId);
 }
 
@@ -4932,8 +4863,13 @@ if (!falVideoUrl) {
             console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
         }
 
-        // Nettoyage du verrou
-        await lockRef.delete().catch(() => {});
+        // Ne jamais supprimer un résultat déjà enregistré comme terminé.
+        // En cas d'échec avant finalisation, nettoyer le verrou de traitement.
+        if (!generationFinished) {
+            await lockRef.delete().catch(() => {});
+        } else {
+            console.warn("⚠️ Verrou conservé : la vidéo a déjà été enregistrée comme terminée.");
+        }
 
         // Envoi de l'erreur au client
         if (!res.headersSent) {
