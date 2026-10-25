@@ -117,7 +117,13 @@ async function verifyRecaptcha(token) {
         };
 
         const [response] = await recaptchaClient.createAssessment(request);
-
+console.log("🔎 Diagnostic reCAPTCHA :", {
+    valid: response.tokenProperties?.valid,
+    invalidReason: response.tokenProperties?.invalidReason,
+    hostname: response.tokenProperties?.hostname,
+    action: response.tokenProperties?.action,
+    score: response.riskAnalysis?.score
+});
         const tokenProperties = response.tokenProperties;
 
         if (!tokenProperties?.valid) {
@@ -1053,10 +1059,48 @@ if (!prompt || !engineId) {
     const initialUserDoc = await userRef.get();
     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};
 
-    const rawUserPlan = String(userData.userPlan || userData.plan || "debutant").toLowerCase();
-    const imagePlanToPrice = { debutant: "0.00", essentiel: "12.99", standard: "24.99", master: "34.99", elite: "59.99", legende: "159.99" };
-    const userPlanKey = imagePlanToPrice[rawUserPlan] || (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
-    const userPricingTable = PRICING_DATA[userPlanKey] || PRICING_DATA["0.00"];
+
+const rawUserPlan = String(
+    userData.userPlan || userData.plan || "debutant"
+).trim().toLowerCase();
+
+const imagePlanToPrice = {
+    debutant: "0.00",
+    essentiel: "12.99",
+    standard: "24.99",
+    master: "34.99",
+    elite: "59.99",
+    legende: "159.99"
+};
+
+const userPlanKey =
+    imagePlanToPrice[rawUserPlan] ||
+    (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
+
+console.log("🔎 DEBUG PRICING_DATA", {
+    pricingDataExists: Boolean(PRICING_DATA),
+    planKeys: Object.keys(PRICING_DATA || {}),
+    zeroPlanKeys: Object.keys(PRICING_DATA?.["0.00"] || {}),
+    flux2proZero: PRICING_DATA?.["0.00"]?.flux2pro,
+    flux2proEssentiel: PRICING_DATA?.["12.99"]?.flux2pro
+});
+
+// Le tarif doit suivre le portefeuille réellement demandé par le client :
+// diamants = grille gratuite/référence ; éclairs = grille du forfait utilisateur.
+if (!["diamonds", "tokens"].includes(costType)) {
+    return res.status(400).json({ error: "Type de crédit invalide. Choisissez diamonds ou tokens." });
+}
+const selectedPricingKey = costType === "diamonds" ? "0.00" : userPlanKey;
+const userPricingTable = PRICING_DATA?.[selectedPricingKey] || PRICING_DATA?.["0.00"];
+
+console.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {
+    rawUserPlan,
+    userPlanKey,
+    costType,
+    selectedPricingKey,
+    flux2pro: userPricingTable?.flux2pro,
+    mp1: userPricingTable?.flux2pro?.mp1
+});
 
     // Tarification serveur dédiée aux trois moteurs image récents.
     // Les clés doivent correspondre à celles de pricingConfig.js : ne pas rabattre ces modèles sur l'ancien tarif FLUX.
@@ -1096,7 +1140,18 @@ if (!prompt || !engineId) {
     } else if (engineId === "nano_banana2_lite") {
         officialCost = userPricingTable?.nanoBanana2Lite?.[(hasReferenceImage || hasReferenceVideo) ? "reference1k" : "k1"];
     }
-
+console.log("🔎 DEBUG TARIFICATION IMAGE", {
+    engineId,
+    rawUserPlan,
+    userPlanKey,
+    pricingTableExists: Boolean(userPricingTable),
+    flux2pro: userPricingTable?.flux2pro,
+    gptImage2: userPricingTable?.gptImage2,
+    nanoBanana2Lite: userPricingTable?.nanoBanana2Lite,
+    pricingWidth,
+    pricingHeight,
+    officialCost
+});
     if (officialCost === undefined || officialCost === null || !Number.isFinite(Number(officialCost)) || Number(officialCost) <= 0) {
         console.error(`❌ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {
             expectedPricingKey: engineId === "gpt_image2" ? "gptImage2" : engineId === "flux2pro" ? "flux2pro" : "nanoBanana2Lite",
@@ -1160,13 +1215,8 @@ try {
         const userData = userDocTx.data();
         let balance = userData[fieldToDecrement] || 0;
 
-        // 🧠 Si l'utilisateur n'a pas assez de tokens classiques, on vérifie s'il a assez de diamants (packTokens)
-        if (balance < finalCost && fieldToDecrement === "tokens") {
-            if ((userData["packTokens"] || 0) >= finalCost) {
-                fieldToDecrement = "packTokens";
-                balance = userData["packTokens"];
-            }
-        }
+        // Pas de bascule silencieuse vers les diamants : le portefeuille débité
+        // doit rester celui dont la grille tarifaire a servi à calculer finalCost.
 
         if (balance < finalCost) { 
             throw new Error("Crédits insuffisants");
@@ -1322,7 +1372,7 @@ if (engineId === "flux2pro") {
         // 0 est une valeur valide : ne pas la remplacer par 2 avec un opérateur ||.
         safetyTolerance: Number.isFinite(parsedSafetyTolerance)
             ? Math.max(0, Math.min(5, Math.round(parsedSafetyTolerance)))
-            : 2
+            : 5
     }};
 }
 if (engineId === "nano_banana2_lite") {
@@ -1686,7 +1736,6 @@ req.on('close', () => {
                 cost: requiredCost,
                 field: usedWallet, // "tokens", "packTokens" ou "hybrid"
                 status: "processing",
-                type: "VIDEO",
                 provider: engineId === "seedance" ? "fal" : "runware",
                 engine: engineId,
                 createdAt: Timestamp.now(),
@@ -1711,67 +1760,44 @@ req.on('close', () => {
         // Finalisation commune des moteurs Runware : ferme le verrou et enregistre l'historique.
         const completeRunwareVideo = async (result, modelName = engineId) => {
             const generatedVideoUrl = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
-            if (typeof generatedVideoUrl !== "string" || !generatedVideoUrl.trim()) {
-                throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
-            }
-            const isPersistableUrl = /^https?:\/\//i.test(generatedVideoUrl);
-            if (!isPersistableUrl) {
-                throw new Error(`Runware a retourné une vidéo sans URL HTTP persistante pour ${modelName}.`);
-            }
-
-            const finalPrompt = String(prompt || req.body.prompt || "");
-            // Le document imageLocks est aussi utilisé par l'historique : conserver le verrou terminé.
-            await lockRef.update({
+            if (!generatedVideoUrl) throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
+            const isPersistableUrl = typeof generatedVideoUrl === "string" && /^https?:\/\//i.test(generatedVideoUrl);
+            const lockUpdate = {
                 status: "completed",
-                type: "VIDEO",
                 provider: "runware",
                 engine: modelName,
-                prompt: finalPrompt,
-                description: finalPrompt,
-                videoUrl: generatedVideoUrl,
-                url: generatedVideoUrl,
+                prompt: prompt || req.body.prompt || "",
+                description: prompt || req.body.prompt || "",
                 completedAt: FieldValue.serverTimestamp()
-            });
-            // Dès que le verrou porte la vidéo terminée, ne jamais rembourser ni supprimer ce résultat.
-            generationFinished = true;
-
-            if (userId) {
-                try {
-                    await db.collection("users").doc(userId).collection("generations").add({
-                        videoUrl: generatedVideoUrl,
-                        url: generatedVideoUrl,
-                        prompt: finalPrompt,
-                        description: finalPrompt,
-                        engine: modelName,
-                        provider: "runware",
-                        type: "VIDEO",
-                        createdAt: FieldValue.serverTimestamp()
-                    });
-                } catch (historyError) {
-                    // Le résultat reste accessible via imageLocks même si la copie d'historique échoue.
-                    console.error("⚠️ Vidéo terminée, mais copie dans users/{uid}/generations échouée :", historyError.message);
-                }
+            };
+            if (isPersistableUrl) {
+                lockUpdate.videoUrl = generatedVideoUrl;
+                lockUpdate.url = generatedVideoUrl;
             }
-
-            const payload = {
+            await lockRef.update(lockUpdate);
+            if (userId && isPersistableUrl) {
+                await db.collection("users").doc(userId).collection("generations").add({
+                    videoUrl: generatedVideoUrl,
+                    url: generatedVideoUrl,
+                    prompt: prompt || req.body.prompt || "",
+                    description: prompt || req.body.prompt || "",
+                    engine: modelName,
+                    provider: "runware",
+                    type: "VIDEO",
+                    createdAt: FieldValue.serverTimestamp()
+                });
+            }
+            generationFinished = true;
+            return res.json({
                 success: true,
                 status: "completed",
-                percent: 100,
-                message: "Génération terminée !",
                 videoURL: generatedVideoUrl,
                 videoUrl: generatedVideoUrl,
                 url: generatedVideoUrl,
-                type: "VIDEO",
                 videoUUID: result?.videoUUID,
                 taskUUID: result?.taskUUID,
                 cost: result?.cost
-            };
-            // /generate-video utilise Server-Sent Events : ne pas répondre avec res.json().
-            if (!res.writableEnded) {
-                res.write(`data: ${JSON.stringify(payload)}\n\n`);
-                res.end();
-            }
-            return payload;
+            });
         };
 
     // ============================================================
@@ -4536,9 +4562,22 @@ else if (engineId === "pixverse6") {
     if (!request.positivePrompt) throw new Error("PixVerse V6 : le prompt est vide.");
     console.log("🎬 [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
-    const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
-    if (!videoURL) throw new Error("Runware PixVerse V6 n'a retourné aucune vidéo.");
-    return await completeRunwareVideo(result, engineId);
+const videoURL =
+    result?.videoURL ||
+    result?.videoUrl ||
+    result?.videoDataURI ||
+    result?.videoBase64Data;
+
+if (!videoURL) {
+    throw new Error(
+        "Runware PixVerse V6 n'a retourné aucune vidéo."
+    );
+}
+
+return await completeRunwareVideo(
+    { ...result, videoURL },
+    engineId
+);
 }
 
 // ============================================================
@@ -4775,45 +4814,41 @@ else if (engineId === "seedance") {
         });
 
 const falVideoUrl = 
-        falResult.video?.url || 
-        falResult.video_url || 
-        falResult.data?.video?.url || 
-        falResult.data?.url || 
-        falResult.url;
+    falResult.video?.url || 
+    falResult.video_url || 
+    falResult.data?.video?.url || 
+    falResult.data?.url || 
+    falResult.url;
 
-    if (!falVideoUrl) {
-        throw new Error("Fal.ai n'a renvoyé aucune URL de vidéo.");
-    }
+if (!falVideoUrl) {
+    throw new Error("Fal.ai n'a renvoyé aucune URL de vidéo.");
+}
 
-    // 1️⃣ Mise à jour du verrou
-    await lockRef.update({
-        status: "completed",
-        videoUrl: falVideoUrl,
-        url: falVideoUrl,
-        prompt: prompt || "",
-        description: prompt || "",
-        completedAt: FieldValue.serverTimestamp()
-    });
-
-    // 2️⃣ 💾 SAUVEGARDE FIRESTORE : Ajout à l'historique utilisateur
-    if (userId) {
-        await db.collection("users").doc(userId).collection("generations").add({
+     // 1️⃣ Mise à jour du verrou
+        await lockRef.update({
+            status: "completed",
             videoUrl: falVideoUrl,
+            url: falVideoUrl,
             prompt: prompt || "",
             description: prompt || "",
-            engine: targetEngineId || engineId || "fal.ai",
-            createdAt: FieldValue.serverTimestamp()
+            completedAt: FieldValue.serverTimestamp()
         });
-        console.log(`💾 Vidéo ajoutée à l'historique de l'utilisateur : ${userId}`);
-    } else {
-        console.warn("⚠️ Impossible d'enregistrer la vidéo : userId est introuvable.");
-    }
 
-    // Marquer la génération comme terminée pour bloquer tout remboursement ou double écriture
-    generationFinished = true;
+        // 2️⃣ 💾 SAUVEGARDE FIRESTORE : Ajout à l'historique utilisateur
+        if (userId) {
+            await db.collection("users").doc(userId).collection("generations").add({
+                videoUrl: falVideoUrl,
+                prompt: prompt || "",
+                description: prompt || "",
+                engine: targetEngineId || engineId || "fal.ai",
+                createdAt: FieldValue.serverTimestamp()
+            });
+            console.log(`💾 Vidéo ajoutée à l'historique de l'utilisateur : ${userId}`);
+        } else {
+            console.warn("⚠️ Impossible d'enregistrer la vidéo : userId est introuvable.");
+        }
 
-    // 3️⃣ Envoi du message SSE de fin au client (seulement si la connexion est ouverte)
-    if (!res.writableEnded) {
+        // 3️⃣ Envoi du message SSE de fin au client
         res.write(`data: ${JSON.stringify({ 
             percent: 100, 
             videoUrl: falVideoUrl, 
@@ -4823,63 +4858,82 @@ const falVideoUrl =
         })}\n\n`);
 
         res.end();
-    }
         
 
 } catch (error) {
-    console.error("❌ Erreur dans le flux de génération :", error.message);
+        console.error("❌ Erreur dans le flux de génération :", error.message);
 
-    // 🛡️ SÉCURITÉ : Remboursement SEULEMENT si débité ET non terminé ET pas encore remboursé
-    if (creditsDebited && !generationFinished && !refundDone) {
-        refundDone = true;
-        console.log("🔄 Échec après débit -> Remboursement des crédits...");
-        try {
-            await db.runTransaction(async (transaction) => {
-                const uDoc = await transaction.get(userRef);
-                if (uDoc.exists) {
-                    const amountToRefund = Number(cost) || 15;
-                    const wasPackTokens = usedWallet === "packTokens" || (deductedDiamonds && deductedDiamonds > 0) || (uDoc.data()?.tokens === 0);
+// 🛡️ SÉCURITÉ : Remboursement SEULEMENT si débité ET non terminé ET pas encore remboursé
+        if (creditsDebited && !generationFinished && !refundDone) {
+            refundDone = true;
+            console.log("🔄 Échec après débit -> Remboursement des crédits...");
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const uDoc = await transaction.get(userRef);
+                    if (uDoc.exists) {
+                        // 🎯 CALCUL CHIRURGICAL DU MONTANT À REMBOURSER
+                        const amountToRefund = Number(cost) || 15;
 
-                    if (usedWallet === "hybrid") {
-                        transaction.update(userRef, {
-                            tokens: FieldValue.increment(deductedTokens || 0),
-                            packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
-                        });
-                    } else if (wasPackTokens) {
-                        transaction.update(userRef, {
-                            packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
-                        });
-                    } else {
-                        transaction.update(userRef, {
-                            tokens: FieldValue.increment(deductedTokens || amountToRefund)
-                        });
+                        // Si deductedDiamonds a une valeur > 0 OU si usedWallet était packTokens, on crédite les diamants.
+                        // Sinon, si on sait que les tokens étaient à 0, c'était forcément les packTokens !
+                        const wasPackTokens = usedWallet === "packTokens" || (deductedDiamonds && deductedDiamonds > 0) || (uDoc.data()?.tokens === 0);
+
+                        if (usedWallet === "hybrid") {
+                            transaction.update(userRef, {
+                                tokens: FieldValue.increment(deductedTokens || 0),
+                                packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
+                            });
+                        } else if (wasPackTokens) {
+                            transaction.update(userRef, {
+                                packTokens: FieldValue.increment(deductedDiamonds || amountToRefund)
+                            });
+                        } else {
+                            transaction.update(userRef, {
+                                tokens: FieldValue.increment(deductedTokens || amountToRefund)
+                            });
+                        }
                     }
-                }
-            });
-            console.log("🪙 Remboursement effectué avec succès.");
-        } catch (refundErr) {
-            console.error("❌ Échec lors du remboursement :", refundErr.message);
+                });
+                console.log("🪙 Remboursement effectué avec succès.");
+            } catch (refundErr) {
+                console.error("❌ Échec lors du remboursement :", refundErr.message);
+            }
+        } else if (!creditsDebited) {
+            console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
         }
-    } else if (!creditsDebited) {
-        console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
-    }
 
-    if (!generationFinished) {
+        // Nettoyage du verrou
         await lockRef.delete().catch(() => {});
+
+        // Envoi de l'erreur au client
+  // 🛡️ Sécurité : ne pas écrire dans une réponse fermée
+if (res.writableEnded || res.destroyed) {
+    console.warn("⚠️ Flux SSE déjà fermé : impossible d'envoyer l'erreur.");
+    return;
+}
+
+try {
+    if (res.headersSent) {
+        res.write(
+            `event: error\ndata: ${JSON.stringify({
+                error: error.message,
+                status: "failed"
+            })}\n\n`
+        );
+        res.end();
     } else {
-        console.warn("⚠️ Verrou conservé : la vidéo a déjà été enregistrée comme terminée.");
+        res.status(500).json({
+            error: error.message,
+            status: "failed"
+        });
     }
+} catch (writeErr) {
+    console.error(
+        "⚠️ Erreur lors de l'envoi de l'erreur finale :",
+        writeErr.message
+    );
 
-    // 🛡️ SÉCURITÉ FINALE : Ne jamais tenter d'écrire si la réponse a déjà été terminée avec succès !
-    if (res.writableEnded || res.headersSent) {
-        console.warn("⚠️ Impossible d'envoyer l'erreur au client : la réponse SSE est déjà fermée.");
-        return;
-    }
-
-    // Envoi de l'erreur au client si la connexion est encore active
-    res.write(`event: error\ndata: ${JSON.stringify({ error: error.message, status: "failed" })}\n\n`);
-    res.end();
-
+        }
     }
 });
 
