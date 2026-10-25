@@ -3,10 +3,58 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
 const resources = {
-  "fr": {
-    
-    "translation": {   
-
+  "fr": {    
+    "terms": {
+  "backToStudio": "Retour au Studio",
+  "title": "Conditions Générales d'Utilisation",
+  "lastUpdated": "Dernière mise à jour : 8 septembre 2026 — Eclipse IA",
+  "sections": {
+    "object": {
+      "title": "1. Objet et Éditeur du Service"
+    },
+    "eligibility": {
+      "title": "2. Conditions d'Éligibilité et d'Âge"
+    },
+    "account": {
+      "title": "3. Compte et Sécurité"
+    },
+    "subscriptions": {
+      "title": "4. Abonnements, Éclairs et Diamants"
+    },
+    "payments": {
+      "title": "5. Paiements, Échecs de Génération et Remboursements"
+    }
+  },
+  "contact": {
+    "title": "Contact",
+    "description": "Pour toute question concernant les présentes conditions, votre abonnement, vos crédits ou l'utilisation du service, contactez le support Eclipse IA.",
+    "button": "Contacter le support"
+  }
+},
+    "translation": { 
+        "line3_app_ui_audio": "Audio",
+"line3_app_ui_remix": "Remixer",
+"line3_app_ui_nativeAudio": "Audio natif",
+"line3_app_ui_characterImage": "Image du personnage",
+"line3_app_ui_firstLastFrame": "Première et dernière image",
+"line3_app_ui_10s768pOnly": "10 s — 768p uniquement",
+      "control_mode_image": "IMAGE",
+"control_mode_video": "VIDÉO",
+"control_mode_remasterise": "REMASTERISÉ",
+"line3_app_annotation_veo3_1_fast": "Veo 3.1 Fast — génération vidéo rapide",
+"line3_app_annotation_veo3_1": "Veo 3.1 — génération vidéo haute qualité",
+"line3_app_annotation_kling26_motion": "Transfert de mouvement d'une vidéo vers une image",
+"line3_app_annotation_kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+"line3_app_annotation_kling26": "Kling 2.6 Pro — génération vidéo",
+"line3_app_annotation_hailuo": "Mouvements ultra-réalistes",
+"line3_app_annotation_minimax_h3": "MiniMax H3 — génération vidéo",
+"line3_app_annotation_pixverse6": "PixVerse V6 — 360p à 1080p, 1 à 15 secondes, audio et multi-shot",
+"line3_app_annotation_seedance25": "Seedance 2.5 — références image, vidéo et audio, édition et extension",
+"line3_app_annotation_seedance20": "Seedance 2.0 — jusqu'à 9 images, 3 vidéos et 3 références audio",
+"line3_app_annotation_seedance": "Audio natif et synchronisation labiale",
+"line3_app_annotation_gpt_image2": "Génération et édition d'images, jusqu'à 16 références",
+"line3_app_annotation_flux2pro": "FLUX.2 Pro — édition guidée par jusqu'à 9 images",
+"line3_app_annotation_nano_banana2_lite": "Génération et édition rapides, jusqu'à 14 images de référence",
       "welcome": "Ovortex",
       "continue google": "Continuer avec Google",
       "continue email": "Continuer avec l'e-mail",
@@ -1008,6 +1056,8 @@ const resources = {
       "line3_app_ui_extendVideo": "Étendre la vidéo",
       "line3_app_ui_imageToVideo": "Image → Vidéo",
       "line3_app_ui_videoReference": "Vidéo de référence",
+      "line3_app_ui_remix": "Remixer",
+      "line3_app_ui_characterImage": "Image du personnage",
       "line3_app_ui_motionControl": "Contrôle du mouvement",
       "line3_app_ui_textToVideo": "Text → Vidéo",
       "line3_app_ui_referenceImageCount": "1–9 images de référence",
@@ -1142,11 +1192,72 @@ const resources = {
       "line7_suggestions_video_6_prompt": "Style animé : une femme assise sur un banc dans un parc, un chat monte sur ses genoux et elle le caresse.",
       "line7_suggestions_video_7_prompt": "Scene ultra réaliste : Dans une chambre d’hôtel luxueuse, légèrement désordonnée. Une femme blonde est assise sur le lit, le maquillage noir recouvrant une grande partie de ses yeux. Travelling avant jusqu’au gros plan de son visage, qui semble exténué.",
       "line7_suggestions_video_8_prompt": "Fluide doré en mouvement, ondes magnétiques, luxe, abstrait 3D"
-    }
+    ,
+      "engineAnnotations": {
+              "kling26_motion": "Transfert de mouvement d’une vidéo vers une image",
+              "kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+              "hailuo": "Mouvements ultra-réalistes",
+              "pixverse6": "PixVerse V6 — 360p à 1080p, 1 à 15 s, audio et multi-shot",
+              "seedance25": "Seedance 2.5 — références image/vidéo/audio, édition et extension, 4 à 30 s",
+              "seedance20": "Seedance 2.0 — jusqu’à 9 images, 3 vidéos et 3 audios de référence",
+              "seedance": "Audio natif et synchronisation labiale (lip-sync)",
+              "gpt_image2": "Génération et édition d’images, jusqu’à 16 références",
+              "flux2pro": "FLUX.2 Pro — édition guidée par jusqu’à 9 images",
+              "nano_banana2_lite": "Génération et édition rapide, jusqu’à 14 images de référence"
+      }}
   },
   "en": {
+    "terms": {
+  "backToStudio": "Back to Studio",
+  "title": "Terms and Conditions of Use",
+  "lastUpdated": "Last updated: September 8, 2026 — Eclipse IA",
+  "sections": {
+    "object": {
+      "title": "1. Purpose and Service Provider"
+    },
+    "eligibility": {
+      "title": "2. Eligibility and Age Requirements"
+    },
+    "account": {
+      "title": "3. Account and Security"
+    },
+    "subscriptions": {
+      "title": "4. Subscriptions, Lightning Credits and Diamonds"
+    },
+    "payments": {
+      "title": "5. Payments, Generation Failures and Refunds"
+    }
+  },
+  "contact": {
+    "title": "Contact",
+    "description": "For questions about these terms, your subscription, credits or use of the service, please contact Eclipse IA support.",
+    "button": "Contact Support"
+  }
+},
     "translation": {  
-
+      "line3_app_ui_audio": "Audio",
+"line3_app_ui_remix": "Remix",
+"line3_app_ui_nativeAudio": "Native audio",
+"line3_app_ui_characterImage": "Character image",
+"line3_app_ui_firstLastFrame": "First + Last Frame",
+"line3_app_ui_10s768pOnly": "10s — 768p only",
+      "control_mode_image": "IMAGE",
+"control_mode_video": "VIDEO",
+"control_mode_remasterise": "REMASTERED",
+"line3_app_annotation_veo3_1_fast": "Veo 3.1 Fast — fast video generation",
+"line3_app_annotation_veo3_1": "Veo 3.1 — high-quality video generation",
+"line3_app_annotation_kling26_motion": "Transfer motion from a video to an image",
+"line3_app_annotation_kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+"line3_app_annotation_kling26": "Kling 2.6 Pro — video generation",
+"line3_app_annotation_hailuo": "Ultra-realistic motion",
+"line3_app_annotation_minimax_h3": "MiniMax H3 — video generation",
+"line3_app_annotation_pixverse6": "PixVerse V6 — 360p to 1080p, 1–15 seconds, audio and multi-shot",
+"line3_app_annotation_seedance25": "Seedance 2.5 — image, video and audio references, editing and extension",
+"line3_app_annotation_seedance20": "Seedance 2.0 — up to 9 images, 3 videos and 3 audio references",
+"line3_app_annotation_seedance": "Native audio and lip synchronization",
+"line3_app_annotation_gpt_image2": "Image generation and editing, up to 16 references",
+"line3_app_annotation_flux2pro": "FLUX.2 Pro — editing guided by up to 9 images",
+"line3_app_annotation_nano_banana2_lite": "Fast generation and editing, up to 14 reference images",
       "seedance available": "Seedance 2.5 available",
       "create instantly": "Create instantly.",
       "hero subtitle": "Turn your ideas into high-quality cinematic visuals thanks to the power of generative artificial intelligence.",
@@ -1909,6 +2020,8 @@ const resources = {
       "line3_app_ui_extendVideo": "Extend video",
       "line3_app_ui_imageToVideo": "Image → Video",
       "line3_app_ui_videoReference": "Reference video",
+      "line3_app_ui_remix": "Remix",
+      "line3_app_ui_characterImage": "Character image",
       "line3_app_ui_motionControl": "Motion control",
       "line3_app_ui_textToVideo": "Text → Video",
       "line3_app_ui_referenceImageCount": "1–9 reference images",
@@ -2301,10 +2414,45 @@ const resources = {
           }
         }
       }
-    }
+    ,
+      "engineAnnotations": {
+              "kling26_motion": "Transfer motion from a reference video to an image",
+              "kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+              "hailuo": "Ultra-realistic motion",
+              "pixverse6": "PixVerse V6 — 360p to 1080p, 1–15 s, audio and multi-shot",
+              "seedance25": "Seedance 2.5 — image/video/audio references, editing and extension, 4–30 s",
+              "seedance20": "Seedance 2.0 — up to 9 reference images, 3 videos and 3 audio files",
+              "seedance": "Native audio and synchronized lip-sync",
+              "gpt_image2": "Image generation and editing, up to 16 references",
+              "flux2pro": "FLUX.2 Pro — image editing guided by up to 9 references",
+              "nano_banana2_lite": "Fast image generation and editing, up to 14 reference images"
+      }}
   },
   "ko": {
-    "translation": {   
+    "translation": {  
+      "line3_app_ui_audio": "오디오",
+"line3_app_ui_remix": "리믹스",
+"line3_app_ui_nativeAudio": "네이티브 오디오",
+"line3_app_ui_characterImage": "캐릭터 이미지",
+"line3_app_ui_firstLastFrame": "첫 프레임 + 마지막 프레임",
+"line3_app_ui_10s768pOnly": "10초 — 768p 전용",
+      "control_mode_image": "이미지",
+"control_mode_video": "동영상",
+"control_mode_remasterise": "리마스터링",
+       "line3_app_annotation_veo3_1_fast": "Veo 3.1 Fast — 빠른 동영상 생성",
+"line3_app_annotation_veo3_1": "Veo 3.1 — 고품질 동영상 생성",
+"line3_app_annotation_kling26_motion": "동영상의 움직임을 이미지로 전송",
+"line3_app_annotation_kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+"line3_app_annotation_kling26": "Kling 2.6 Pro — 동영상 생성",
+"line3_app_annotation_hailuo": "초현실적인 움직임",
+"line3_app_annotation_minimax_h3": "MiniMax H3 — 동영상 생성",
+"line3_app_annotation_pixverse6": "PixVerse V6 — 360p~1080p, 1~15초, 오디오 및 멀티 샷",
+"line3_app_annotation_seedance25": "Seedance 2.5 — 이미지·동영상·오디오 참조, 편집 및 확장",
+"line3_app_annotation_seedance20": "Seedance 2.0 — 최대 이미지 9개, 동영상 3개, 오디오 참조 3개",
+"line3_app_annotation_seedance": "네이티브 오디오 및 립싱크",
+"line3_app_annotation_gpt_image2": "이미지 생성 및 편집, 최대 16개 참조 이미지",
+"line3_app_annotation_flux2pro": "FLUX.2 Pro — 최대 9개 이미지 기반 편집",
+"line3_app_annotation_nano_banana2_lite": "빠른 생성 및 편집, 최대 14개 참조 이미지",
       "seedance available": "Seedance 2.5 사용 가능",
       "create instantly": "즉시 만들어 보세요.",
       "hero subtitle": "생성형 인공지능의 강력한 기능을 통해 아이디어를 고품질 시네마틱 비주얼로 만들어 보세요.",
@@ -3067,6 +3215,8 @@ const resources = {
       "line3_app_ui_extendVideo": "동영상 연장",
       "line3_app_ui_imageToVideo": "이미지 → 동영상",
       "line3_app_ui_videoReference": "참조 동영상",
+      "line3_app_ui_remix": "리믹스",
+      "line3_app_ui_characterImage": "캐릭터 이미지",
       "line3_app_ui_motionControl": "동작 제어",
       "line3_app_ui_textToVideo": "텍스트 → 동영상",
       "line3_app_ui_referenceImageCount": "참조 이미지 1~9개",
@@ -3460,10 +3610,45 @@ const resources = {
           }
         }
       }
-    }
+    ,
+      "engineAnnotations": {
+              "kling26_motion": "참조 동영상의 움직임을 이미지 속 인물에 전송",
+              "kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+              "hailuo": "초현실적인 움직임",
+              "pixverse6": "PixVerse V6 — 360p~1080p, 1~15초, 오디오 및 멀티샷",
+              "seedance25": "Seedance 2.5 — 이미지·동영상·오디오 참조, 편집 및 확장, 4~30초",
+              "seedance20": "Seedance 2.0 — 참조 이미지 최대 9장, 동영상 3개, 오디오 3개",
+              "seedance": "네이티브 오디오 및 립싱크 동기화",
+              "gpt_image2": "이미지 생성 및 편집, 참조 이미지 최대 16장",
+              "flux2pro": "FLUX.2 Pro — 참조 이미지 최대 9장을 활용한 편집",
+              "nano_banana2_lite": "빠른 이미지 생성 및 편집, 참조 이미지 최대 14장"
+      }}
   },
   "ja": {
     "translation": {
+      "line3_app_ui_audio": "音声",
+"line3_app_ui_remix": "リミックス",
+"line3_app_ui_nativeAudio": "ネイティブ音声",
+"line3_app_ui_characterImage": "キャラクター画像",
+"line3_app_ui_firstLastFrame": "最初のフレーム＋最後のフレーム",
+"line3_app_ui_10s768pOnly": "10秒 — 768pのみ",
+      "control_mode_image": "画像",
+"control_mode_video": "動画",
+"control_mode_remasterise": "リマスター",
+      "line3_app_annotation_veo3_1_fast": "Veo 3.1 Fast — 高速動画生成",
+"line3_app_annotation_veo3_1": "Veo 3.1 — 高品質な動画生成",
+"line3_app_annotation_kling26_motion": "動画の動きを画像に転送",
+"line3_app_annotation_kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+"line3_app_annotation_kling26": "Kling 2.6 Pro — 動画生成",
+"line3_app_annotation_hailuo": "超リアルな動き",
+"line3_app_annotation_minimax_h3": "MiniMax H3 — 動画生成",
+"line3_app_annotation_pixverse6": "PixVerse V6 — 360p～1080p、1～15秒、音声とマルチショット",
+"line3_app_annotation_seedance25": "Seedance 2.5 — 画像・動画・音声参照、編集と延長",
+"line3_app_annotation_seedance20": "Seedance 2.0 — 最大9枚の画像、3本の動画、3つの音声参照",
+"line3_app_annotation_seedance": "ネイティブ音声とリップシンク",
+"line3_app_annotation_gpt_image2": "画像の生成と編集、最大16個の参照画像",
+"line3_app_annotation_flux2pro": "FLUX.2 Pro — 最大9枚の画像を使った編集",
+"line3_app_annotation_nano_banana2_lite": "高速な生成と編集、最大14枚の参照画像",
       "seedance available": "Seedance 2.5 利用可能",
       "create instantly": "瞬時に作成。",
       "hero subtitle": "生成AIの力で、あなたのアイデアを高品質なシネマティックビジュアルへ変換します。",
@@ -4226,6 +4411,8 @@ const resources = {
       "line3_app_ui_extendVideo": "動画を延長",
       "line3_app_ui_imageToVideo": "画像 → 動画",
       "line3_app_ui_videoReference": "参照動画",
+      "line3_app_ui_remix": "リミックス",
+      "line3_app_ui_characterImage": "キャラクター画像",
       "line3_app_ui_motionControl": "モーション制御",
       "line3_app_ui_textToVideo": "テキスト → 動画",
       "line3_app_ui_referenceImageCount": "参照画像 1～9枚",
@@ -4617,10 +4804,45 @@ const resources = {
           }
         }
       }
-    }
+    ,
+      "engineAnnotations": {
+              "kling26_motion": "参照動画の動きを画像内の人物に転写",
+              "kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+              "hailuo": "超リアルな動き",
+              "pixverse6": "PixVerse V6 — 360p～1080p、1～15秒、音声・マルチショット対応",
+              "seedance25": "Seedance 2.5 — 画像・動画・音声参照、編集・延長、4～30秒",
+              "seedance20": "Seedance 2.0 — 参照画像最大9枚、動画3本、音声3件",
+              "seedance": "ネイティブ音声とリップシンクの同期",
+              "gpt_image2": "画像の生成と編集、参照画像最大16枚",
+              "flux2pro": "FLUX.2 Pro — 最大9枚の参照画像を使った編集",
+              "nano_banana2_lite": "高速な画像生成と編集、参照画像最大14枚"
+      }}
   },
   "zh": {
     "translation": {
+      "line3_app_ui_audio": "音频",
+"line3_app_ui_remix": "混剪",
+"line3_app_ui_nativeAudio": "原生音频",
+"line3_app_ui_characterImage": "角色图像",
+"line3_app_ui_firstLastFrame": "首帧 + 尾帧",
+"line3_app_ui_10s768pOnly": "10秒 — 仅限768p",
+"control_mode_image": "图像",
+"control_mode_video": "视频",
+"control_mode_remasterise": "重制",
+      "line3_app_annotation_veo3_1_fast": "Veo 3.1 Fast — 快速视频生成",
+"line3_app_annotation_veo3_1": "Veo 3.1 — 高质量视频生成",
+"line3_app_annotation_kling26_motion": "将视频中的动作迁移到图像",
+"line3_app_annotation_kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+"line3_app_annotation_kling26": "Kling 2.6 Pro — 视频生成",
+"line3_app_annotation_hailuo": "超逼真的动态效果",
+"line3_app_annotation_minimax_h3": "MiniMax H3 — 视频生成",
+"line3_app_annotation_pixverse6": "PixVerse V6 — 360p 至 1080p，1 至 15 秒，支持音频和多镜头",
+"line3_app_annotation_seedance25": "Seedance 2.5 — 支持图像、视频和音频参考，以及编辑和延长",
+"line3_app_annotation_seedance20": "Seedance 2.0 — 最多支持 9 张图片、3 个视频和 3 个音频参考",
+"line3_app_annotation_seedance": "原生音频与口型同步",
+"line3_app_annotation_gpt_image2": "图像生成与编辑，最多支持 16 张参考图",
+"line3_app_annotation_flux2pro": "FLUX.2 Pro — 最多使用 9 张图片辅助编辑",
+"line3_app_annotation_nano_banana2_lite": "快速生成与编辑，最多支持 14 张参考图",
       "seedance available": "Seedance 2.5 已上线",
       "create instantly": "即时创作。",
       "hero subtitle": "借助生成式人工智能的强大能力，将您的创意转化为高品质电影级视觉效果。",
@@ -5382,6 +5604,8 @@ const resources = {
       "line3_app_ui_extendVideo": "延长视频",
       "line3_app_ui_imageToVideo": "图像 → 视频",
       "line3_app_ui_videoReference": "参考视频",
+      "line3_app_ui_remix": "混剪",
+      "line3_app_ui_characterImage": "角色图片",
       "line3_app_ui_motionControl": "动作控制",
       "line3_app_ui_textToVideo": "文本 → 视频",
       "line3_app_ui_referenceImageCount": "1–9 张参考图片",
@@ -5774,7 +5998,19 @@ const resources = {
           }
         }
       }
-    }
+    ,
+      "engineAnnotations": {
+              "kling26_motion": "将参考视频中的动作迁移到图片人物上",
+              "kling30": "Kling 3.0 — Standard 720p / Pro 1080p",
+              "hailuo": "超逼真的动作效果",
+              "pixverse6": "PixVerse V6 — 360p 至 1080p，1–15 秒，支持音频和多镜头",
+              "seedance25": "Seedance 2.5 — 图像/视频/音频参考、编辑与延长，4–30 秒",
+              "seedance20": "Seedance 2.0 — 最多 9 张参考图、3 段视频和 3 段音频",
+              "seedance": "原生音频与口型同步",
+              "gpt_image2": "图像生成与编辑，最多支持 16 张参考图",
+              "flux2pro": "FLUX.2 Pro — 使用最多 9 张参考图进行引导式编辑",
+              "nano_banana2_lite": "快速生成和编辑图像，最多支持 14 张参考图"
+      }}
   }
 };
 

@@ -19,7 +19,7 @@ import {
 // ===============================
 const firebaseConfig = {
   apiKey: "AIzaSyBgdary3h6llCwW1rd1Qc6P9AClKzz0DAU",
-  authDomain: "eclipse-ai-96f30.firebaseapp.com",
+ authDomain: "ovortex.com",
   projectId: "eclipse-ai-96f30",
   storageBucket: "eclipse-ai-96f30.firebasestorage.app",
   messagingSenderId: "1064499561306",

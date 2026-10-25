@@ -474,1021 +474,308 @@ const checkScroll = () => {
     }
   }, [mode]);
      
-// À mettre tout en haut de ton fichier App.js (après les imports)
-const PLAN_TO_PRICE = { 
-  "debutant": "0.00", 
-  "essentiel": "12.99", 
-  "standard": "24.99", 
-  "master": "34.99", 
-  "elite": "59.99", 
-  "legende": "159.99" 
-};
-
-const packs = ["0.00", "12.99", "24.99", "34.99", "59.99", "159.99"];
-
-const PRICING_DATA = {
-"0.00": { 
-    // --- veo 3.1) ---
-veo3:  { hd4: 263,   // 720p  - 4s (0,80$  11 videos)
-         hd6: 393,   // 720p  - 6s (1,20$)
-         hd8: 523,   // 720p  - 8s (1,60$)
-         fhd4: 263,  // 1080p - 4s (0,80$)
-         fhd6: 393,  // 1080p - 6s (1,20$)
-         fhd8: 523 },  // 1080p - 8s (1,60$) 
-
-  // --- Veo 3.1 fast) ---
-veo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max
-         hd6: 191,  // 720p  - 6s ($0.60)
-         hd8: 253,  // 720p  - 8s ($0.80)
-         fhd4: 128, // 1080p - 4s ($0.40) -> 24 vidéos max
-         fhd6: 191, // 1080p - 6s ($0.60)
-         fhd8: 253  },  // 1080p - 8s ($0.80) // 
-
-// --- kling 2.6 pro) ---
-  kling26: {
-    fhd5: 110,
-    fhd10: 217
-  },
-
-  // --- kling 2.6 motion ---
-  kling26_motion: {
-    fhd5: 110,
-    fhd10: 217
-  },
-// --- Kling 3.0 ---
-  kling30: {
-    // HD (720p)
-    hd3: 80,
-    hd4: 105,
-    hd5: 131,
-    hd6: 156,
-    hd7: 182,
-    hd8: 207,
-    hd9: 233,
-    hd10: 258,
-    hd11: 284,
-    hd12: 309,
-    hd13: 335,
-    hd14: 360,
-    hd15: 386,
-
-    // FULL HD (1080p)
-    fhd3: 108,
-    fhd4: 143,
-    fhd5: 178,
-    fhd6: 213,
-    fhd7: 248,
-    fhd8: 283,
-    fhd9: 318,
-    fhd10: 353,
-    fhd11: 388,
-    fhd12: 423,
-    fhd13: 458,
-    fhd14: 493,
-    fhd15: 528
-  },
-
-  // --- HAILUO 2.3 ---
-  hailuo: {
-    hd6: 91,
-    hd10: 179,
-    fhd6: 160
-  },
-
-  // --- MINIMAX H3 ---
-  minimax_h3: {
-    // HD (768p)
-    hd4: 103,
-    hd5: 128,
-    hd6: 153,
-    hd7: 178,
-    hd8: 203,
-    hd9: 228,
-    hd10: 253,
-    hd11: 278,
-    hd12: 303,
-    hd13: 328,
-    hd14: 353,
-    hd15: 378,
-
-    // 2K / FHD
-    fhd4: 163,
-    fhd5: 203,
-    fhd6: 243,
-    fhd7: 283,
-    fhd8: 323,
-    fhd9: 363,
-    fhd10: 403,
-    fhd11: 443,
-    fhd12: 483,
-    fhd13: 523,
-    fhd14: 563,
-    fhd15: 603
-  },
-
-  // --- PIXVERSE V6 ---
-  pixverse6: {
-    // 360p (SD)
-    p360_1: 11,
-    p360_2: 19,
-    p360_3: 26,
-    p360_4: 34,
-    p360_5: 42,
-    p360_6: 50,
-    p360_7: 58,
-    p360_8: 65,
-    p360_9: 73,
-    p360_10: 81,
-    p360_11: 89,
-    p360_12: 97,
-    p360_13: 104,
-    p360_14: 112,
-    p360_15: 120,
-
-    // 540p (SD+)
-    p540_1: 14,
-    p540_2: 25,
-    p540_3: 35,
-    p540_4: 46,
-    p540_5: 57,
-    p540_6: 68,
-    p540_7: 79,
-    p540_8: 89,
-    p540_9: 100,
-    p540_10: 111,
-    p540_11: 122,
-    p540_12: 133,
-    p540_13: 143,
-    p540_14: 154,
-    p540_15: 165,
-
-    // 720p (HD)
-    hd1: 17,
-    hd2: 31,
-    hd3: 44,
-    hd4: 58,
-    hd5: 72,
-    hd6: 86,
-    hd7: 100,
-    hd8: 113,
-    hd9: 127,
-    hd10: 141,
-    hd11: 155,
-    hd12: 169,
-    hd13: 182,
-    hd14: 196,
-    hd15: 210,
-
-    // 1080p (FULL HD)
-    fhd1: 31,
-    fhd2: 60,
-    fhd3: 88,
-    fhd4: 117,
-    fhd5: 145,
-    fhd6: 173,
-    fhd7: 202,
-    fhd8: 230,
-    fhd9: 259,
-    fhd10: 287,
-    fhd11: 315,
-    fhd12: 344,
-    fhd13: 372,
-    fhd14: 401,
-    fhd15: 429
-  },
-  // --- SEEDANCE 1.5 ---
-  seedance: {
-    // SD (480p)
-    sd4: 23,
-    sd5: 28,
-    sd6: 32,
-    sd7: 38,
-    sd8: 44,
-    sd9: 50,
-    sd10: 52,
-    sd11: 57,
-    sd12: 62,
-
-    // HD (720p)
-    hd4: 47,
-    hd5: 58,
-    hd6: 69,
-    hd7: 80,
-    hd8: 91,
-    hd9: 102,
-    hd10: 113,
-    hd11: 124,
-    hd12: 135,
-
-    // FULL HD (1080p)
-    fhd4: 103,
-    fhd5: 127,
-    fhd6: 151,
-    fhd7: 176,
-    fhd8: 201,
-    fhd9: 226,
-    fhd10: 251,
-    fhd11: 276,
-    fhd12: 301
-  },
-
-  // --- SEEDANCE 2.0 ---
-  seedance20: {
-    // SD (480p)
-    sd4: 101,
-    sd5: 123,
-    sd6: 147,
-    sd7: 171,
-    sd8: 195,
-    sd9: 219,
-    sd10: 243,
-    sd11: 267,
-    sd12: 292,
-    sd13: 316,
-    sd14: 340,
-    sd15: 377,
-
-    // HD (720p)
-    hd4: 224,
-    hd5: 280,
-    hd6: 335,
-    hd7: 390,
-    hd8: 445,
-    hd9: 500,
-    hd10: 555,
-    hd11: 610,
-    hd12: 664,
-    hd13: 719,
-    hd14: 774,
-    hd15: 833,
-
-    // FULL HD (1080p)
-    fhd4: 555,
-    fhd5: 694,
-    fhd6: 832,
-    fhd7: 970,
-    fhd8: 1108,
-    fhd9: 1246,
-    fhd10: 1385,
-    fhd11: 1523,
-    fhd12: 1661,
-    fhd13: 1799,
-    fhd14: 1937,
-    fhd15: 2076
-  },
-
-  // --- SEEDANCE 2.5 ---
-  seedance25: {
-    // SD (480p)
-    sd4: 136,
-    sd5: 169,
-    sd6: 202,
-    sd7: 236,
-    sd8: 269,
-    sd9: 302,
-    sd10: 336,
-    sd11: 369,
-    sd12: 402,
-    sd13: 435,
-    sd14: 469,
-    sd15: 502,
-    sd16: 535,
-    sd17: 568,
-    sd18: 602,
-    sd19: 635,
-    sd20: 668,
-    sd21: 701,
-    sd22: 735,
-    sd23: 768,
-    sd24: 801,
-    sd25: 834,
-    sd26: 868,
-    sd27: 901,
-    sd28: 934,
-    sd29: 967,
-    sd30: 1001,
-
-    // HD (720p)
-    hd4: 303,
-    hd5: 378,
-    hd6: 453,
-    hd7: 527,
-    hd8: 602,
-    hd9: 677,
-    hd10: 752,
-    hd11: 827,
-    hd12: 902,
-    hd13: 977,
-    hd14: 1052,
-    hd15: 1127,
-    hd16: 1202,
-    hd17: 1277,
-    hd18: 1352,
-    hd19: 1427,
-    hd20: 1502,
-    hd21: 1577,
-    hd22: 1652,
-    hd23: 1727,
-    hd24: 1802,
-    hd25: 1877,
-    hd26: 1952,
-    hd27: 2027,
-    hd28: 2102,
-    hd29: 2177,
-    hd30: 2251,
-
-    // FULL HD (1080p)
-    fhd4: 802,
-    fhd5: 1001,
-    fhd6: 1201,
-    fhd7: 1401,
-    fhd8: 1600,
-    fhd9: 1800,
-    fhd10: 1999,
-    fhd11: 2199,
-    fhd12: 2399,
-    fhd13: 2598,
-    fhd14: 2798,
-    fhd15: 2998,
-    fhd16: 3198,
-    fhd17: 3397,
-    fhd18: 3597,
-    fhd19: 3797,
-    fhd20: 3996,
-    fhd21: 4196,
-    fhd22: 4396,
-    fhd23: 4595,
-    fhd24: 4795,
-    fhd25: 4995,
-    fhd26: 5194,
-    fhd27: 5394,
-    fhd28: 5594,
-    fhd29: 5793,
-    fhd30: 5992
-  },
-  // --- Images) ---
-
-// --- GPT Image 2) ---
-    gptImage2: 
-
-{  transparentBackground: 11,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---
-  inpaint: 11,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---
-  textToImage: 18,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---
-  referenceToImage: 26}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
-  },
-
-  
-  // --- flux2pro) benefice 5 euros ---
-  flux2pro: {
-  mp1: 13,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---
-  mp2: 19,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
-  mp4: 29         // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
-},
-
-  // --- banana 2 lite) benefice 5 euros ---
-nanoBanana2Lite: {
-  k1: 15,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---
-  reference1k: 15      // --- Image de référence  : 12 ⚡ par image ( 257) ---
-},
-
-  "12.99": { 
-    // --- MODE ÉCLAIRS (Abonnés - Prix coûtant + petite marge) ---
-veo3:  { hd4: 260,   // 720p  - 4s (0,80$)
-         hd6: 390,   // 720p  - 6s (1,20$)
-         hd8: 520,   // 720p  - 8s (1,60$)
-         fhd4: 260,  // 1080p - 4s (0,80$)
-         fhd6: 390,  // 1080p - 6s (1,20$)
-         fhd8: 520 },  // 1080p - 8s (1,60$) 
-
- veo3_lite: { hd4: 125,  // 720p  - 4s ($0.40) -> 24 vidéos max
-         hd6: 188,  // 720p  - 6s ($0.60)
-         hd8: 250,  // 720p  - 8s ($0.80)
-         fhd4: 125, // 1080p - 4s ($0.40) -> 24 vidéos max
-         fhd6: 188, // 1080p - 6s ($0.60)
-         fhd8: 250  },  // 1080p - 8s ($0.80) // 
-
-     
-// --- Kling 2.6 Pro : tarif abonnement Débutant ---
-       kling26:  { fhd5: 110, fhd10: 217 },
-
-// --- Kling 2.6 Motion Control : tarif abonnement Débutant ---
-       kling26_motion: { fhd5: 110, fhd10: 217 },
-
-// --- HD (Kling 3.0 Standard - 720p) ---             
-        kling30: {
-  hd3: 77,
-  hd4: 102,
-  hd5: 128,
-  hd6: 153,
-  hd7: 179,
-  hd8: 204,
-  hd9: 230,
-  hd10: 255, // 🎯 Référence 10s (11 vidéos max)
-  hd11: 281,
-  hd12: 306,
-  hd13: 332,
-  hd14: 357,
-  hd15: 383,
-
-  // --- FULL HD (Kling 3.0 Pro - 1080p) : 35 Éclairs / sec ---
-  fhd3: 105,
-  fhd4: 140,
-  fhd5: 175,
-  fhd6: 210,
-  fhd7: 245,
-  fhd8: 280,
-  fhd9: 315,
-  fhd10: 350, // 🎯 Référence 10s (8 vidéos max)
-  fhd11: 385,
-  fhd12: 420,
-  fhd13: 455,
-  fhd14: 490,
-  fhd15: 525},
-
-// TARIFICATION HAILUO 2.3
- hailuo:  { 
-
-  hd6: 88,    // 🎯 34 vidéos max (4,15 € profit)
-  hd10: 176,  // 🎯 17 vidéos max (4,15 € profit)
-
-  // --- FULL HD (1080p) ---
-  fhd6: 157  }, // 🎯 19 vidéos max (4,44 € profit)
-  // 
-
-   "minimax_h3": {
-  // --- HD (768p) ---
-  hd4: 100,
-  hd5: 125,
-  hd6: 150,
-  hd7: 175,
-  hd8: 200,
-  hd9: 225,
-  hd10: 250, // 🎯 12 vidéos max (~4,11 € profit)
-  hd11: 275,
-  hd12: 300,
-  hd13: 325,
-  hd14: 350,
-  hd15: 375, // 🎯 8 vidéos max (~4,03 € profit)
-
-  // --- 2K ---
-  fhd4: 160,
-  fhd5: 200,
-  fhd6: 240,
-  fhd7: 280,
-  fhd8: 320,
-  fhd9: 360,
-  fhd10: 400, // 🎯 7 vidéos max (~4,52 € profit)
-  fhd11: 440,
-  fhd12: 480,
-  fhd13: 520,
-  fhd14: 560,
-  fhd15: 600 }, // 🎯 5 vidéos max (~3,94 € profit)
-  
-// TARIFICATION PIXVERSE V6 (1s à 15s)
-   "pixverse6":
-
-   // --- 360p (SD) ---   
-   { p360_1: 8,
-  p360_2: 16,
-  p360_3: 23,
-  p360_4: 31,
-  p360_5: 39,  // 🎯 77 vidéos max (4,06 € profit)
-  p360_6: 47,
-  p360_7: 55,
-  p360_8: 62,
-  p360_9: 70,
-  p360_10: 78,
-  p360_11: 86,
-  p360_12: 94,
-  p360_13: 101,
-  p360_14: 109,
-  p360_15: 117,
-
-  // --- 540p (SD+) ---
-  p540_1: 11,
-  p540_2: 22,
-  p540_3: 32,
-  p540_4: 43,
-  p540_5: 54,  // 🎯 55 vidéos max (4,08 € profit)
-  p540_6: 65,
-  p540_7: 76,
-  p540_8: 86,
-  p540_9: 97,
-  p540_10: 108,
-  p540_11: 119,
-  p540_12: 130,
-  p540_13: 140,
-  p540_14: 151,
-  p540_15: 162,
-
-  // --- 720p (HD) ---
-  hd1: 14,
-  hd2: 28,
-  hd3: 41,
-  hd4: 55,
-  hd5: 69,   // 🎯 43 vidéos max (4,00 € profit)
-  hd6: 83,
-  hd7: 97,
-  hd8: 110,
-  hd9: 124,
-  hd10: 138,
-  hd11: 152,
-  hd12: 166,
-  hd13: 179,
-  hd14: 193,
-  hd15: 207,
-
-  // --- 1080p (FULL HD) ---
-  fhd1: 28,
-  fhd2: 57,
-  fhd3: 85,
-  fhd4: 114,
-  fhd5: 142,  // 🎯 21 vidéos max (4,21 € profit)
-  fhd6: 170,
-  fhd7: 199,
-  fhd8: 227,
-  fhd9: 256,
-  fhd10: 284,
-  fhd11: 312,
-  fhd12: 341,
-  fhd13: 369,
-  fhd14: 398,
-  fhd15: 426},
-
-  // seedance 1.5 sdk fal)
-    seedance: { // --- SD (480p) ---
-  sd4: 20,
-  sd5: 25,  // 🎯 120 vidéos max (7,00 € profit)
-  sd6: 29,
-  sd7: 35,
-  sd8: 41,
-  sd9: 47,
-  sd10: 49,
-  sd11: 54,
-  sd12: 59,
-
-  // --- HD (720p) ---
-  hd4: 44,
-  hd5: 55, // 🎯 5s : 54 vidéos max (7,00 € profit)
-  hd6: 66,
-  hd7: 77,
-  hd8: 88,
-  hd9: 99,
-  hd10: 110,
-  hd11: 121,
-  hd12: 132,
-
-  // --- FULL HD (1080p) ---
-  fhd4: 100,
-  fhd5: 124,  // 🎯 24 vidéos max (7,00 € profit)
-  fhd6: 148,
-  fhd7: 173,
-  fhd8: 198,
-  fhd9: 223,
-  fhd10: 248,
-  fhd11: 273,
-  fhd12: 298 },
-
-  // seedance 2.0)
-"seedance20": {
-  // --- SD (480p) 4s : 30 vidéos 5 euros de chiffre ---
-  sd4: 98, sd5: 120, sd6: 144, sd7: 168, sd8: 192, sd9: 216, sd10: 240, sd11: 264, sd12: 289, sd13: 313, sd14: 337, sd15: 374,
-
-  // --- HD (720p) 4s : 13 vidéos 5 euros de chiffre  ---
-  hd4: 221, hd5: 277, hd6: 332, hd7: 387, hd8: 442, hd9: 497, hd10: 552, hd11: 607, hd12: 661, hd13: 716, hd14: 771, hd15: 830,
-
-  // --- FULL HD (1080p) 4s : 5 vidéos 5 euros de chiffre  ---
-  fhd4: 552, fhd5: 691, fhd6: 829, fhd7: 967, fhd8: 1105, fhd9: 1243, fhd10: 1382, fhd11: 1520, fhd12: 1658, fhd13: 1796, fhd14: 1934, fhd15: 2073
-},
-
-seedance25: {
-  // --- SD (480p) ---
-  sd4: 133,
-  sd5: 166,   // ---  5s : 13 vidéos 4.5 euros de chiffre  ---
-  sd6: 199,
-  sd7: 233,
-  sd8: 266,
-  sd9: 299,
-  sd10: 333,
-  sd11: 366,
-  sd12: 399,
-  sd13: 432,
-  sd14: 466,
-  sd15: 499,
-  sd16: 532,
-  sd17: 565,
-  sd18: 599,
-  sd19: 632,
-  sd20: 665,
-  sd21: 698,
-  sd22: 732,
-  sd23: 765,
-  sd24: 798,
-  sd25: 831,
-  sd26: 865,
-  sd27: 898,
-  sd28: 931,
-  sd29: 964,
-  sd30: 998,
-
-  // --- HD (720p) ---
-  hd4: 300,
-  hd5: 375,
-  hd6: 450,
-  hd7: 524,
-  hd8: 599,
-  hd9: 674,
-  hd10: 749,
-  hd11: 824,
-  hd12: 899,
-  hd13: 974,
-  hd14: 1049,
-  hd15: 1124,
-  hd16: 1199,
-  hd17: 1274,
-  hd18: 1349,
-  hd19: 1424,
-  hd20: 1499,
-  hd21: 1574,
-  hd22: 1649,
-  hd23: 1724,
-  hd24: 1799,
-  hd25: 1874,
-  hd26: 1949,
-  hd27: 2024,
-  hd28: 2099,
-  hd29: 2174,
-  hd30: 2248,
-
-  // --- FULL HD (1080p) ---
-  fhd4: 799,
-  fhd5: 998,
-  fhd6: 1198,
-  fhd7: 1398,
-  fhd8: 1597,
-  fhd9: 1797,
-  fhd10: 1996,
-  fhd11: 2196,
-  fhd12: 2396,
-  fhd13: 2595,
-  fhd14: 2795,
-  fhd15: 2995,
-  fhd16: 3195,
-  fhd17: 3394,
-  fhd18: 3594,
-  fhd19: 3794,
-  fhd20: 3993,
-  fhd21: 4193,
-  fhd22: 4393,
-  fhd23: 4592,
-  fhd24: 4792,
-  fhd25: 4992,
-  fhd26: 5191,
-  fhd27: 5391,
-  fhd28: 5591,
-  fhd29: 5790,
-  fhd30: 5989
-
-},
-  // --- Images) ---
-
-// --- GPT Image 2) ---
-    gptImage2: 
-
-{  transparentBackground: 8,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---
-  inpaint: 8,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---
-  textToImage: 15,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---
-  referenceToImage: 23}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
-  },
-
-  
-  // --- flux2pro) benefice 5 euros ---
-  flux2pro: {
-  mp1: 11,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---
-  mp2: 16,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
-  mp4: 26          // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
-},
-
-  // --- banana 2 lite) benefice 5 euros ---
-nanoBanana2Lite: {
-  k1: 12,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---
-  reference1k: 12       // --- Image de référence  : 12 ⚡ par image ( 257) ---
- }
-};
-
-// --- LIAISON DES PLANS (Éviter les erreurs de saisie) ---
-PRICING_DATA["24.99"]  = PRICING_DATA["12.99"];
-PRICING_DATA["34.99"]  = PRICING_DATA["12.99"];
-PRICING_DATA["59.99"]  = PRICING_DATA["12.99"];
-PRICING_DATA["159.99"] = PRICING_DATA["12.99"];
-
+// Tarifs centralisés dans pricingConfig.js (source unique pour le client et le serveur).
 const currentUserPrice = PLAN_TO_PRICE[userPlan] || "0.00";
 const p = PRICING_DATA[currentUserPrice] || PRICING_DATA["0.00"];
-
 const engines = [
 
-  { 
-
-  id: "veo3.1_fast", 
-  name: "Veo 3.1 fast", 
-  type: "VIDEO",
-
-  // Runware
-  runwareModel: "google:3@3",
-
-  canDualImage: false,
-
-  minPriceForLightning: "12.99",
-
-  prices: {
-    "4": { 
-      "720p": p.veo3_lite?.hd4 || 128, 
-      "1080p": p.veo3_lite?.fhd4 || 128 
-    },
-    "6": { 
-      "720p": p.veo3_lite?.hd6 || 191, 
-      "1080p": p.veo3_lite?.fhd6 || 191
-    },
-    "8": { 
-      "720p": p.veo3_lite?.hd8 || 253, 
-      "1080p": p.veo3_lite?.fhd8 || 253
-    } 
-  },
-
-  // Configuration spécifique Runware / Google
-  providerSettings: {
-    google: {
-      enhancePrompt: true,
-      generateAudio: true
-     }
-  },
-
-  },
-  
-    // --- VIDÉO HAUT DE GAMME ---
-  { 
-id: "veo3.1", 
-    name: "Veo 3.1",  
+  {
+    id: "veo3.1_fast",
+    name: "Veo 3.1 fast",
     type: "VIDEO",
-    runwareModel: "google:3@2",
-    canDualImage: false, 
+    runwareModel: "google:3@3",
+    canDualImage: false,
     minPriceForLightning: "12.99",
     prices: {
-      "4": { 
-        "720p": p.veo3?.hd4 || 263, 
-        "1080p": p.veo3?.fhd4 || 263 
+      "4": {
+        "720p": p.veo3_lite?.hd4 || 128,
+        "1080p": p.veo3_lite?.fhd4 || 128
       },
-      "6": { 
-        "720p": p.veo3?.hd6 || 393, 
-        "1080p": p.veo3?.fhd6 || 393 
-         },
-      "8": { 
-        "720p": p.veo3?.hd8 || 523, 
-        "1080p": p.veo3?.fhd8 || 523 
+      "6": {
+        "720p": p.veo3_lite?.hd6 || 191,
+        "1080p": p.veo3_lite?.fhd6 || 191
+      },
+      "8": {
+        "720p": p.veo3_lite?.hd8 || 253,
+        "1080p": p.veo3_lite?.fhd8 || 253
       }
     },
-// Configuration spécifique au provider Runware
-  providerSettings: {
-    google: {
-      enhancePrompt: true,
-      generateAudio: true
-    }
+    providerSettings: {
+      google: {
+        enhancePrompt: true,
+        generateAudio: true
+      }
+    },
+    annotation: t("line3_app_annotation_veo3_1_fast")
   },
 
-  },
-  {     
-    id: "kling26_motion", 
-    name: "Kling 2.6 Motion Control", 
+  // --- VIDÉO HAUT DE GAMME ---
+  {
+    id: "veo3.1",
+    name: "Veo 3.1",
     type: "VIDEO",
-    canDualImage: false, 
+    runwareModel: "google:3@2",
+    canDualImage: false,
     minPriceForLightning: "12.99",
     prices: {
-      "5": { 
+      "4": {
+        "720p": p.veo3?.hd4 || 263,
+        "1080p": p.veo3?.fhd4 || 263
+      },
+      "6": {
+        "720p": p.veo3?.hd6 || 393,
+        "1080p": p.veo3?.fhd6 || 393
+      },
+      "8": {
+        "720p": p.veo3?.hd8 || 523,
+        "1080p": p.veo3?.fhd8 || 523
+      }
+    },
+    providerSettings: {
+      google: {
+        enhancePrompt: true,
+        generateAudio: true
+      }
+    },
+    annotation: t("line3_app_annotation_veo3_1")
+  },
+
+  {
+    id: "kling26_motion",
+    name: "Kling 2.6 Motion Control",
+    type: "VIDEO",
+    canDualImage: false,
+    minPriceForLightning: "12.99",
+    prices: {
+      "5": {
         "1080p": p.kling26_motion?.fhd5 || 110
       },
-      "10": { 
+      "10": {
         "1080p": p.kling26_motion?.fhd10 || 217
       }
     },
     endpoint: "klingai:kling-video@2.6-pro",
-    annotation: "Transfert de mouvement d'une vidéo vers une image"
-},
-{
-   
+    annotation: t("line3_app_annotation_kling26_motion")
+  },
+
+  {
     id: "kling30",
     name: "Kling 3.0",
     type: "VIDEO",
     canDualImage: true,
     minPriceForLightning: "12.99",
-
     prices: (function() {
-        const dynamicPrices = {};
+      const dynamicPrices = {};
 
-        for (let i = 3; i <= 15; i++) {
-            dynamicPrices[i.toString()] = {
-                "720p": p.kling30?.[`hd${i}`] || 200,
-                "1080p": p.kling30?.[`fhd${i}`] || 500
-            };
-        }
+      for (let i = 3; i <= 15; i++) {
+        dynamicPrices[i.toString()] = {
+          "720p": p.kling30?.[`hd${i}`] || 200,
+          "1080p": p.kling30?.[`fhd${i}`] || 500
+        };
+      }
 
-        return dynamicPrices;
+      return dynamicPrices;
     })(),
-
-    // Kling 3.0 Standard — 720p
     runwareModel: "klingai:kling-video@3-standard",
     standardModel: "klingai:kling-video@3-standard",
-
-    // Kling 3.0 Pro — 1080p
     proModel: "klingai:kling-video@3-pro",
+    annotation: t("line3_app_annotation_kling30")
+  },
 
-    annotation: "Kling 3.0 — Standard 720p / Pro 1080p"
-},
   {
     id: "kling2.6",
     name: "Kling 2.6 Pro",
     type: "VIDEO",
-
-    // Runware
     runwareModel: "klingai:kling-video@2.6-pro",
-
     canDualImage: false,
-
     minPriceForLightning: "12.99",
-
     prices: {
-        "5": {
-            "1080p": p.kling26?.fhd5 || 110
-        },
-        "10": {
-            "1080p": p.kling26?.fhd10 || 217
-        }
+      "5": {
+        "1080p": p.kling26?.fhd5 || 110
+      },
+      "10": {
+        "1080p": p.kling26?.fhd10 || 217
+      }
     },
-
     providerSettings: {
-        klingai: {
-            sound: true
-        }
+      klingai: {
+        sound: true
+      }
     },
-},
-
-{
-  id: "hailuo",
-  name: "Hailuo 2.3",
-  type: "VIDEO",
-  runwareModel: "minimax:4@1",
-  canDualImage: false,
-  minPriceForLightning: "12.99",
-  prices: {
-    "6": {
-      "768p": p.hailuo?.hd6 || 91,
-      "1080p": p.hailuo?.fhd6 || 179
-    },
-
-    "10": {
-      "768p": p.hailuo?.hd10 || 160
-    }
+    annotation: t("line3_app_annotation_kling26")
   },
-  annotation: "Mouvements ultra-réalistes"
-},
 
   {
-id: "minimax_h3",
-name: "MiniMax H3",
-type: "VIDEO",
-runwareModel: "minimax:h3@0",
-canDualImage: true,
-minPriceForLightning: "12.99",
-model: "minimax:h3@0",
-prices: (function() {
-  const dynamicPrices = {};
+    id: "hailuo",
+    name: "Hailuo 2.3",
+    type: "VIDEO",
+    runwareModel: "minimax:4@1",
+    canDualImage: false,
+    minPriceForLightning: "12.99",
+    prices: {
+      "6": {
+        "768p": p.hailuo?.hd6 || 91,
+        "1080p": p.hailuo?.fhd6 || 179
+      },
+      "10": {
+        "768p": p.hailuo?.hd10 || 160
+      }
+    },
+    annotation: t("line3_app_annotation_hailuo")
+  },
 
-  for (let i = 4; i <= 15; i++) {
-    dynamicPrices[i.toString()] = {
-      "768p": p.minimax_h3?.[`hd${i}`] || 378,
-      "1440p": p.minimax_h3?.[`2k${i}`] || 603
-    };
-  }
+  {
+    id: "minimax_h3",
+    name: "MiniMax H3",
+    type: "VIDEO",
+    runwareModel: "minimax:h3@0",
+    canDualImage: true,
+    minPriceForLightning: "12.99",
+    model: "minimax:h3@0",
+    prices: (function() {
+      const dynamicPrices = {};
 
-  return dynamicPrices;
-})(),
+      for (let i = 4; i <= 15; i++) {
+        dynamicPrices[i.toString()] = {
+          "768p": p.minimax_h3?.[`hd${i}`] || 378,
+          "1440p": p.minimax_h3?.[`2k${i}`] || 603
+        };
+      }
 
-},
+      return dynamicPrices;
+    })(),
+    annotation: t("line3_app_annotation_minimax_h3")
+  },
 
   // --- VIDÉO ACCESSIBLE ---
-{
-id: "pixverse6", 
-  name: "Pixverse V6",  
-  type: "VIDEO",
-  canDualImage: true,
-  minPriceForLightning: "12.99",
-  prices: (function() {
-    const dynamicPrices = {};
-    for (let i = 1; i <= 15; i++) {
-      dynamicPrices[i.toString()] = {
-        "360p": p.pixverse6?.[`p360_${i}`] || 117,
-        "540p": p.pixverse6?.[`p540_${i}`] || 162,
-        "720p": p.pixverse6?.[`hd${i}`] || 207,
-        "1080p": p.pixverse6?.[`fhd${i}`] || 426
-      };
-    }
-    return dynamicPrices;
-  })(),
-  runwareModel: "pixverse:1@8",
-  annotation: "PixVerse V6 — 360p à 1080p, 1 à 15 s, audio et multi-shot"},
+  {
+    id: "pixverse6",
+    name: "Pixverse V6",
+    type: "VIDEO",
+    canDualImage: true,
+    minPriceForLightning: "12.99",
+    prices: (function() {
+      const dynamicPrices = {};
 
-{ 
-  id: "seedance25", 
-  name: "seedance 2.5", 
-  type: "VIDEO",
-  canDualImage: true, 
-  minPriceForLightning: "12.99",
-  prices: (function() {
-    const dynamicPrices = {};
-    for (let i = 4; i <= 30; i++) {
-      dynamicPrices[i.toString()] = {
-        "480p": p.seedance25?.[`sd${i}`] || 998,
-        "720p": p.seedance25?.[`hd${i}`] || 2248,
-        "1080p": p.seedance25?.[`fhd${i}`] || 5989
-      };
-    }
-    return dynamicPrices;
-  })(),
-  runwareModel: "bytedance:seedance@2.5",
-  annotation: "Seedance 2.5 — références image/vidéo/audio, édition et extension, 4 à 30 s"
-},
-{
-   id: "seedance20", 
-  name: "seedance 2.0", 
-  type: "VIDEO",
-  canDualImage: true, 
-  minPriceForLightning: "12.99",
- prices: (function() {
-    const dynamicPrices = {};
-    for (let i = 4; i <= 15; i++) {
-      dynamicPrices[i.toString()] = {
-        "480p": p.seedance20?.[`sd${i}`] || (i === 5 ? 123 : i === 10 ? 243 : i === 15 ? 363 : Math.round(24.3 * i)),
-        "720p": p.seedance20?.[`hd${i}`] || (i === 5 ? 173 : i === 10 ? 343 : i === 15 ? 513 : Math.round(34.3 * i)),
-        "1080p": p.seedance20?.[`fhd${i}`] || (i === 5 ? 383 : i === 10 ? 763 : i === 15 ? 1143 : Math.round(76.3 * i))
-      };
-    }
-    return dynamicPrices;
-  })(),
-runwareModel: "bytedance:seedance@2.0",
-  annotation: "Seedance 2.0 — jusqu'à 9 images, 3 vidéos et 3 audios de référence"
-},
-{ 
-  id: "seedance", 
-  name: "Seedance 1.5 Pro", 
-  type: "VIDEO",
-  canDualImage: false, // Supporte Start/End frame mais pas Dual Image classique
-  minPriceForLightning: "12.99",
-  prices: (function() {
-    const dynamicPrices = {};
-    for (let i = 4; i <= 12; i++) {
-      dynamicPrices[i.toString()] = {
-        "480p": p.seedance?.[`sd${i}`] || 59,
-        "720p": p.seedance?.[`hd${i}`] || 132,
-        "1080p": p.seedance?.[`fhd${i}`] || 298
-      };
-    }
-    return dynamicPrices;
-  })(),
-endpoint: "fal-ai/bytedance/seedance/v1.5/pro/text-to-video",
-  annotation: "Audio natif & Lip-sync synchronisés"
+      for (let i = 1; i <= 15; i++) {
+        dynamicPrices[i.toString()] = {
+          "360p": p.pixverse6?.[`p360_${i}`] || 117,
+          "540p": p.pixverse6?.[`p540_${i}`] || 162,
+          "720p": p.pixverse6?.[`hd${i}`] || 207,
+          "1080p": p.pixverse6?.[`fhd${i}`] || 426
+        };
+      }
+
+      return dynamicPrices;
+    })(),
+    runwareModel: "pixverse:1@8",
+    annotation: t("line3_app_annotation_pixverse6")
   },
-  // --- IMAGES ---
-{
-  id: "gpt_image2",
-  name: "GPT Image 2",
-  type: "IMAGE",
-  runwareModel: "openai:gpt-image@2",
-  minPriceForLightning: "12.99",
-  prices: { "0": { "1080p": p.flux?.pro || 4 } },
-  maxReferenceImages: 16,
-  annotation: "Génération et édition d'images, jusqu'à 16 références"
-},
-{
-  id: "flux2pro",
-  name: "FLUX.2 Pro",
-  type: "IMAGE",
-  runwareModel: "bfl:5@1",
-  minPriceForLightning: "12.99",
-  prices: { "0": { "1080p": p.flux?.dev || 3 } },
-  maxReferenceImages: 9,
-  annotation: "FLUX.2 Pro — édition guidée par jusqu'à 9 images"
-},
-{
-  id: "nano_banana2_lite",
-  name: "Nano Banana 2 Lite",
-  type: "IMAGE",
-  runwareModel: "google:nano-banana@2-lite",
-  minPriceForLightning: "12.99",
-  prices: { "0": { "1080p": p.flux?.schnell || 1 } },
-  maxReferenceImages: 14,
-  annotation: "Génération et édition rapide, jusqu'à 14 images de référence"
-} 
-]; // Fermeture correcte de l'array engines
 
+  {
+    id: "seedance25",
+    name: "seedance 2.5",
+    type: "VIDEO",
+    canDualImage: true,
+    minPriceForLightning: "12.99",
+    prices: (function() {
+      const dynamicPrices = {};
+
+      for (let i = 4; i <= 30; i++) {
+        dynamicPrices[i.toString()] = {
+          "480p": p.seedance25?.[`sd${i}`] || 998,
+          "720p": p.seedance25?.[`hd${i}`] || 2248,
+          "1080p": p.seedance25?.[`fhd${i}`] || 5989
+        };
+      }
+
+      return dynamicPrices;
+    })(),
+    runwareModel: "bytedance:seedance@2.5",
+    annotation: t("line3_app_annotation_seedance25")
+  },
+
+  {
+    id: "seedance20",
+    name: "seedance 2.0",
+    type: "VIDEO",
+    canDualImage: true,
+    minPriceForLightning: "12.99",
+    prices: (function() {
+      const dynamicPrices = {};
+
+      for (let i = 4; i <= 15; i++) {
+        dynamicPrices[i.toString()] = {
+          "480p": p.seedance20?.[`sd${i}`] || (i === 5 ? 123 : i === 10 ? 243 : i === 15 ? 363 : Math.round(24.3 * i)),
+          "720p": p.seedance20?.[`hd${i}`] || (i === 5 ? 173 : i === 10 ? 343 : i === 15 ? 513 : Math.round(34.3 * i)),
+          "1080p": p.seedance20?.[`fhd${i}`] || (i === 5 ? 383 : i === 10 ? 763 : i === 15 ? 1143 : Math.round(76.3 * i))
+        };
+      }
+
+      return dynamicPrices;
+    })(),
+    runwareModel: "bytedance:seedance@2.0",
+    annotation: t("line3_app_annotation_seedance20")
+  },
+
+  {
+    id: "seedance",
+    name: "Seedance 1.5 Pro",
+    type: "VIDEO",
+    canDualImage: false,
+    minPriceForLightning: "12.99",
+    prices: (function() {
+      const dynamicPrices = {};
+
+      for (let i = 4; i <= 12; i++) {
+        dynamicPrices[i.toString()] = {
+          "480p": p.seedance?.[`sd${i}`] || 59,
+          "720p": p.seedance?.[`hd${i}`] || 132,
+          "1080p": p.seedance?.[`fhd${i}`] || 298
+        };
+      }
+
+      return dynamicPrices;
+    })(),
+    endpoint: "fal-ai/bytedance/seedance/v1.5/pro/text-to-video",
+    annotation: t("line3_app_annotation_seedance")
+  },
+
+  // --- IMAGES ---
+  {
+    id: "gpt_image2",
+    name: "GPT Image 2",
+    type: "IMAGE",
+    runwareModel: "openai:gpt-image@2",
+    minPriceForLightning: "12.99",
+    prices: { "0": { "1080p": p.flux?.pro || 18 } },
+    maxReferenceImages: 26,
+    annotation: t("line3_app_annotation_gpt_image2")
+  },
+
+  {
+    id: "flux2pro",
+    name: "FLUX.2 Pro",
+    type: "IMAGE",
+    runwareModel: "bfl:5@1",
+    minPriceForLightning: "12.99",
+    prices: { "0": { "1080p": p.flux?.dev || 14 } },
+    maxReferenceImages: 14,
+    annotation: t("line3_app_annotation_flux2pro")
+  },
+
+  {
+    id: "nano_banana2_lite",
+    name: "Nano Banana 2 Lite",
+    type: "IMAGE",
+    runwareModel: "google:nano-banana@2-lite",
+    minPriceForLightning: "12.99",
+    prices: { "0": { "1080p": p.flux?.schnell || 15 } },
+    maxReferenceImages: 15,
+    annotation: t("line3_app_annotation_nano_banana2_lite")
+  }
+
+]; // Fermeture correcte de l'array engines
 // Réduit immédiatement un ancien prompt si l'utilisateur change de moteur
 // ou ajoute une image/vidéo qui impose une limite plus stricte.
 useEffect(() => {
@@ -1500,41 +787,52 @@ useEffect(() => {
 
 
 function getPriceDisplay(engine, duration, resolution, userPlan) {
-    const PLAN_TO_PRICE = { 
-        "debutant": "0.00", "essentiel": "12.99", 
-        "standard": "24.99", "master": "34.99", "elite": "59.99", "legende": "159.99" 
+    const planKey = PLAN_TO_PRICE[String(userPlan || "debutant").toLowerCase()] || "0.00";
+    const imageModelKeys = {
+        gpt_image2: { table: "gptImage2", text: "textToImage", reference: "referenceToImage" },
+        flux2pro: { table: "flux2pro", sizes: ["mp1", "mp2", "mp4"] },
+        nano_banana2_lite: { table: "nanoBanana2Lite", text: "k1", reference: "reference1k" }
     };
-    const currentPriceKey = PLAN_TO_PRICE[userPlan] || "0.00";
+    const imageSpec = imageModelKeys[engine?.id];
+    if (engine?.type === "IMAGE" && imageSpec) {
+        const diamondTable = PRICING_DATA["0.00"]?.[imageSpec.table];
+        const lightningTable = PRICING_DATA[planKey]?.[imageSpec.table];
+        const hasReference = Boolean(startImage || uploadedImage || (Array.isArray(modelReferenceImages) && modelReferenceImages.length));
+        let priceKey;
+        if (engine.id === "gpt_image2") {
+            priceKey = hasReference ? imageSpec.reference : imageSpec.text;
+        } else if (engine.id === "nano_banana2_lite") {
+            priceKey = hasReference || Boolean(nanoReferenceVideo) ? imageSpec.reference : imageSpec.text;
+        } else {
+            const ratio = aspectRatio || "1:1";
+            const dimensionsByRatio = {
+                "16:9": [1280, 720], "9:16": [720, 1280], "1:1": [1024, 1024],
+                "4:3": [1152, 864], "3:4": [864, 1152], "3:2": [1264, 848],
+                "2:3": [848, 1264], "4:5": [928, 1152], "5:4": [1152, 928],
+                "21:9": [1584, 672]
+            };
+            const dimensions = dimensionsByRatio[ratio] || dimensionsByRatio["1:1"];
+            const mp = dimensions[0] * dimensions[1] / 1000000;
+            priceKey = mp <= 1.5 ? "mp1" : mp <= 3 ? "mp2" : "mp4";
+        }
+        const required = packs.indexOf(String(engine.minPriceForLightning));
+        const current = packs.indexOf(planKey);
+        const lightningPrice = lightningTable?.[priceKey];
+        if (current >= 0 && required >= 0 && current >= required && Number.isFinite(Number(lightningPrice)) && Number(lightningPrice) > 0) {
+            return `${lightningPrice} ⚡`;
+        }
+        const diamondPrice = diamondTable?.[priceKey];
+        return Number.isFinite(Number(diamondPrice)) && Number(diamondPrice) > 0 ? `${diamondPrice} 💎` : "Tarif indisponible";
+    }
 
-    // 🛡️ CORRECTION : Si c'est le Kling Motion Control, on force TOUJOURS le Full HD (fhd)
-    const isKlingMotion = engine?.id === "kling26_motion" || engine?.id?.includes("motion");
-    
+    const isFullHD = String(resolution || "").toLowerCase().includes("1080") || String(resolution || "").toLowerCase().includes("full hd") || String(resolution || "").toLowerCase().includes("fhd");
     const resKey = isFullHD ? "fhd" : "hd";
     const lookupKey = duration === "0" ? resKey : `${resKey}${duration}`;
-
-    // 1. PRIX ÉCLAIR
-    const isImageEngine = engine.type === "IMAGE";
-    const imageTier = engine.id === "gpt_image2" ? "pro" : engine.id === "flux2pro" ? "dev" : "schnell";
-    const pricingEngineKey = isImageEngine ? "flux" : engine.id;
-    const lightningPrice = isImageEngine
-      ? PRICING_DATA[currentPriceKey]?.[pricingEngineKey]?.[imageTier]
-      : PRICING_DATA[currentPriceKey]?.[pricingEngineKey]?.[lookupKey];
-
-    // 2. PRIX DIAMANT
-    const diamondPrice = (isImageEngine
-      ? PRICING_DATA["0.00"]?.[pricingEngineKey]?.[imageTier]
-      : PRICING_DATA["0.00"]?.[pricingEngineKey]?.[lookupKey]) || engine.rubyPrice;
-
-    // 3. LOGIQUE D'AUTORISATION
-    const packs = ["0.00", "12.99", "24.99", "34.99", "59.99", "159.99"];
-    const userTierIndex = packs.indexOf(currentPriceKey);
-    const requiredTierIndex = packs.indexOf(String(engine.minPriceForLightning));
-
-    if (userTierIndex >= requiredTierIndex && lightningPrice !== undefined) {
-        return `${lightningPrice} ⚡`;
-    } else {
-        return `${diamondPrice} 💎`;
-    }
+    const price = PRICING_DATA[planKey]?.[engine?.id]?.[lookupKey];
+    const diamondPrice = PRICING_DATA["0.00"]?.[engine?.id]?.[lookupKey] || engine?.rubyPrice;
+    const required = packs.indexOf(String(engine?.minPriceForLightning));
+    const current = packs.indexOf(planKey);
+    return current >= 0 && required >= 0 && current >= required && price !== undefined ? `${price} ⚡` : `${diamondPrice ?? "—"} 💎`;
 }
 const styles = [
   t("app.style.realistic", { defaultValue: "Réaliste" }),
@@ -2058,21 +1356,27 @@ else {
 });
     let baseCost = 0;
 
-    // Tarification dédiée aux nouveaux moteurs d'images, alignée sur pricingConfig.js.
+    // Tarification dédiée aux moteurs d'images.
+    // Si la table du forfait actif est incomplète, on reprend la valeur de référence
+    // du tableau 0.00 au lieu d'afficher 0 éclair.
     if (mode === "IMAGE") {
-        const imageTable = PRICING_DATA[targetPlan] || PRICING_DATA["0.00"];
+        const imageTable = PRICING_DATA[targetPlan] || {};
+        const fallbackImageTable = PRICING_DATA["0.00"] || {};
         const hasReferenceImage = (Array.isArray(modelReferenceImages) && modelReferenceImages.length > 0) || Boolean(startImage || uploadedImage);
         if (currentEngineId === "gpt_image2") {
-            baseCost = imageTable?.gptImage2?.[hasReferenceImage ? "referenceToImage" : "textToImage"] || 0;
+            const imageKey = hasReferenceImage ? "referenceToImage" : "textToImage";
+            baseCost = imageTable?.gptImage2?.[imageKey] || fallbackImageTable?.gptImage2?.[imageKey] || (hasReferenceImage ? 23 : 15);
         } else if (currentEngineId === "flux2pro") {
             const imageWidth = aspectRatio === "16:9" ? 1280 : aspectRatio === "9:16" ? 720 : 1024;
             const imageHeight = aspectRatio === "16:9" ? 720 : aspectRatio === "9:16" ? 1280 : 1024;
             const pixels = imageWidth * imageHeight;
             const megapixels = pixels / 1_000_000;
             const sizeKey = megapixels <= 1.5 ? "mp1" : megapixels <= 3 ? "mp2" : "mp4";
-            baseCost = imageTable?.flux2pro?.[sizeKey] || 0;
+            const fallbackFluxCost = sizeKey === "mp1" ? 14 : sizeKey === "mp2" ? 20 : 30;
+            baseCost = imageTable?.flux2pro?.[sizeKey] ?? fallbackImageTable?.flux2pro?.[sizeKey] ?? fallbackFluxCost;
         } else if (currentEngineId === "nano_banana2_lite") {
-            baseCost = imageTable?.nanoBanana2Lite?.[hasReferenceImage || Boolean(nanoReferenceVideo) ? "reference1k" : "k1"] || 0;
+            const imageKey = hasReferenceImage || Boolean(nanoReferenceVideo) ? "reference1k" : "k1";
+            baseCost = imageTable?.nanoBanana2Lite?.[imageKey] ?? fallbackImageTable?.nanoBanana2Lite?.[imageKey] ?? 15;
         }
     } else {
         baseCost = PRICING_DATA[targetPlan]?.[pricingId]?.[priceKey] || 0;
@@ -2233,7 +1537,20 @@ setActiveItem(item);
 
   console.log("🚀 Début de handleGenerate");
   if (!prompt) return;
+const activeEngineId = selectedModel?.toLowerCase() || "";
 
+const engineData = engines.find(e =>
+  e.id === selectedModel ||
+  e.name === selectedModel ||
+  e.id === activeEngineId ||
+  e.name?.toLowerCase() === activeEngineId
+);
+
+if (!engineData) {
+  console.error("❌ Moteur introuvable :", selectedModel);
+  setIsLoading(false);
+  return;
+}
 
   const styleKey = (selectedStyle || "").trim().toLowerCase();
   let cleanPrompt = prompt ? prompt.trim().slice(0, getPromptLimit(mode, engineData.id, Boolean(startImage || endImage), Boolean(videoSource))) : "";
@@ -2293,18 +1610,7 @@ switch (styleKey) {
   console.log("Prompt:", finalPrompt);
   console.log("Style appliqué:", selectedStyle);
 
-  const activeEngineId = selectedModel?.toLowerCase() || "";
-const engineData = engines.find(e => 
-  e.id === selectedModel || 
-  e.name === selectedModel ||
-  e.id === selectedModel?.toLowerCase() ||
-  e.name?.toLowerCase() === selectedModel?.toLowerCase()
-);
 
-if (!engineData) {
-  console.error(`❌ Impossible de trouver l'engin correspondant à : ${selectedModel}`);
-  return;
-}
 if (engineData.id === "seedance25" && videoSource && seedance25Operation === "edit" && !(videoSourceDuration > 0)) {
   setErrorMsg(t("line3_app_error_waitSourceDuration"));
   return;
@@ -4270,7 +3576,11 @@ if (isAuthLoading || isInitializing) {
 <div className="control-panel glass-card">
 <div className="mode-toggle">
 {["IMAGE", "VIDEO", "REMASTERISE"].map(m => {
-  if (m === "REMASTERISE") {
+  const modeLabel = {
+    IMAGE: t("control_mode_image"),
+    VIDEO: t("control_mode_video"),
+    REMASTERISE: t("control_mode_remasterise")
+  }[m];  if (m === "REMASTERISE") {
     return (
     <button
         key={m}
@@ -4289,7 +3599,7 @@ if (isAuthLoading || isInitializing) {
         }}
       >
 <span style={{ fontSize: "12px" }}></span>
-{t("app.mode.remastered", { defaultValue: "Remasterisé" })}      </button>
+{modeLabel}     </button>
     );
   }
 
@@ -4306,7 +3616,7 @@ if (isAuthLoading || isInitializing) {
         setEndImage(null);
       }}
     >
-      {m}
+      {modeLabel}
     </button>
   );
 })}
@@ -4820,122 +4130,82 @@ if (isAuthLoading || isInitializing) {
   <>
     {/* 🔊 Audio */}
     <span style={{
-      fontSize: '10px',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      color: '#e5e7eb',
-      padding: '2px 7px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '3px',
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
       border: '1px solid rgba(255,255,255,0.08)'
     }}>
-       Audio
+      {t("line3_app_ui_audio", { defaultValue: "Audio" })}
     </span>
 
-    {/* 🖼️ {t("line3_app_settings_referenceImages")} */}
+    {/* 🖼️ Images de référence */}
     <span style={{
-      fontSize: '10px',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      color: '#e5e7eb',
-      padding: '2px 7px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '3px',
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
       border: '1px solid rgba(255,255,255,0.08)'
     }}>
-       {t("line3_app_ui_referenceImagesUpTo3")}
+      {t("line3_app_ui_referenceImagesUpTo3")}
     </span>
-      {/* ✨ Full HD */}
-      <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
-        border: '1px solid rgba(255,255,255,0.08)'
-      }}>
-         720p / 1080p      
 
-      </span>
+    {/* ✨ Résolution */}
+    <span style={{
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+      720p / 1080p
+    </span>
 
     {/* ⏱️ Durée */}
-      <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
-        border: '1px solid rgba(255,255,255,0.08)'
-      }}>
-         4s / 6s / 8s
-      </span>
+    <span style={{
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
+      border: '1px solid rgba(255,255,255,0.08)'
+    }}>
+      4s / 6s / 8s
+    </span>
 
     {/* 🎬 Image début / fin */}
     <span style={{
-      fontSize: '10px',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      color: '#e5e7eb',
-      padding: '2px 7px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '3px',
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
       border: '1px solid rgba(255,255,255,0.08)'
     }}>
-       {t("line3_app_ui_startEndFrames") }
+      {t("line3_app_ui_startEndFrames")}
     </span>
 
     {/* ✏️ Modifier la vidéo */}
     <span style={{
-      fontSize: '10px',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      color: '#e5e7eb',
-      padding: '2px 7px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '3px',
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
       border: '1px solid rgba(255,255,255,0.08)'
     }}>
-       {t("line3_app_ui_editVideo") }
+      {t("line3_app_ui_editVideo")}
     </span>
 
     {/* 🪄 Remixer */}
     <span style={{
-      fontSize: '10px',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      color: '#e5e7eb',
-      padding: '2px 7px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '3px',
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
       border: '1px solid rgba(255,255,255,0.08)'
     }}>
-       Remixer
+      {t("line3_app_ui_remix", { defaultValue: "Remixer" })}
     </span>
 
     {/* ➡️ Étendre */}
     <span style={{
-      fontSize: '10px',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      color: '#e5e7eb',
-      padding: '2px 7px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '3px',
+      fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+      color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+      display: 'flex', alignItems: 'center', gap: '3px',
       border: '1px solid rgba(255,255,255,0.08)'
     }}>
-       {t("line3_app_ui_extendVideo") }
+      {t("line3_app_ui_extendVideo")}
     </span>
   </>
 )}
@@ -4945,7 +4215,11 @@ if (isAuthLoading || isInitializing) {
   const klingId = e.id?.toLowerCase() || "";
   const klingName = e.name?.toLowerCase() || "";
 
-  const isKlingMotionVariant = klingId.includes("kling26_motion") || klingId.includes("kling2.6_motion") || klingName.includes("motion control");
+  const isKlingMotionVariant =
+    klingId.includes("kling26_motion") ||
+    klingId.includes("kling2.6_motion") ||
+    klingName.includes("motion control");
+
   const isKling26 = !isKlingMotionVariant && (
     klingId.includes("kling2.6") ||
     klingId.includes("kling26") ||
@@ -4958,68 +4232,48 @@ if (isAuthLoading || isInitializing) {
     <>
       {/* 🔊 Audio natif */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-         Audio natif
+        {t("line3_app_ui_nativeAudio", { defaultValue: "Audio natif" })}
       </span>
 
       {/* 🖼️ Image → Vidéo */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       {t("line3_app_ui_imageToVideo") }
+        {t("line3_app_ui_imageToVideo")}
       </span>
-
 
       {/* ✨ Full HD */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       1080p
+        1080p
       </span>
 
       {/* ⏱️ Durée */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
         5s / 10s
       </span>
     </>
   );
-})()}    
-          {/* BADGES KLING 3.0 */}
+})()}
+
+{/* BADGES KLING 3.0 */}
 {(() => {
   const klingId = e.id?.toLowerCase() || "";
   const klingName = e.name?.toLowerCase() || "";
@@ -5035,67 +4289,47 @@ if (isAuthLoading || isInitializing) {
     <>
       {/* 🔊 Audio natif */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       Audio natif
+        {t("line3_app_ui_nativeAudio", { defaultValue: "Audio natif" })}
       </span>
 
       {/* 🖼️ Image → Vidéo */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       {t("line3_app_ui_imageToVideo") }
+        {t("line3_app_ui_imageToVideo")}
       </span>
 
-
-      {/* ✨ 720p / 1080p */}
+      {/* ✨ Résolution */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       720p / 1080p
+        720p / 1080p
       </span>
 
       {/* ⏱️ Durée */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       3s → 15s
+        3s → 15s
       </span>
     </>
   );
 })()}
+
 {/* BADGES KLING MOTION CONTROL 2.6 */}
 {(() => {
   const klingId = e.id?.toLowerCase() || "";
@@ -5104,10 +4338,7 @@ if (isAuthLoading || isInitializing) {
   const isKlingMotion26 =
     klingId.includes("kling26_motion") ||
     klingId.includes("kling2.6_motion") ||
-    (
-      klingName.includes("kling 2.6") &&
-      klingName.includes("motion")
-    );
+    (klingName.includes("kling 2.6") && klingName.includes("motion"));
 
   if (!isKlingMotion26) return null;
 
@@ -5115,57 +4346,55 @@ if (isAuthLoading || isInitializing) {
     <>
       {/* 🎥 Vidéo de référence */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       {t("line3_app_ui_videoReference") }
+        {t("line3_app_ui_videoReference")}
       </span>
 
       {/* 🖼️ Image personnage */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        Image personnage
+        {t("line3_app_ui_characterImage", { defaultValue: "Image personnage" })}
       </span>
 
       {/* 🕺 Contrôle du mouvement */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_motionControl") }
+        {t("line3_app_ui_motionControl")}
       </span>
-      <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+
+      <span style={{
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
         1080p
       </span>
-      <span style={{ fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)', color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+
+      <span style={{
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
         5s / 10s
       </span>
     </>
   );
 })()}
+
 {/* BADGES HAILUO 2.3 */}
 {(() => {
   const hailuoId = e.id?.toLowerCase() || "";
@@ -5182,211 +4411,147 @@ if (isAuthLoading || isInitializing) {
     <>
       {/* 🖼️ Image → Vidéo */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_imageToVideo") }
+        {t("line3_app_ui_imageToVideo")}
       </span>
 
       {/* 🎬 Text → Vidéo */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_textToVideo") }
+        {t("line3_app_ui_textToVideo")}
       </span>
 
-      {/* HD 768p */}
+      {/* HD */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-       768p / 1080p
+        768p / 1080p
       </span>
 
-      {/* ⏱️ 6 secondes */}
+      {/* ⏱️ Durée */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-         6s
+        6s
       </span>
 
       {/* ⏱️ 10 secondes — 768p uniquement */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-         10s - 768p uniquement
+        {t("line3_app_ui_10s768pOnly", { defaultValue: "10s - 768p uniquement" })}
       </span>
     </>
   );
 })()}
+
 {/* BADGES MINIMAX H3 */}
 {(() => {
   const h3Id = e.id?.toLowerCase() || "";
   const h3Name = e.name?.toLowerCase() || "";
 
-const isMinimaxH3 =
-  h3Id.includes("minimax-h3") ||
-  h3Id.includes("minimax_h3") ||
-  h3Id === "minimax_h3" ||
-  h3Name.includes("minimax h3");
-  
+  const isMinimaxH3 =
+    h3Id.includes("minimax-h3") ||
+    h3Id.includes("minimax_h3") ||
+    h3Id === "minimax_h3" ||
+    h3Name.includes("minimax h3");
+
   if (!isMinimaxH3) return null;
 
   return (
     <>
       {/* 🎬 Text → Vidéo */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_textToVideo") }
+        {t("line3_app_ui_textToVideo")}
       </span>
 
       {/* 🖼️ Image → Vidéo */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_imageToVideo") }
+        {t("line3_app_ui_imageToVideo")}
       </span>
 
-      {/* 🎞️ First + Last Frame */}
+      {/* 🎞️ Première + dernière image */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        First + Last Frame
+        {t("line3_app_ui_firstLastFrame", { defaultValue: "First + Last Frame" })}
       </span>
 
-      {/* 🖼️ {t("line3_app_settings_referenceImages")} */}
+      {/* 🖼️ Images de référence */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_referenceImageCount") }
+        {t("line3_app_ui_referenceImageCount")}
       </span>
 
       {/* 🎥 Vidéo de référence */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_referenceVideoCount") }
+        {t("line3_app_ui_referenceVideoCount")}
       </span>
 
       {/* 🔊 Audio de référence */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_referenceAudioCount") }
+        {t("line3_app_ui_referenceAudioCount")}
       </span>
 
       {/* 🔊 Audio génératif */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        {t("line3_app_ui_generativeAudio") }
+        {t("line3_app_ui_generativeAudio")}
       </span>
 
       {/* 🖥️ Résolution */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
         768p / 1440p (2K)
@@ -5394,14 +4559,9 @@ const isMinimaxH3 =
 
       {/* ⏱️ Durée */}
       <span style={{
-        fontSize: '10px',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: '#e5e7eb',
-        padding: '2px 7px',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
+        fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.08)',
+        color: '#e5e7eb', padding: '2px 7px', borderRadius: '6px',
+        display: 'flex', alignItems: 'center', gap: '3px',
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
         4–15s
@@ -5409,6 +4569,7 @@ const isMinimaxH3 =
     </>
   );
 })()}
+
 
 {/* BADGES COMPLÉMENTAIRES — moteurs dont les fonctionnalités n'étaient pas toutes affichées */}
 {(() => {

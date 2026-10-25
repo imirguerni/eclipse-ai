@@ -1,0 +1,198 @@
+[1mdiff --git a/server/index.js b/server/index.js[m
+[1mindex f0bd497..4fcee17 100644[m
+[1m--- a/server/index.js[m
+[1m+++ b/server/index.js[m
+[36m@@ -1053,10 +1053,54 @@[m [mif (!prompt || !engineId) {[m
+     const initialUserDoc = await userRef.get();[m
+     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};[m
+ [m
+[31m-    const rawUserPlan = String(userData.userPlan || userData.plan || "debutant").toLowerCase();[m
+[31m-    const imagePlanToPrice = { debutant: "0.00", essentiel: "12.99", standard: "24.99", master: "34.99", elite: "59.99", legende: "159.99" };[m
+[31m-    const userPlanKey = imagePlanToPrice[rawUserPlan] || (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");[m
+[31m-    const userPricingTable = PRICING_DATA[userPlanKey] || PRICING_DATA["0.00"];[m
+[32m+[m
+[32m+[m[32mconst rawUserPlan = String([m
+[32m+[m[32m    userData.userPlan || userData.plan || "debutant"[m
+[32m+[m[32m).toLowerCase();[m
+[32m+[m
+[32m+[m[32mconst imagePlanToPrice = {[m
+[32m+[m[32m    debutant: "0.00",[m
+[32m+[m[32m    essentiel: "12.99",[m
+[32m+[m[32m    standard: "24.99",[m
+[32m+[m[32m    master: "34.99",[m
+[32m+[m[32m    elite: "59.99",[m
+[32m+[m[32m    legende: "159.99"[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mconst userPlanKey =[m
+[32m+[m[32m    imagePlanToPrice[rawUserPlan] ||[m
+[32m+[m[32m    (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");[m
+[32m+[m
+[32m+[m[32mconsole.log("🔎 DEBUG PRICING_DATA", {[m
+[32m+[m[32m    pricingDataExists: Boolean(PRICING_DATA),[m
+[32m+[m[32m    planKeys: Object.keys(PRICING_DATA || {}),[m
+[32m+[m[32m    zeroPlanKeys: Object.keys(PRICING_DATA?.["0.00"] || {}),[m
+[32m+[m[32m    flux2proZero: PRICING_DATA?.["0.00"]?.flux2pro,[m
+[32m+[m[32m    flux2proEssentiel: PRICING_DATA?.["12.99"]?.flux2pro[m
+[32m+[m[32m});[m
+[32m+[m[32mconsole.log("🔧 DIAGNOSTIC TARIFS RENDER", {[m
+[32m+[m[32m    pricingDataType: typeof PRICING_DATA,[m
+[32m+[m[32m    pricingDataIsObject:[m
+[32m+[m[32m        PRICING_DATA !== null &&[m
+[32m+[m[32m        typeof PRICING_DATA === "object",[m
+[32m+[m[32m    planKeys: Object.keys(PRICING_DATA || {}),[m
+[32m+[m[32m    freePlanExists: Boolean(PRICING_DATA?.["0.00"]),[m
+[32m+[m[32m    freePlanType: typeof PRICING_DATA?.["0.00"],[m
+[32m+[m[32m    freePlanFlux2Pro: PRICING_DATA?.["0.00"]?.flux2pro,[m
+[32m+[m[32m    freePlanFlux2ProMp1:[m
+[32m+[m[32m        PRICING_DATA?.["0.00"]?.flux2pro?.mp1,[m
+[32m+[m[32m    userPlanKey[m
+[32m+[m[32m});[m
+[32m+[m[32mconst userPricingTable =[m
+[32m+[m[32m    PRICING_DATA?.[userPlanKey] ||[m
+[32m+[m[32m    PRICING_DATA?.["0.00"];[m
+[32m+[m
+[32m+[m[32mconsole.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {[m
+[32m+[m[32m    rawUserPlan,[m
+[32m+[m[32m    userPlanKey,[m
+[32m+[m[32m    flux2pro: userPricingTable?.flux2pro,[m
+[32m+[m[32m    mp1: userPricingTable?.flux2pro?.mp1[m
+[32m+[m[32m});[m
+ [m
+     // Tarification serveur dédiée aux trois moteurs image récents.[m
+     // Les clés doivent correspondre à celles de pricingConfig.js : ne pas rabattre ces modèles sur l'ancien tarif FLUX.[m
+[36m@@ -1096,7 +1140,18 @@[m [mif (!prompt || !engineId) {[m
+     } else if (engineId === "nano_banana2_lite") {[m
+         officialCost = userPricingTable?.nanoBanana2Lite?.[(hasReferenceImage || hasReferenceVideo) ? "reference1k" : "k1"];[m
+     }[m
+[31m-[m
+[32m+[m[32mconsole.log("🔎 DEBUG TARIFICATION IMAGE", {[m
+[32m+[m[32m    engineId,[m
+[32m+[m[32m    rawUserPlan,[m
+[32m+[m[32m    userPlanKey,[m
+[32m+[m[32m    pricingTableExists: Boolean(userPricingTable),[m
+[32m+[m[32m    flux2pro: userPricingTable?.flux2pro,[m
+[32m+[m[32m    gptImage2: userPricingTable?.gptImage2,[m
+[32m+[m[32m    nanoBanana2Lite: userPricingTable?.nanoBanana2Lite,[m
+[32m+[m[32m    pricingWidth,[m
+[32m+[m[32m    pricingHeight,[m
+[32m+[m[32m    officialCost[m
+[32m+[m[32m});[m
+     if (officialCost === undefined || officialCost === null || !Number.isFinite(Number(officialCost)) || Number(officialCost) <= 0) {[m
+         console.error(`❌ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {[m
+             expectedPricingKey: engineId === "gpt_image2" ? "gptImage2" : engineId === "flux2pro" ? "flux2pro" : "nanoBanana2Lite",[m
+[1mdiff --git a/server/pricingConfig.js b/server/pricingConfig.js[m
+[1mindex 66cd032..27b4e81 100644[m
+[1m--- a/server/pricingConfig.js[m
+[1m+++ b/server/pricingConfig.js[m
+[36m@@ -10,7 +10,10 @@[m [mconst PLAN_TO_PRICE = {[m
+   "legende": "159.99" [m
+ };[m
+ [m
+[31m-const packs = ["0.00", "12.99", "24.99", "34.99", "59.99", "159.99"];[m
+[32m+[m[32m const packs = ["0.00", "12.99", "24.99", "34.99", "59.99", "159.99"];[m
+[32m+[m
+[32m+[m
+[32m+[m
+ const PRICING_DATA = {[m
+ "0.00": { [m
+     // --- veo 3.1) ---[m
+[36m@@ -21,7 +24,7 @@[m [mveo3:  { hd4: 263,   // 720p  - 4s (0,80$  11 videos)[m
+          fhd6: 393,  // 1080p - 6s (1,20$)[m
+          fhd8: 523 },  // 1080p - 8s (1,60$) [m
+ [m
+[31m-  // --- veo 3.1 flash) ---[m
+[32m+[m[32m  // --- Veo 3.1 fast) ---[m
+ veo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max[m
+          hd6: 191,  // 720p  - 6s ($0.60)[m
+          hd8: 253,  // 720p  - 8s ($0.80)[m
+[36m@@ -75,7 +78,6 @@[m [mveo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max[m
+ [m
+   // --- HAILUO 2.3 ---[m
+   hailuo: {[m
+[31m-    hd3: 47,[m
+     hd6: 91,[m
+     hd10: 179,[m
+     fhd6: 160[m
+[36m@@ -360,21 +362,21 @@[m [mveo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max[m
+ {  transparentBackground: 11,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---[m
+   inpaint: 11,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---[m
+   textToImage: 18,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---[m
+[31m-  referenceToImage: 26}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---[m
+[31m-  },[m
+[32m+[m[32m  referenceToImage: 26},    // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---[m
+ [m
+   [m
+   // --- flux2pro) benefice 5 euros ---[m
+   flux2pro: {[m
+[31m-  mp1: 13,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---[m
+[31m-  mp2: 19,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---[m
+[31m-  mp4: 29         // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---[m
+[32m+[m[32m  mp1: 14,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---[m
+[32m+[m[32m  mp2: 20,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---[m
+[32m+[m[32m  mp4: 30         // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---[m
+ },[m
+ [m
+   // --- banana 2 lite) benefice 5 euros ---[m
+ nanoBanana2Lite: {[m
+   k1: 15,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---[m
+   reference1k: 15      // --- Image de référence  : 12 ⚡ par image ( 257) ---[m
+[32m+[m[32m},[m
+ },[m
+ [m
+   "12.99": { [m
+[36m@@ -394,13 +396,11 @@[m [mveo3:  { hd4: 260,   // 720p  - 4s (0,80$)[m
+          fhd8: 250  },  // 1080p - 8s ($0.80) // [m
+ [m
+      [m
+[31m-// --- kling 2.6 pro) ---[m
+[31m-       kling26:  {  fhd5: 107, // 1080p - 1s ($0.07) -> 28 vidéos max[m
+[31m-                    fhd10: 214 },[m
+[32m+[m[32m// --- Kling 2.6 Pro : tarif abonnement Débutant ---[m
+[32m+[m[32m       kling26:  { fhd5: 110, fhd10: 217 },[m
+ [m
+[31m-// --- kling 2.6 motion) ---[m
+[31m-       kling26_motion: {  fhd5: 107, // 1080p - 1s ($0.07) -> 28 vidéos max[m
+[31m-                          fhd10: 214 },[m
+[32m+[m[32m// --- Kling 2.6 Motion Control : tarif abonnement Débutant ---[m
+[32m+[m[32m       kling26_motion: { fhd5: 110, fhd10: 217 },[m
+ [m
+ // --- HD (Kling 3.0 Standard - 720p) ---             [m
+         kling30: {[m
+[36m@@ -434,7 +434,7 @@[m [mveo3:  { hd4: 260,   // 720p  - 4s (0,80$)[m
+   fhd15: 525},[m
+ [m
+ // TARIFICATION HAILUO 2.3[m
+[31m- hailuo:  {  hd3: 44,[m
+[32m+[m[32m hailuo:  {[m[41m [m
+ [m
+   hd6: 88,    // 🎯 34 vidéos max (4,15 € profit)[m
+   hd10: 176,  // 🎯 17 vidéos max (4,15 € profit)[m
+[36m@@ -686,22 +686,22 @@[m [mseedance25: {[m
+ {  transparentBackground: 8,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---[m
+   inpaint: 8,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---[m
+   textToImage: 15,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---[m
+[31m-  referenceToImage: 23}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---[m
+[31m-  },[m
+[32m+[m[32m  referenceToImage: 23},    // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---[m
+ [m
+   [m
+   // --- flux2pro) benefice 5 euros ---[m
+   flux2pro: {[m
+   mp1: 11,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---[m
+[31m-  mp2: 16,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---[m
+[31m-  mp4: 26          // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---[m
+[32m+[m[32m  mp2: 17,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---[m
+[32m+[m[32m  mp4: 27          // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---[m
+ },[m
+ [m
+   // --- banana 2 lite) benefice 5 euros ---[m
+ nanoBanana2Lite: {[m
+   k1: 12,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---[m
+   reference1k: 12       // --- Image de référence  : 12 ⚡ par image ( 257) ---[m
+[31m-  }[m
+[32m+[m[32m }[m
+[32m+[m[32m}[m
+ };[m
+ PRICING_DATA["24.99"]  = PRICING_DATA["12.99"];[m
+ PRICING_DATA["34.99"]  = PRICING_DATA["12.99"];[m

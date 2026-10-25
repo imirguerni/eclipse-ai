@@ -1053,10 +1053,54 @@ if (!prompt || !engineId) {
     const initialUserDoc = await userRef.get();
     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};
 
-    const rawUserPlan = String(userData.userPlan || userData.plan || "debutant").toLowerCase();
-    const imagePlanToPrice = { debutant: "0.00", essentiel: "12.99", standard: "24.99", master: "34.99", elite: "59.99", legende: "159.99" };
-    const userPlanKey = imagePlanToPrice[rawUserPlan] || (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
-    const userPricingTable = PRICING_DATA[userPlanKey] || PRICING_DATA["0.00"];
+
+const rawUserPlan = String(
+    userData.userPlan || userData.plan || "debutant"
+).toLowerCase();
+
+const imagePlanToPrice = {
+    debutant: "0.00",
+    essentiel: "12.99",
+    standard: "24.99",
+    master: "34.99",
+    elite: "59.99",
+    legende: "159.99"
+};
+
+const userPlanKey =
+    imagePlanToPrice[rawUserPlan] ||
+    (PRICING_DATA[rawUserPlan] ? rawUserPlan : "0.00");
+
+console.log("🔎 DEBUG PRICING_DATA", {
+    pricingDataExists: Boolean(PRICING_DATA),
+    planKeys: Object.keys(PRICING_DATA || {}),
+    zeroPlanKeys: Object.keys(PRICING_DATA?.["0.00"] || {}),
+    flux2proZero: PRICING_DATA?.["0.00"]?.flux2pro,
+    flux2proEssentiel: PRICING_DATA?.["12.99"]?.flux2pro
+});
+console.log("🔧 DIAGNOSTIC TARIFS RENDER", {
+    pricingDataType: typeof PRICING_DATA,
+    pricingDataIsObject:
+        PRICING_DATA !== null &&
+        typeof PRICING_DATA === "object",
+    planKeys: Object.keys(PRICING_DATA || {}),
+    freePlanExists: Boolean(PRICING_DATA?.["0.00"]),
+    freePlanType: typeof PRICING_DATA?.["0.00"],
+    freePlanFlux2Pro: PRICING_DATA?.["0.00"]?.flux2pro,
+    freePlanFlux2ProMp1:
+        PRICING_DATA?.["0.00"]?.flux2pro?.mp1,
+    userPlanKey
+});
+const userPricingTable =
+    PRICING_DATA?.[userPlanKey] ||
+    PRICING_DATA?.["0.00"];
+
+console.log("🔎 DEBUG TARIF SÉLECTIONNÉ", {
+    rawUserPlan,
+    userPlanKey,
+    flux2pro: userPricingTable?.flux2pro,
+    mp1: userPricingTable?.flux2pro?.mp1
+});
 
     // Tarification serveur dédiée aux trois moteurs image récents.
     // Les clés doivent correspondre à celles de pricingConfig.js : ne pas rabattre ces modèles sur l'ancien tarif FLUX.
@@ -1096,7 +1140,18 @@ if (!prompt || !engineId) {
     } else if (engineId === "nano_banana2_lite") {
         officialCost = userPricingTable?.nanoBanana2Lite?.[(hasReferenceImage || hasReferenceVideo) ? "reference1k" : "k1"];
     }
-
+console.log("🔎 DEBUG TARIFICATION IMAGE", {
+    engineId,
+    rawUserPlan,
+    userPlanKey,
+    pricingTableExists: Boolean(userPricingTable),
+    flux2pro: userPricingTable?.flux2pro,
+    gptImage2: userPricingTable?.gptImage2,
+    nanoBanana2Lite: userPricingTable?.nanoBanana2Lite,
+    pricingWidth,
+    pricingHeight,
+    officialCost
+});
     if (officialCost === undefined || officialCost === null || !Number.isFinite(Number(officialCost)) || Number(officialCost) <= 0) {
         console.error(`❌ Tarif serveur introuvable ou invalide pour le plan ${userPlanKey} et le moteur : ${engineId}`, {
             expectedPricingKey: engineId === "gpt_image2" ? "gptImage2" : engineId === "flux2pro" ? "flux2pro" : "nanoBanana2Lite",

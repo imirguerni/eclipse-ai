@@ -13,6 +13,7 @@ const PLAN_TO_PRICE = {
  const packs = ["0.00", "12.99", "24.99", "34.99", "59.99", "159.99"];
 
 
+
 const PRICING_DATA = {
 "0.00": { 
     // --- veo 3.1) ---
@@ -23,7 +24,7 @@ veo3:  { hd4: 263,   // 720p  - 4s (0,80$  11 videos)
          fhd6: 393,  // 1080p - 6s (1,20$)
          fhd8: 523 },  // 1080p - 8s (1,60$) 
 
-  // --- veo 3.1 flash) ---
+  // --- Veo 3.1 fast) ---
 veo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max
          hd6: 191,  // 720p  - 6s ($0.60)
          hd8: 253,  // 720p  - 8s ($0.80)
@@ -77,7 +78,6 @@ veo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max
 
   // --- HAILUO 2.3 ---
   hailuo: {
-    hd3: 47,
     hd6: 91,
     hd10: 179,
     fhd6: 160
@@ -362,21 +362,21 @@ veo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max
 {  transparentBackground: 11,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---
   inpaint: 11,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---
   textToImage: 18,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---
-  referenceToImage: 26}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
-  },
+  referenceToImage: 26},    // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
 
   
   // --- flux2pro) benefice 5 euros ---
   flux2pro: {
-  mp1: 13,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---
-  mp2: 19,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
-  mp4: 29         // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
+  mp1: 14,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---
+  mp2: 20,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
+  mp4: 30         // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
 },
 
   // --- banana 2 lite) benefice 5 euros ---
 nanoBanana2Lite: {
   k1: 15,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---
   reference1k: 15      // --- Image de référence  : 12 ⚡ par image ( 257) ---
+},
 },
 
   "12.99": { 
@@ -396,13 +396,11 @@ veo3:  { hd4: 260,   // 720p  - 4s (0,80$)
          fhd8: 250  },  // 1080p - 8s ($0.80) // 
 
      
-// --- kling 2.6 pro) ---
-       kling26:  {  fhd5: 107, // 1080p - 1s ($0.07) -> 28 vidéos max
-                    fhd10: 214 },
+// --- Kling 2.6 Pro : tarif abonnement Débutant ---
+       kling26:  { fhd5: 110, fhd10: 217 },
 
-// --- kling 2.6 motion) ---
-       kling26_motion: {  fhd5: 107, // 1080p - 1s ($0.07) -> 28 vidéos max
-                          fhd10: 214 },
+// --- Kling 2.6 Motion Control : tarif abonnement Débutant ---
+       kling26_motion: { fhd5: 110, fhd10: 217 },
 
 // --- HD (Kling 3.0 Standard - 720p) ---             
         kling30: {
@@ -436,7 +434,7 @@ veo3:  { hd4: 260,   // 720p  - 4s (0,80$)
   fhd15: 525},
 
 // TARIFICATION HAILUO 2.3
- hailuo:  {  hd3: 44,
+ hailuo:  { 
 
   hd6: 88,    // 🎯 34 vidéos max (4,15 € profit)
   hd10: 176,  // 🎯 17 vidéos max (4,15 € profit)
@@ -688,29 +686,31 @@ seedance25: {
 {  transparentBackground: 8,  // --- Fond transparent (transparent-background)0,0221 $ (~0,020 €)   400 images8 ⚡) ---
   inpaint: 8,               // --- Retouche / Inpaint (inpaint)0,0223 $ (~0,021 €)   380 images8 ⚡) ---
   textToImage: 15,          // --- Texte vers Image (text-to-image)0,0426 $ (~0,039 €)   205 images15 ⚡ ---
-  referenceToImage: 23}     // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
-  },
+  referenceToImage: 23},    // --- Image de référence (reference-to-image)0,0675 $ (~0,062 €)   129 images23 ⚡) ---
 
   
   // --- flux2pro) benefice 5 euros ---
   flux2pro: {
   mp1: 11,        // --- 1 MP (ex: 1024x1024)0,03 $ (~0,028 €)   285 images 11 ⚡ ---
-  mp2: 16,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
-  mp4: 26          // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
+  mp2: 17,         // --- 2 MP (ex: 1080p / 2K)0,045 $ (~0,041 €)   194 images 16 ⚡ ---
+  mp4: 27          // --- 4 MP (ex: 2048x2048 / 4K)0,075 $ (~0,069 €)   115 images 26 ⚡ ---
 },
 
   // --- banana 2 lite) benefice 5 euros ---
 nanoBanana2Lite: {
   k1: 12,               // --- Texte vers Image : 12 ⚡ par image ( 257) ---
   reference1k: 12       // --- Image de référence  : 12 ⚡ par image ( 257) ---
-  }
+ }
+}
 };
 
+// --- LIAISON DES PLANS (Éviter les erreurs de saisie) ---
 PRICING_DATA["24.99"]  = PRICING_DATA["12.99"];
 PRICING_DATA["34.99"]  = PRICING_DATA["12.99"];
 PRICING_DATA["59.99"]  = PRICING_DATA["12.99"];
 PRICING_DATA["159.99"] = PRICING_DATA["12.99"];
 
-const ALLOWED_ENGINES = Object.keys(PRICING_DATA["0.00"]);
 
-export { PRICING_DATA, PLAN_TO_PRICE, packs, ALLOWED_ENGINES };
+export const ALLOWED_ENGINES = Object.keys(PRICING_DATA["0.00"]);
+
+export { PRICING_DATA, PLAN_TO_PRICE, packs };
