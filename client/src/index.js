@@ -1686,7 +1686,6 @@ req.on('close', () => {
                 cost: requiredCost,
                 field: usedWallet, // "tokens", "packTokens" ou "hybrid"
                 status: "processing",
-                type: "VIDEO",
                 provider: engineId === "seedance" ? "fal" : "runware",
                 engine: engineId,
                 createdAt: Timestamp.now(),
@@ -1711,67 +1710,44 @@ req.on('close', () => {
         // Finalisation commune des moteurs Runware : ferme le verrou et enregistre l'historique.
         const completeRunwareVideo = async (result, modelName = engineId) => {
             const generatedVideoUrl = result?.videoURL || result?.videoUrl || result?.videoDataURI || result?.videoBase64Data;
-            if (typeof generatedVideoUrl !== "string" || !generatedVideoUrl.trim()) {
-                throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
-            }
-            const isPersistableUrl = /^https?:\/\//i.test(generatedVideoUrl);
-            if (!isPersistableUrl) {
-                throw new Error(`Runware a retourné une vidéo sans URL HTTP persistante pour ${modelName}.`);
-            }
-
-            const finalPrompt = String(prompt || req.body.prompt || "");
-            // Le document imageLocks est aussi utilisé par l'historique : conserver le verrou terminé.
-            await lockRef.update({
+            if (!generatedVideoUrl) throw new Error(`Runware n'a retourné aucune URL vidéo pour ${modelName}.`);
+            const isPersistableUrl = typeof generatedVideoUrl === "string" && /^https?:\/\//i.test(generatedVideoUrl);
+            const lockUpdate = {
                 status: "completed",
-                type: "VIDEO",
                 provider: "runware",
                 engine: modelName,
-                prompt: finalPrompt,
-                description: finalPrompt,
-                videoUrl: generatedVideoUrl,
-                url: generatedVideoUrl,
+                prompt: prompt || req.body.prompt || "",
+                description: prompt || req.body.prompt || "",
                 completedAt: FieldValue.serverTimestamp()
-            });
-            // Dès que le verrou porte la vidéo terminée, ne jamais rembourser ni supprimer ce résultat.
-            generationFinished = true;
-
-            if (userId) {
-                try {
-                    await db.collection("users").doc(userId).collection("generations").add({
-                        videoUrl: generatedVideoUrl,
-                        url: generatedVideoUrl,
-                        prompt: finalPrompt,
-                        description: finalPrompt,
-                        engine: modelName,
-                        provider: "runware",
-                        type: "VIDEO",
-                        createdAt: FieldValue.serverTimestamp()
-                    });
-                } catch (historyError) {
-                    // Le résultat reste accessible via imageLocks même si la copie d'historique échoue.
-                    console.error("⚠️ Vidéo terminée, mais copie dans users/{uid}/generations échouée :", historyError.message);
-                }
+            };
+            if (isPersistableUrl) {
+                lockUpdate.videoUrl = generatedVideoUrl;
+                lockUpdate.url = generatedVideoUrl;
             }
-
-            const payload = {
+            await lockRef.update(lockUpdate);
+            if (userId && isPersistableUrl) {
+                await db.collection("users").doc(userId).collection("generations").add({
+                    videoUrl: generatedVideoUrl,
+                    url: generatedVideoUrl,
+                    prompt: prompt || req.body.prompt || "",
+                    description: prompt || req.body.prompt || "",
+                    engine: modelName,
+                    provider: "runware",
+                    type: "VIDEO",
+                    createdAt: FieldValue.serverTimestamp()
+                });
+            }
+            generationFinished = true;
+            return res.json({
                 success: true,
                 status: "completed",
-                percent: 100,
-                message: "Génération terminée !",
                 videoURL: generatedVideoUrl,
                 videoUrl: generatedVideoUrl,
                 url: generatedVideoUrl,
-                type: "VIDEO",
                 videoUUID: result?.videoUUID,
                 taskUUID: result?.taskUUID,
                 cost: result?.cost
-            };
-            // /generate-video utilise Server-Sent Events : ne pas répondre avec res.json().
-            if (!res.writableEnded) {
-                res.write(`data: ${JSON.stringify(payload)}\n\n`);
-                res.end();
-            }
-            return payload;
+            });
         };
 
     // ============================================================
@@ -3789,6 +3765,8 @@ else if (engineId.includes("kling26") || (engineId.includes("kling") && !engineI
 // Text-to-Video + Image-to-Video
 // ============================================================
 else if (engineId.includes("hailuo")) {
+    // Client Runware local à cette branche pour éviter ReferenceError.
+    const runware = await getRunwareClient();
     console.log("🚀 HAILUO 2.3 : configuration RUNWARE");
 
     // ========================================================
@@ -4006,9 +3984,6 @@ else if (engineId.includes("hailuo")) {
     // 9. APPEL RUNWARE
     // ========================================================
 
-    // Initialiser le client dans cette branche : runware n'est pas global.
-    const runware = await getRunwareClient();
-
     try {
 
         const [result] =
@@ -4050,6 +4025,8 @@ else if (engineId.includes("hailuo")) {
 // ============================================================
 else if (engineId.includes("minimax_h3")) {
 
+    // Client Runware local à cette branche pour éviter ReferenceError.
+    const runware = await getRunwareClient();
     console.log("🚀 MINIMAX H3 : configuration RUNWARE");
 
     // ========================================================
@@ -4539,17 +4516,9 @@ else if (engineId === "pixverse6") {
     if (!request.positivePrompt) throw new Error("PixVerse V6 : le prompt est vide.");
     console.log("🎬 [RUNWARE PIXVERSE V6]", JSON.stringify(request, null, 2));
     const [result] = await runware.run(request);
-    console.log("🔎 [PIXVERSE V6] Champs du résultat Runware :", Object.keys(result || {}));
-    const videoURL =
-        result?.videoURL ||
-        result?.videoUrl ||
-        result?.videoDataURI ||
-        result?.videoBase64Data;
-    if (typeof videoURL !== "string" || !videoURL.trim()) {
-        throw new Error("Runware PixVerse V6 n'a retourné aucune URL vidéo exploitable.");
-    }
-    console.log("✅ [PIXVERSE V6] URL vidéo reçue :", videoURL.slice(0, 180));
-    return await completeRunwareVideo({ ...result, videoURL }, engineId);
+    const videoURL = result.videoURL || result.videoDataURI || result.videoBase64Data;
+    if (!videoURL) throw new Error("Runware PixVerse V6 n'a retourné aucune vidéo.");
+    return await completeRunwareVideo(result, engineId);
 }
 
 // ============================================================
@@ -4874,28 +4843,15 @@ if (!falVideoUrl) {
             console.log("🛑 Aucun remboursement : Les crédits n'avaient pas été débités.");
         }
 
-        // Ne jamais supprimer un résultat déjà enregistré comme terminé.
-        // En cas d'échec avant finalisation, nettoyer le verrou de traitement.
-        if (!generationFinished) {
-            await lockRef.delete().catch(() => {});
-        } else {
-            console.warn("⚠️ Verrou conservé : la vidéo a déjà été enregistrée comme terminée.");
-        }
+        // Nettoyage du verrou
+        await lockRef.delete().catch(() => {});
 
-        // Envoi de l'erreur sans tenter d'écrire sur une connexion détruite/terminée.
-        if (res.destroyed || res.writableEnded) {
-            console.warn("⚠️ Flux SSE fermé : impossible de transmettre l'erreur au client.");
-            return;
-        }
-        try {
-            if (res.headersSent) {
-                res.write(`event: error\ndata: ${JSON.stringify({ error: error.message, status: "failed" })}\n\n`);
-                res.end();
-            } else {
-                res.status(500).json({ error: error.message, status: "failed" });
-            }
-        } catch (writeErr) {
-            console.error("⚠️ Erreur lors de l'envoi de l'erreur finale :", writeErr.message);
+        // Envoi de l'erreur au client
+        if (!res.headersSent) {
+            return res.status(400).json({ error: error.message });
+        } else if (!res.writableEnded) {
+            res.write(`event: error\ndata: ${JSON.stringify({ error: error.message, status: "failed" })}\n\n`);
+            res.end();
         }
     }
 });
