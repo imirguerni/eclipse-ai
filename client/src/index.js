@@ -3765,7 +3765,7 @@ else if (engineId.includes("kling26") || (engineId.includes("kling") && !engineI
 // Text-to-Video + Image-to-Video
 // ============================================================
 else if (engineId.includes("hailuo")) {
-    // Client Runware local à cette branche pour éviter ReferenceError.
+    // Client Runware local à cette branche : évite ReferenceError: runware is not defined.
     const runware = await getRunwareClient();
     console.log("🚀 HAILUO 2.3 : configuration RUNWARE");
 
