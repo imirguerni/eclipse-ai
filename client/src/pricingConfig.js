@@ -76,7 +76,7 @@ veo3_lite: { hd4: 128,  // 720p  - 4s ($0.40) -> 24 vidéos max
     fhd15: 528
   },
 
-  // --- HAILUO 2.3 ---
+  // --- HAILUO 2.3 fast ---
   hailuo: {
     hd6: 91,
     hd10: 179,

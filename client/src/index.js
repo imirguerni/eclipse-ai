@@ -3860,7 +3860,7 @@ else if (engineId.includes("hailuo")) {
             "videoInference",
 
         model:
-            "minimax:4@1",
+            "minimax:4@2",
 
         positivePrompt:
             hailuoPrompt,
@@ -3941,7 +3941,7 @@ else if (engineId.includes("hailuo")) {
 
     console.log(
         "➡️ Modèle :",
-        "minimax:4@1"
+        "minimax:4@2"
     );
 
     console.log(

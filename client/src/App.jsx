@@ -607,9 +607,9 @@ const engines = [
 
   {
     id: "hailuo",
-    name: "Hailuo 2.3",
+    name: "Hailuo 2.3 fast",
     type: "VIDEO",
-    runwareModel: "minimax:4@1",
+    runwareModel: "minimax:4@2",
     canDualImage: false,
     minPriceForLightning: "12.99",
     prices: {
