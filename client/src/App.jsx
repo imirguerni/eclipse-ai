@@ -1471,15 +1471,17 @@ if (mode === "VIDEO") {
 // Et dans ton tableau de dépendances, mets bien ta vraie variable au lieu de hasVideoSource :
 [selectedModel, resolution, mode, duration, wantsAudio, endImage, userPlan, videoSource, videoSourceDuration, seedance25Operation, modelReferenceImages, startImage, uploadedImage, nanoReferenceVideo, aspectRatio]);
 const getEndpoint = (engineData, hasStartImage, hasVideoSource) => {
-  if (!engineData || !engineData.id) return "";
-  const engineId = String(engineData.id).toLowerCase();
 
-  // Runware identifie directement les modèles vidéo : aucun endpoint fournisseur côté client.
+  // Hailuo : choisir le modèle Runware selon le mode de génération.
+  if (engineId.includes("hailuo")) {
+    return hasStartImage ? "minimax:4@2" : "minimax:4@1";
+  }
+
+  // Runware identifie directement les autres modèles vidéo.
   if (engineData.runwareModel ||
       engineId.includes("veo3.1") ||
       engineId === "kling26_motion" ||
       engineId.includes("kling") ||
-      engineId.includes("hailuo") ||
       engineId.includes("minimax_h3") ||
       engineId === "pixverse6" ||
       engineId === "seedance25" ||
