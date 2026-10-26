@@ -3918,15 +3918,18 @@ else if (engineId.includes("hailuo")) {
             hailuoRequest.height =
                 1080;
 
-        } else {
-
-            hailuoRequest.width =
-                1366;
-
-            hailuoRequest.height =
-                768;
+  } else {
+            hailuoRequest.width = 1366;
+            hailuoRequest.height = 768;
         }
-    }
+    } // Fin du bloc TEXT → VIDEO
+
+    // DEBUG : à placer APRÈS la construction complète de la requête
+    console.log("🔎 MODÈLE HAILUO FINAL :", hailuoRequest.model);
+    console.log(
+        "🔎 IMAGE DE DÉPART :",
+        Boolean(hailuoRequest.inputs?.frameImages?.length)
+    );
 
     // ========================================================
     // 8. LOG
