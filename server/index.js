@@ -4014,6 +4014,10 @@ else if (engineId.includes("hailuo")) {
 
     try {
 
+        // Le client doit être initialisé dans cette branche :
+        // sinon "runware is not defined" survient à l'appel .run().
+        const runware = await getRunwareClient();
+
         const [result] =
             await runware.run(
                 hailuoRequest
