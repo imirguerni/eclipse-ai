@@ -1814,7 +1814,7 @@ const Filtre = ({
     }
   };
 
-  const exportImage = async () => {
+const exportImage = async () => {
     setIsExporting(true);
     setExportError('');
     setExportProgress(0);
@@ -1823,15 +1823,13 @@ const Filtre = ({
     const fmt = IMAGE_FORMATS[imageFormat] || IMAGE_FORMATS.png;
     let pool = null;
     try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = () => reject(new Error('Impossible de charger l’image.'));
-        img.src = activeMedia;
-      });
-      let width = img.naturalWidth || 1920;
-      let height = img.naturalHeight || 1080;
+      const src = mediaRef.current;
+      if (!src) throw new Error('Aucun média disponible.');
+
+      let width = src.naturalWidth || 1920;
+      let height = src.naturalHeight || 1080;
+      if (!width || !height) throw new Error('L’image n’est pas encore chargée.');
+
       if (exportResolution !== 'original') {
         const targetH = Number(exportResolution);
         if (height > targetH) { width = Math.round((width * targetH) / height); height = targetH; }
@@ -1841,6 +1839,7 @@ const Filtre = ({
         width = Math.floor(width * k);
         height = Math.floor(height * k);
       }
+
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -1848,10 +1847,17 @@ const Filtre = ({
       if (!ctx) throw new Error('Canvas non disponible.');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      if (fmt.mime === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); }
-      ctx.drawImage(img, 0, 0, width, height);
 
-      if (!exportPlan.identity) {
+      if (fmt.mime === 'image/jpeg') { 
+        ctx.fillStyle = '#fff'; 
+        ctx.fillRect(0, 0, width, height); 
+      }
+
+      // 1. On dessine l'image source aux dimensions cibles
+      ctx.drawImage(src, 0, 0, width, height);
+
+      // 2. On applique physiquement les modifications de filtres et de couleurs (le "baking")
+      if (exportPlan && !exportPlan.identity) {
         const frame = ctx.getImageData(0, 0, width, height);
         pool = createExportPool(exportPlan);
         if (pool) {
@@ -1867,12 +1873,27 @@ const Filtre = ({
         ctx.putImageData(frame, 0, 0);
       }
 
+      // 3. Conversion propre en Blob
       const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('Impossible de créer l’image.'))), fmt.mime, fmt.quality);
+        canvas.toBlob(
+          (result) => (result ? resolve(result) : reject(new Error('Impossible de créer l’image.'))),
+          fmt.mime,
+          fmt.quality
+        );
       });
+
       const url = URL.createObjectURL(blob);
       setPendingUrl(url);
-      return { blob, url, mimeType: fmt.mime, fileName: `filtre-${Date.now()}.${fmt.ext}`, type: 'IMAGE', colorGradingBakedIn: true };
+      setExportProgress(1);
+
+      return {
+        blob,
+        url,
+        mimeType: fmt.mime,
+        fileName: `filtre-${Date.now()}.${fmt.ext}`,
+        type: 'IMAGE',
+        colorGradingBakedIn: true
+      };
     } catch (error) {
       console.error('Erreur export image :', error);
       setExportError(error?.message || 'Impossible de générer l’image filtrée.');
@@ -1882,7 +1903,6 @@ const Filtre = ({
       setIsExporting(false);
     }
   };
-
   const exportVideo = async () => {
     setIsExporting(true);
     setExportError('');

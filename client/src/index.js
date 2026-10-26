@@ -3859,8 +3859,8 @@ else if (engineId.includes("hailuo")) {
         taskType:
             "videoInference",
 
-        model:
-            "minimax:4@2",
+      model:
+    cleanHailuoImg ? "minimax:4@2" : "minimax:4@1",
 
         positivePrompt:
             hailuoPrompt,
@@ -3942,10 +3942,10 @@ else if (engineId.includes("hailuo")) {
         engineId
     );
 
-    console.log(
-        "➡️ Modèle :",
-        "minimax:4@2"
-    );
+console.log(
+    "➡️ Modèle :",
+    hailuoRequest.model
+);
 
     console.log(
         "➡️ Mode :",
