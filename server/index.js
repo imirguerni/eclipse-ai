@@ -3789,7 +3789,6 @@ else if (engineId.includes("kling26") || (engineId.includes("kling") && !engineI
 // Text-to-Video + Image-to-Video
 // ============================================================
 else if (engineId.includes("hailuo")) {
-    const runware = await getRunwareClient();
     console.log("🚀 HAILUO 2.3 : configuration RUNWARE");
 
     // ========================================================
@@ -3877,13 +3876,19 @@ else if (engineId.includes("hailuo")) {
     // 5. PAYLOAD RUNWARE
     // ========================================================
 
+    // Sélection serveur autoritaire : une image valide active Hailuo Fast,
+    // sinon Hailuo 2.3 standard accepte le prompt seul.
+    const hailuoModel = cleanHailuoImg
+        ? "minimax:4@2"
+        : "minimax:4@1";
+
     const hailuoRequest = {
 
         taskType:
             "videoInference",
 
         model:
-            "minimax:4@2",
+            hailuoModel,
 
         positivePrompt:
             hailuoPrompt,
@@ -3964,7 +3969,7 @@ else if (engineId.includes("hailuo")) {
 
     console.log(
         "➡️ Modèle :",
-        "minimax:4@2"
+        hailuoModel
     );
 
     console.log(
@@ -4047,7 +4052,6 @@ else if (engineId.includes("hailuo")) {
 // Reference Images / Video / Audio
 // ============================================================
 else if (engineId.includes("minimax_h3")) {
-    const runware = await getRunwareClient();
 
     console.log("🚀 MINIMAX H3 : configuration RUNWARE");
 
