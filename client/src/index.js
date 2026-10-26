@@ -4006,6 +4006,9 @@ else if (engineId.includes("hailuo")) {
     // 9. APPEL RUNWARE
     // ========================================================
 
+    // Initialiser le client dans cette branche : runware n'est pas global.
+    const runware = await getRunwareClient();
+
     try {
 
         const [result] =
