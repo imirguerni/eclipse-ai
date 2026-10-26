@@ -948,6 +948,8 @@ const Filtre = ({
   const [previewMs, setPreviewMs] = useState(0);
   const [exportResolution, setExportResolution] = useState('original');
   const [exportEta, setExportEta] = useState('');
+  const lastResultRef = useRef(null);
+  const [hasLastResult, setHasLastResult] = useState(false);
   const [showClipping, setShowClipping] = useState(false);
   const [gridMode, setGridMode] = useState('off');
   const [showOriginal, setShowOriginal] = useState(false);
@@ -2172,10 +2174,26 @@ const exportImage = async () => {
       };
 
       const result = isVideo ? await exportVideo() : await exportImage();
-      if (!result) throw new Error('Aucun résultat généré par le filtre.');
+      if (!result || !result.blob || !result.blob.size) throw new Error('Le fichier généré est vide : rien à enregistrer.');
+      lastResultRef.current = result;
+      setHasLastResult(true);
 
       if (typeof onApply === 'function') {
-        await onApply({ ...result, settings, originalUrl: activeMedia, filterName: selectedFilter.name, intensity });
+        // Réglages « propres » : uniquement du JSON (sans valeurs `undefined`, refusées par certaines bases de données).
+        let safeSettings = null;
+        try { safeSettings = JSON.parse(JSON.stringify(settings)); } catch { safeSettings = null; }
+        const payload = {
+          ...result,
+          ...(typeof File === 'function' ? { file: new File([result.blob], result.fileName, { type: result.mimeType }) } : {}),
+          size: result.blob.size,
+          settings: safeSettings,
+          originalUrl: activeMedia,
+          filterName: selectedFilter.name,
+          intensity
+        };
+        console.info('[Filtre] Envoi à l’historique :', { type: payload.type, fileName: payload.fileName, mimeType: payload.mimeType, size: payload.size, url: payload.url });
+        const saved = await onApply(payload);
+        if (saved === false) throw new Error('Votre application a refusé l’enregistrement dans l’historique (onApply a renvoyé false).');
         pendingUrlRef.current = null; // l'URL appartient maintenant au parent
         setSaveMessage(audioNoticeRef.current ? `Le média est enregistré. ${audioNoticeRef.current}` : 'Le média est enregistré dans votre historique.');
         await new Promise((resolve) => setTimeout(resolve, 1200));
@@ -2468,6 +2486,15 @@ const exportImage = async () => {
       )}
       {saveMessage && <div role="status" style={{ color: '#4ade80', fontSize: '11px', lineHeight: 1.4 }}>{saveMessage}</div>}
       {exportError && <div role="alert" style={{ color: '#fca5a5', fontSize: '11px', lineHeight: 1.4 }}>{exportError}</div>}
+      {exportError && hasLastResult && !isExporting && (
+        <button
+          type="button"
+          onClick={() => { const r = lastResultRef.current; if (r) downloadBlob(r.blob, r.fileName); }}
+          style={{ ...ghostButtonStyle, color: '#7dd3fc', justifyContent: 'center' }}
+        >
+          💾 Télécharger le résultat quand même
+        </button>
+      )}
     </>
   );
 
