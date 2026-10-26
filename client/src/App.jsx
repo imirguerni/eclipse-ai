@@ -825,11 +825,14 @@ function getPriceDisplay(engine, duration, resolution, userPlan) {
         return Number.isFinite(Number(diamondPrice)) && Number(diamondPrice) > 0 ? `${diamondPrice} 💎` : "Tarif indisponible";
     }
 
-    const isFullHD = String(resolution || "").toLowerCase().includes("1080") || String(resolution || "").toLowerCase().includes("full hd") || String(resolution || "").toLowerCase().includes("fhd");
-    const resKey = isFullHD ? "fhd" : "hd";
+    const normalizedPriceResolution = String(resolution || "").toLowerCase().replace(/\\s/g, "");
+    const isH3 = String(engine?.id || "").toLowerCase().includes("minimax_h3");
+    const is1440p = ["1440p", "2k", "2k1440"].includes(normalizedPriceResolution);
+    const isFullHD = normalizedPriceResolution.includes("1080") || normalizedPriceResolution.includes("fullhd") || normalizedPriceResolution.includes("fhd");
+    const resKey = isH3 ? (is1440p ? "2k" : "hd") : (isFullHD ? "fhd" : "hd");
     const lookupKey = duration === "0" ? resKey : `${resKey}${duration}`;
     const price = PRICING_DATA[planKey]?.[engine?.id]?.[lookupKey];
-    const diamondPrice = PRICING_DATA["0.00"]?.[engine?.id]?.[lookupKey] || engine?.rubyPrice;
+    const diamondPrice = PRICING_DATA["0.00"]?.[engine?.id]?.[lookupKey] ?? engine?.rubyPrice;
     const required = packs.indexOf(String(engine?.minPriceForLightning));
     const current = packs.indexOf(planKey);
     return current >= 0 && required >= 0 && current >= required && price !== undefined ? `${price} ⚡` : `${diamondPrice ?? "—"} 💎`;
@@ -1327,9 +1330,15 @@ else if (isPixverse) {
     }
 }
 else if (isMinimax) {
-    // ⚙️ Logique spécifique pour MiniMax (768p -> hd, 2K -> fhd)
-    const is2K = resolution === "2K" || resolution?.toLowerCase().includes("2k") || isHighResMode;
-    const resPrefix = is2K ? "fhd" : "hd";
+    // MiniMax H3 : clés tarifaires hd4...hd15 et 2k4...2k15.
+    const isH3Engine = currentEngineId.includes("minimax_h3");
+    const is2K =
+        ["2k", "1440p", "2k1440"].includes(normalizedResolution) ||
+        String(resolution || "").toLowerCase().includes("2k") ||
+        (isHighResMode && !isH3Engine);
+    const resPrefix = isH3Engine
+        ? (is2K ? "2k" : "hd")
+        : (is2K ? "fhd" : "hd");
     priceKey = `${resPrefix}${calcDuration}`;
 }
 else {
@@ -1385,23 +1394,26 @@ else {
     // Fallback de sécurité corrigé pour Hailuo ; ne pas remplacer un tarif d'image manquant par un ancien prix FLUX.
     if (mode === "VIDEO" && baseCost === 0) {
         const fallbackData = currentEngineData.prices?.[calcDuration] || Object.values(currentEngineData.prices || {})[0];
-        
-        let defaultResKey = isHighResMode ? "1080p" : "720p";
-  if (currentEngineId === "kling2.6" || currentEngineId.includes("kling26")) {
-    defaultResKey = "1080p";
-} else if (isHailuo) {
-    defaultResKey = is512p
-        ? (calcDuration === "10" ? "p512_10" : "p512_6")
-        : "hd" + calcDuration;
-} else if (isPixverse) {
-        // ⚙️ Fallback Pixverse dynamique selon résolution demandée
-        defaultResKey = is360p ? `p360_${calcDuration}`
-                      : is540p ? `p540_${calcDuration}`
-                      : isHighResMode ? `fhd${calcDuration}`
-                      : `hd${calcDuration}`;
-    }
 
-        baseCost = fallbackData?.[defaultResKey] || currentEngineData.rubyPrice || 20;
+        let defaultResKey = isHighResMode ? "1080p" : "720p";
+        if (currentEngineId === "kling2.6" || currentEngineId.includes("kling26")) {
+            defaultResKey = "1080p";
+        } else if (currentEngineId.includes("minimax_h3")) {
+            // Le tableau local MiniMax H3 utilise les clés 768p et 1440p.
+            defaultResKey = ["2k", "1440p", "2k1440"].includes(normalizedResolution) ? "1440p" : "768p";
+        } else if (isHailuo) {
+            // Le tableau Hailuo utilise 768p/1080p, pas hd6/fhd6.
+            defaultResKey = is512p
+                ? (calcDuration === "10" ? "p512_10" : "p512_6")
+                : (isHighResMode ? "1080p" : "768p");
+        } else if (isPixverse) {
+            defaultResKey = is360p ? `p360_${calcDuration}`
+                : is540p ? `p540_${calcDuration}`
+                : isHighResMode ? `fhd${calcDuration}`
+                : `hd${calcDuration}`;
+        }
+
+        baseCost = fallbackData?.[defaultResKey] ?? currentEngineData.rubyPrice ?? 20;
     }
 
 // 4. MULTIPLICATEURS ET ARRONDIS
@@ -5642,8 +5654,9 @@ alt={t("app.defaultImageAlt", {
     </span>
   </button>
 )}
-{activeItem.type === "VIDEO" &&
- activeItem.url && (
+{(activeItem.type === "VIDEO" || activeItem.type === "IMAGE") &&
+ activeItem.url && 
+ !String(activeItem.id || '').startsWith('inspi-') && (
   
 <button
   className="btn-modern btn-remix"
@@ -6688,6 +6701,31 @@ alt={t("app.defaultImageAlt", {
     </div>
   </div>
 )}
+
+{/* 🎨 === C'EST ICI QU'IL FAUT LE PLACER === 🎨 */}
+{showEditor && (
+  <Filtre
+    mediaSrc={veoEditVideo || videoSource || activeItem?.url || activeItem?.videoUrl}
+    onBack={() => setShowEditor(false)}
+    selectedOptionModal={selectedOptionModal}
+    setSelectedOptionModal={setSelectedOptionModal}
+    prompt={prompt}
+    setPrompt={setPrompt}
+    colorSettings={colorSettings}
+    setColorSettings={setColorSettings}
+    handleFileToUrl={handleFileToUrl}
+    handleGenerate={handleGenerate}
+    onApply={async (result) => {
+      console.log('🎨 Vidéo filtrée reçue dans App.jsx :', result);
+      if (outilsRef.current?.applyMedia) {
+        await outilsRef.current.applyMedia(result);
+      } else {
+        console.error('❌ Outils.applyMedia() est introuvable');
+      }
+    }}
+  />
+)}
+
 
 {showEditor && (
   <Filtre

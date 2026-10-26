@@ -3789,6 +3789,7 @@ else if (engineId.includes("kling26") || (engineId.includes("kling") && !engineI
 // Text-to-Video + Image-to-Video
 // ============================================================
 else if (engineId.includes("hailuo")) {
+    const runware = await getRunwareClient();
     console.log("🚀 HAILUO 2.3 : configuration RUNWARE");
 
     // ========================================================
@@ -3882,7 +3883,7 @@ else if (engineId.includes("hailuo")) {
             "videoInference",
 
         model:
-            "minimax:4@1",
+            "minimax:4@2",
 
         positivePrompt:
             hailuoPrompt,
@@ -3963,7 +3964,7 @@ else if (engineId.includes("hailuo")) {
 
     console.log(
         "➡️ Modèle :",
-        "minimax:4@1"
+        "minimax:4@2"
     );
 
     console.log(
@@ -4046,6 +4047,7 @@ else if (engineId.includes("hailuo")) {
 // Reference Images / Video / Audio
 // ============================================================
 else if (engineId.includes("minimax_h3")) {
+    const runware = await getRunwareClient();
 
     console.log("🚀 MINIMAX H3 : configuration RUNWARE");
 

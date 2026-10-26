@@ -20,14 +20,10 @@ import {
   channelStats, buildMatchLuts, detectScene
 } from './gradeEngine.js';
 import { GradePool, detectCores, workersSupported } from './gradePool.js';
-import {
-  DEFAULT_TRANSFORM, DEFAULT_TEXT, DEFAULT_FX, RATIOS, isTransformActive, outputSize,
-  drawTransformed, drawOverlays, applyAudioFade
-} from './overlays.js';
 import * as MB from 'mediabunny';
 import {
   createSegments, splitAt, toggleRemoved, keptRanges, keptDuration, isTrimmed,
-  detectSceneCuts, playbackJump, removeRange, trimEdge, tickStep, generateThumbnails, outputTimeAt
+  detectSceneCuts, playbackJump, removeRange, trimEdge, tickStep, generateThumbnails
 } from './timeline.js';
 import { collectOriginalAudio, renderMix, iterateSamples } from './audioMix.js';
 
@@ -319,16 +315,6 @@ const FILM_STOCKS = [
 const LOOKS_STORAGE_KEY = 'ovx-filtre-looks-v1';
 const MAX_SAVED_LOOKS = 30;
 
-// Réglages rapides de l'onglet Filtre (mêmes réglages que l'onglet Couleur).
-const QUICK_SLIDERS = [
-  ['Exposition', 'exposure', -100],
-  ['Contraste', 'contrast', -100],
-  ['Saturation', 'saturation', -100],
-  ['Température', 'temperature', -100],
-  ['Netteté', 'sharpness', 0],
-  ['Vignettage', 'vignette', -100]
-];
-
 const CURVE_SLIDERS = [
   ['Noirs', 'curveShadows'],
   ['Tons foncés', 'curveDarks'],
@@ -487,13 +473,13 @@ function PanelHeader({ title, subtitle }) {
 }
 
 // Curseur réutilisable. Double-clic = remise à zéro du réglage.
-function SliderRow({ label, value, onChange, min = -100, max = 100, suffix = '', compact = false, format }) {
+function SliderRow({ label, value, onChange, min = -100, max = 100, suffix = '', compact = false }) {
   const v = Number(value) || 0;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '2px' : '4px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: compact ? '9px' : '11px', fontWeight: compact ? 400 : 600, color: compact ? '#bbb' : '#d1d5db' }}>{label}</span>
-        <span style={{ fontSize: compact ? '9px' : '10px', color: '#00b4d8', fontWeight: 700 }}>{format ? format(v) : `${v}${suffix}`}</span>
+        <span style={{ fontSize: compact ? '9px' : '10px', color: '#00b4d8', fontWeight: 700 }}>{v}{suffix}</span>
       </div>
       <input
         type="range"
@@ -973,14 +959,6 @@ const Filtre = ({
   const [sceneProgress, setSceneProgress] = useState(null); // null | 0..1
   const [soundOn, setSoundOn] = useState(false);
   const [timelineZoom, setTimelineZoom] = useState(1);
-  const [transform, setTransform] = useState({ ...DEFAULT_TRANSFORM });
-  const [textOverlay, setTextOverlay] = useState({ ...DEFAULT_TEXT });
-  const [fx, setFx] = useState({ ...DEFAULT_FX });
-  const [quickTab, setQuickTab] = useState('adjust');
-  const geomRef = useRef(DEFAULT_TRANSFORM);
-  const overlayRef = useRef({ text: DEFAULT_TEXT, fx: DEFAULT_FX });
-  geomRef.current = transform;
-  overlayRef.current = { text: textOverlay, fx };
   const [thumbs, setThumbs] = useState([]);
   const thumbsKeyRef = useRef('');
   const [sceneInfo, setSceneInfo] = useState(null);
@@ -1064,8 +1042,8 @@ const Filtre = ({
 
   // ---------- Historique (annuler / rétablir) ----------
   const snapshot = useMemo(
-    () => ({ colorSettings, filterId: selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments, transform, textOverlay, fx }),
-    [colorSettings, selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments, transform, textOverlay, fx]
+    () => ({ colorSettings, filterId: selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments }),
+    [colorSettings, selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments]
   );
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1097,9 +1075,6 @@ const Filtre = ({
     setFilmAmount(snap.filmAmount);
     setLutAmount(snap.lutAmount);
     if (Array.isArray(snap.segments) && snap.segments.length) setSegments(snap.segments);
-    if (snap.transform) setTransform({ ...DEFAULT_TRANSFORM, ...snap.transform });
-    if (snap.textOverlay) setTextOverlay({ ...DEFAULT_TEXT, ...snap.textOverlay });
-    if (snap.fx) setFx({ ...DEFAULT_FX, ...snap.fx });
   };
   const undo = () => {
     const h = historyRef.current;
@@ -1165,19 +1140,6 @@ const Filtre = ({
   }, [isVideo, duration, activeMedia, activeTool]);
 
   // ---------- Aperçu étalonné (canvas) ----------
-  // Position dans la vidéo finale (après découpe) et durée finale, pour les fondus.
-  const outTimes = useCallback(
-    (src) => {
-      if (!isVideo || !src) return { outT: 0, total: 0 };
-      const kr = keptRanges(segmentsRef.current);
-      if (!kr.length) return { outT: src.currentTime, total: src.duration || 0 };
-      const last = kr[kr.length - 1];
-      const o = outputTimeAt(kr, src.currentTime);
-      return { outT: o == null ? 0 : o, total: last.outStart + (last.end - last.start) };
-    },
-    [isVideo]
-  );
-
   const drawGradedPreview = useCallback(() => {
     const canvas = canvasRef.current;
     const src = mediaRef.current;
@@ -1193,17 +1155,15 @@ const Filtre = ({
     if (useWorkers && previewBusyRef.current) { previewDirtyRef.current = true; return; }
 
     const maxSide = PREVIEW_SIDES[previewQualityRef.current] || PREVIEW_SIDES.standard;
-    const geom = geomRef.current;
-    const og = outputSize(sw, sh, geom);
-    const scale = Math.min(1, maxSide / Math.max(og.w, og.h));
-    const cw = Math.max(2, Math.round(og.w * scale));
-    const ch = Math.max(2, Math.round(og.h * scale));
+    const scale = Math.min(1, maxSide / Math.max(sw, sh));
+    const cw = Math.max(2, Math.round(sw * scale));
+    const ch = Math.max(2, Math.round(sh * scale));
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    drawTransformed(ctx, src, sw, sh, cw, ch, geom);
+    ctx.drawImage(src, 0, 0, cw, ch);
 
     let frame;
     try {
@@ -1221,8 +1181,6 @@ const Filtre = ({
       drawScope(histRef.current, frame, scopeModeRef.current);
       if (showClippingRef.current) applyClippingOverlay(frame.data);
       ctx.putImageData(frame, 0, 0);
-      const { outT, total } = outTimes(src);
-      drawOverlays(ctx, cw, ch, overlayRef.current, outT, total);
       setPreviewError((prev) => (prev ? '' : prev));
     };
 
@@ -1251,7 +1209,7 @@ const Filtre = ({
           scheduleDrawRef.current?.();
         }
       });
-  }, [isVideo, outTimes]);
+  }, [isVideo]);
 
   const scheduleDrawRef = useRef(null);
   const scheduleDraw = useCallback(() => {
@@ -1293,10 +1251,6 @@ const Filtre = ({
   useEffect(() => {
     persistPerf({ enabled: perfEnabled, threads, previewQuality });
   }, [perfEnabled, threads, previewQuality]);
-
-  useEffect(() => {
-    scheduleDraw();
-  }, [transform, textOverlay, fx, scheduleDraw]);
 
   useEffect(() => {
     showClippingRef.current = showClipping;
@@ -1422,12 +1376,9 @@ const Filtre = ({
     setLutAmount(100);
     setHoverFilter(null);
     setColorRaw({ ...DEFAULT_COLOR_SETTINGS });
-    setTransform({ ...DEFAULT_TRANSFORM });
-    setTextOverlay({ ...DEFAULT_TEXT });
-    setFx({ ...DEFAULT_FX });
     resetEdit();
     setExportError('');
-    setSaveMessage('Tous les réglages, le cadrage, le texte et la découpe ont été réinitialisés.');
+    setSaveMessage('Tous les réglages et la découpe ont été réinitialisés.');
   };
 
   const resetKeys = (sliders) =>
@@ -1566,36 +1517,66 @@ const Filtre = ({
   };
 
   // ---------- Capture d'écran (téléchargement PNG) ----------
+// ---------- Capture d'écran vers le moteur IA ----------
   const captureFrame = async () => {
     const src = mediaRef.current;
-    if (!src) { setExportError('Ouvrez un onglet avec l’aperçu pour capturer une image.'); return; }
+    if (!src) {
+      setExportError('Ouvrez un onglet avec l’aperçu pour capturer une image.');
+      return;
+    }
     try {
-      const srcW = isVideo ? src.videoWidth : src.naturalWidth;
-      const srcH = isVideo ? src.videoHeight : src.naturalHeight;
-      if (!srcW || !srcH) throw new Error('Le média n’est pas encore chargé.');
-      const geom = geomRef.current;
-      const og = outputSize(srcW, srcH, geom);
-      let w = og.w;
-      let h = og.h;
-      if (w * h > MAX_IMAGE_PIXELS) { const k = Math.sqrt(MAX_IMAGE_PIXELS / (w * h)); w = Math.floor(w * k); h = Math.floor(h * k); }
+      let w = isVideo ? src.videoWidth : src.naturalWidth;
+      let h = isVideo ? src.videoHeight : src.naturalHeight;
+      if (!w || !h) throw new Error('Le média n’est pas encore chargé.');
+      
+      if (w * h > MAX_IMAGE_PIXELS) { 
+        const k = Math.sqrt(MAX_IMAGE_PIXELS / (w * h)); 
+        w = Math.floor(w * k); 
+        h = Math.floor(h * k); 
+      }
+      
       const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
+      canvas.width = w; 
+      canvas.height = h;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.imageSmoothingQuality = 'high';
-      drawTransformed(ctx, src, srcW, srcH, w, h, geom);
+      ctx.drawImage(src, 0, 0, w, h);
+      
+      // Applique les filtres et l'étalonnage en cours sur l'image capturée
       const plan = commitPlanRef.current;
       if (plan && !plan.identity) {
         const frame = ctx.getImageData(0, 0, w, h);
         processImageData(frame, plan, 0);
         ctx.putImageData(frame, 0, 0);
       }
-      const times = outTimes(src);
-      drawOverlays(ctx, w, h, overlayRef.current, times.outT, times.total);
+      
+      const dataUrl = canvas.toDataURL('image/png');
+      const blob = await (await fetch(dataUrl)).blob();
       const time = isVideo ? src.currentTime : 0;
-      const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Capture impossible.'))), 'image/png'));
-      downloadBlob(blob, `capture-${fmtTime(time).replace(':', 'm')}s.png`);
+
+      const resultObject = {
+        blob,
+        url: dataUrl,
+        mimeType: 'image/png',
+        fileName: `capture-${fmtTime(time).replace(':', 'm')}s.png`,
+        type: 'IMAGE',
+        colorGradingBakedIn: true
+      };
+
+      // Si une fonction onApply est fournie par le parent, on lui envoie l'image et on ferme l'éditeur
+      if (typeof onApply === 'function') {
+        await onApply(resultObject);
+        setSaveMessage('Image capturée et transmise au moteur IA.');
+        setTimeout(() => {
+          closeInspector();
+        }, 500);
+      } else {
+        // Fallback : si aucun parent n'écoute, on garde le téléchargement classique
+        downloadBlob(blob, resultObject.fileName);
+        setSaveMessage(`Capture téléchargée (${fmtTime(time)}).`);
+      }
+
       setExportError('');
-      setSaveMessage(`Capture téléchargée (${fmtTime(time)}).`);
     } catch (error) {
       console.error('Capture impossible :', error);
       setExportError(error?.message || 'Capture impossible (le média doit autoriser CORS).');
@@ -1759,11 +1740,6 @@ const Filtre = ({
   const pickColorAt = (e) => {
     const src = mediaRef.current;
     if (!src) return;
-    if (isTransformActive(transform)) {
-      setExportError('La pipette n’est pas disponible quand un cadrage est actif : réinitialisez le cadrage d’abord.');
-      setIsEyedropperActive(false);
-      return;
-    }
     const sw = isVideo ? src.videoWidth : src.naturalWidth;
     const sh = isVideo ? src.videoHeight : src.naturalHeight;
     if (!sw || !sh) return;
@@ -1854,12 +1830,8 @@ const Filtre = ({
         img.onerror = () => reject(new Error('Impossible de charger l’image.'));
         img.src = activeMedia;
       });
-      const natW = img.naturalWidth || 1920;
-      const natH = img.naturalHeight || 1080;
-      const geom = geomRef.current;
-      const og = outputSize(natW, natH, geom);
-      let width = og.w;
-      let height = og.h;
+      let width = img.naturalWidth || 1920;
+      let height = img.naturalHeight || 1080;
       if (exportResolution !== 'original') {
         const targetH = Number(exportResolution);
         if (height > targetH) { width = Math.round((width * targetH) / height); height = targetH; }
@@ -1877,7 +1849,7 @@ const Filtre = ({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       if (fmt.mime === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); }
-      drawTransformed(ctx, img, natW, natH, width, height, geom);
+      ctx.drawImage(img, 0, 0, width, height);
 
       if (!exportPlan.identity) {
         const frame = ctx.getImageData(0, 0, width, height);
@@ -1894,8 +1866,6 @@ const Filtre = ({
         }
         ctx.putImageData(frame, 0, 0);
       }
-
-      drawOverlays(ctx, width, height, { text: overlayRef.current.text, fx: null }, 0, 0);
 
       const blob = await new Promise((resolve, reject) => {
         canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('Impossible de créer l’image.'))), fmt.mime, fmt.quality);
@@ -1951,15 +1921,10 @@ const Filtre = ({
       // Dimensions paires (exigence H.264), éventuellement réduites (jamais agrandies).
       const srcW = await inputVideoTrack.getDisplayWidth();
       const srcH = await inputVideoTrack.getDisplayHeight();
-      const geom = geomRef.current;
-      const overlays = overlayRef.current;
-      const g0 = outputSize(srcW, srcH, geom); // taille après cadrage / rotation
-      const targetH = exportResolution === 'original' ? g0.h : Math.min(g0.h, Number(exportResolution));
-      const ratio = targetH / g0.h;
-      const sinkW = toEven(srcW * ratio); // taille des images décodées
-      const sinkH = toEven(srcH * ratio);
-      const width = toEven(g0.w * ratio); // taille de la vidéo finale
-      const height = toEven(g0.h * ratio);
+      const targetH = exportResolution === 'original' ? srcH : Math.min(srcH, Number(exportResolution));
+      const ratio = targetH / srcH;
+      const width = toEven(srcW * ratio);
+      const height = toEven(srcH * ratio);
 
       // Cadence réelle de la source (repli : 30 i/s).
       let frameRate = 30;
@@ -1989,15 +1954,14 @@ const Filtre = ({
       output.addVideoTrack(videoSource, { frameRate });
 
       // Audio : copie directe si rien n'est coupé ; sinon le son suit les sections conservées.
-      const fadeAudioOn = overlays.fx.fadeAudio && (overlays.fx.inSec > 0 || overlays.fx.outSec > 0);
-      const needMix = trimmed || overlays.fx.volume !== 100 || fadeAudioOn;
+      const needMix = trimmed;
       let audioSink = null;
       let mixedBuffer = null;
       let useBufferSource = false;
       audioNoticeRef.current = '';
       try {
         const inputAudioTrack = await input.getPrimaryAudioTrack();
-        const hasOriginalAudio = !overlays.fx.mute && Boolean(inputAudioTrack && (await inputAudioTrack.canDecode()));
+        const hasOriginalAudio = Boolean(inputAudioTrack && (await inputAudioTrack.canDecode()));
         if (!needMix) {
           if (hasOriginalAudio) {
             audioSink = new AudioSampleSink(inputAudioTrack);
@@ -2010,10 +1974,9 @@ const Filtre = ({
             ranges,
             totalDuration: outDuration,
             originalChunks: chunks,
-            originalVolume: overlays.fx.volume / 100,
+            originalVolume: 1,
             music: null
           });
-          if (fadeAudioOn) applyAudioFade(mixedBuffer, overlays.fx.inSec, overlays.fx.outSec);
           if (typeof MB.AudioBufferSource === 'function') {
             audioSource = new MB.AudioBufferSource({ codec: 'aac', bitrate: 192000 });
             useBufferSource = true;
@@ -2034,7 +1997,7 @@ const Filtre = ({
 
       await output.start();
 
-      const sink = new CanvasSink(inputVideoTrack, { width: sinkW, height: sinkH, fit: 'contain', poolSize: 2, alpha: false });
+      const sink = new CanvasSink(inputVideoTrack, { width, height, fit: 'contain', poolSize: 2, alpha: false });
 
       const audioPromise = audioSource
         ? (async () => {
@@ -2086,7 +2049,6 @@ const Filtre = ({
           pixels = item.frame.data;
         }
         ctx.putImageData(new ImageData(pixels, width, height), 0, 0);
-        drawOverlays(ctx, width, height, overlays, item.timestamp, outDuration);
         await videoSource.add(item.timestamp, item.duration);
         reportProgress(item.timestamp);
       };
@@ -2097,10 +2059,9 @@ const Filtre = ({
         for await (const frame of sink.canvases(range.start, range.end)) {
           if (cancelExportRef.current) throw new Error('Export annulé.');
           const outTs = frame.timestamp - range.start + range.outStart;
-          drawTransformed(ctx, frame.canvas, sinkW, sinkH, width, height, geom);
+          ctx.drawImage(frame.canvas, 0, 0, width, height);
 
           if (!needsPixels) {
-            drawOverlays(ctx, width, height, overlays, outTs, outDuration);
             await videoSource.add(outTs, frame.duration);
             if (frameIndex % 4 === 0) reportProgress(outTs);
           } else {
@@ -2112,7 +2073,6 @@ const Filtre = ({
             } else if (!pool) {
               processImageData(data, exportPlan, frameIndex);
               ctx.putImageData(data, 0, 0);
-              drawOverlays(ctx, width, height, overlays, outTs, outDuration);
               await videoSource.add(outTs, frame.duration);
               if (frameIndex % 4 === 0) reportProgress(outTs);
             } else {
@@ -2184,9 +2144,6 @@ const Filtre = ({
         temperature: adjustments.temperature,
         grain: adjustments.grain,
         exportResolution,
-        transform,
-        text: textOverlay.text ? textOverlay : null,
-        fx,
         edit: isVideo ? { trimmed: isTrimmed(segments, duration), ranges: keptRanges(segments) } : undefined,
         match: matchLuts ? { name: matchData?.name, amount: matchAmount } : null,
         threads: perfEnabled ? threads : 1,
@@ -2296,9 +2253,7 @@ const Filtre = ({
 
   const renderPreview = () => {
     if (!PREVIEW_TABS.includes(activeTool)) return null;
-    const geomActive = isTransformActive(transform);
     const mediaStyle = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', display: 'block' };
-    const sourceStyle = { ...mediaStyle, visibility: geomActive && !showOriginal ? 'hidden' : 'visible' };
 
     return (
       <div style={{ width: '100%', padding: '10px', boxSizing: 'border-box', background: '#101014', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px' }}>
@@ -2318,13 +2273,13 @@ const Filtre = ({
           }}
         >
           {isVideo ? (
-            <video ref={mediaRef} src={activeMedia} playsInline loop crossOrigin="anonymous" style={sourceStyle} />
+            <video ref={mediaRef} src={activeMedia} playsInline loop crossOrigin="anonymous" style={mediaStyle} />
           ) : (
-            <img ref={mediaRef} src={activeMedia} alt="Original" crossOrigin="anonymous" draggable={false} onLoad={scheduleDraw} style={sourceStyle} />
+            <img ref={mediaRef} src={activeMedia} alt="Original" crossOrigin="anonymous" draggable={false} onLoad={scheduleDraw} style={mediaStyle} />
           )}
 
           {/* Rendu étalonné : exactement le même moteur que l'export */}
-          <canvas ref={canvasRef} style={{ ...mediaStyle, clipPath: geomActive ? 'none' : `inset(0 ${100 - comparePosition}% 0 0)`, pointerEvents: 'none', opacity: showOriginal ? 0 : 1 }} />
+          <canvas ref={canvasRef} style={{ ...mediaStyle, clipPath: `inset(0 ${100 - comparePosition}% 0 0)`, pointerEvents: 'none', opacity: showOriginal ? 0 : 1 }} />
 
           {gridMode !== 'off' && (
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 9, pointerEvents: 'none' }}>
@@ -2337,11 +2292,9 @@ const Filtre = ({
             </div>
           )}
 
-          {!geomActive && (
           <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${comparePosition}%`, width: '2px', background: '#fff', transform: 'translateX(-50%)', zIndex: 10, pointerEvents: 'none' }}>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '28px', height: '28px', borderRadius: '50%', background: '#00b4d8', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', boxSizing: 'border-box' }}>↔</div>
           </div>
-          )}
 
           {isEyedropperActive && (
             <div style={{ position: 'absolute', top: '12px', left: '50%', transform: 'translateX(-50%)', padding: '6px 12px', background: 'rgba(0,180,216,0.9)', color: '#fff', borderRadius: '6px', fontSize: '11px', fontWeight: '700', zIndex: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.4)', whiteSpace: 'nowrap' }}>
@@ -2352,7 +2305,7 @@ const Filtre = ({
             <div role="alert" style={{ position: 'absolute', bottom: '8px', left: '8px', right: '8px', padding: '5px 8px', background: 'rgba(127,29,29,0.9)', color: '#fecaca', borderRadius: '4px', fontSize: '10px', zIndex: 20 }}>{previewError}</div>
           )}
           <div style={{ position: 'absolute', top: '8px', left: '8px', padding: '3px 6px', background: 'rgba(0,0,0,0.7)', borderRadius: '3px', fontSize: '9px', zIndex: 12 }}>{showOriginal ? 'Original (maintenu)' : 'Modifié'}</div>
-          <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '3px 6px', background: 'rgba(0,0,0,0.7)', borderRadius: '3px', fontSize: '9px', zIndex: 12, display: geomActive ? 'none' : 'block' }}>Original</div>
+          <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '3px 6px', background: 'rgba(0,0,0,0.7)', borderRadius: '3px', fontSize: '9px', zIndex: 12 }}>Original</div>
         </div>
 
         <div style={{ width: '100%', maxWidth: '760px', margin: '0 auto', minHeight: '46px', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', background: '#141418', border: '1px solid rgba(255,255,255,0.06)', borderTop: 'none', boxSizing: 'border-box', borderRadius: '0 0 8px 8px' }}>
@@ -2523,7 +2476,6 @@ const Filtre = ({
         {/* CENTRE : vidéo + outils */}
         <div className="ovx-color-editor-center" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
           {renderPreview()}
-          {renderQuickPanel()}
           {colorActiveCount > 0 && (
             <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', padding: '8px 12px', borderRadius: '8px', background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.3)', color: '#7dd3fc', fontSize: '11px', maxWidth: '760px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
               <span>🎨 {colorActiveCount} réglage(s) de couleur actif(s)</span>
@@ -2620,142 +2572,6 @@ const Filtre = ({
   );
 
   // ---------- Découpe de la vidéo ----------
-  // ---------- Panneau d'outils sous la vidéo (réglages rapides, cadrage, texte, fondus) ----------
-  const renderQuickPanel = () => {
-    const tabs = [['adjust', '🎚 Réglages rapides'], ['frame', '⛶ Cadrage'], ['text', 'T Texte'], ['fade', '◐ Fondus & son']];
-    const setT = (patch) => setTransform((t) => ({ ...t, ...patch }));
-    const setTx = (patch) => setTextOverlay((t) => ({ ...t, ...patch }));
-    const setF = (patch) => setFx((f) => ({ ...f, ...patch }));
-    const chip = (active) => ({ ...toolChipStyle(active, false) });
-    const label = { fontSize: '10px', fontWeight: 700, color: '#9ca3af', minWidth: '58px' };
-    const row = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' };
-    const hint = { fontSize: '9px', color: '#777', lineHeight: 1.4 };
-    const geomOn = isTransformActive(transform);
-    return (
-      <div className="ovx-color-editor-panel" style={{ ...panelStyle, width: '100%', boxSizing: 'border-box' }}>
-        <div role="tablist" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
-          {tabs.map(([id, text]) => (
-            <button key={id} type="button" role="tab" aria-selected={quickTab === id} onClick={() => setQuickTab(id)} style={{ ...chip(quickTab === id), padding: '6px 12px' }}>{text}</button>
-          ))}
-        </div>
-
-        {quickTab === 'adjust' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 20px' }}>
-              {QUICK_SLIDERS.map(([text, key, min]) => (
-                <SliderRow key={key} compact label={text} min={min} value={colorSettings[key]} onChange={(v) => updateColor({ [key]: v })} />
-              ))}
-            </div>
-            <div style={{ ...row, marginTop: '12px' }}>
-              <button type="button" onClick={handleAutoColorCorrection} style={chip(false)}>✨ Correction auto</button>
-              <button type="button" onClick={() => resetKeys(QUICK_SLIDERS)} style={chip(false)}>↺ Remettre à zéro</button>
-              <span style={hint}>Les mêmes réglages que dans l’onglet Couleur (courbes, roues, HSL… y sont aussi).</span>
-            </div>
-          </div>
-        )}
-
-        {quickTab === 'frame' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={row}>
-              <span style={label}>Rotation</span>
-              <button type="button" onClick={() => setT({ rotate: (transform.rotate + 270) % 360 })} style={chip(false)}>↺ 90°</button>
-              <button type="button" onClick={() => setT({ rotate: (transform.rotate + 90) % 360 })} style={chip(false)}>↻ 90°</button>
-              <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 700, minWidth: '30px' }}>{transform.rotate}°</span>
-              <span style={{ width: '10px' }} />
-              <span style={label}>Miroir</span>
-              <button type="button" aria-pressed={transform.flipH} onClick={() => setT({ flipH: !transform.flipH })} style={chip(transform.flipH)}>⇋ Horizontal</button>
-              <button type="button" aria-pressed={transform.flipV} onClick={() => setT({ flipV: !transform.flipV })} style={chip(transform.flipV)}>⇅ Vertical</button>
-            </div>
-            <div style={row}>
-              <span style={label}>Format</span>
-              {RATIOS.map((r) => (
-                <button key={r.id} type="button" aria-pressed={transform.ratio === r.id} onClick={() => setT({ ratio: r.id })} style={chip(transform.ratio === r.id)}>{r.label}</button>
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px 16px' }}>
-              <SliderRow compact label="Zoom" min={100} max={300} suffix=" %" value={Math.round(transform.zoom * 100)} onChange={(v) => setT({ zoom: v / 100 })} />
-              <SliderRow compact label="Position horizontale" min={-100} max={100} value={Math.round(transform.panX * 100)} onChange={(v) => setT({ panX: v / 100 })} />
-              <SliderRow compact label="Position verticale" min={-100} max={100} value={Math.round(transform.panY * 100)} onChange={(v) => setT({ panY: v / 100 })} />
-            </div>
-            <div style={row}>
-              <button type="button" onClick={() => setTransform({ ...DEFAULT_TRANSFORM })} disabled={!geomOn} style={{ ...chip(false), opacity: geomOn ? 1 : 0.4 }}>↺ Réinitialiser le cadrage</button>
-              {geomOn && <span style={hint}>La comparaison avant / après et la pipette sont désactivées tant que le cadrage est actif.</span>}
-            </div>
-          </div>
-        )}
-
-        {quickTab === 'text' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <textarea
-              aria-label="Texte à afficher"
-              rows={2}
-              maxLength={200}
-              value={textOverlay.text}
-              onChange={(e) => setTx({ text: e.target.value })}
-              placeholder="Votre texte (Entrée = nouvelle ligne)"
-              style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: '#15151a', color: '#fff', padding: '8px', outline: 'none', fontSize: '12px', fontFamily: 'inherit' }}
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '14px', alignItems: 'end' }}>
-              <SliderRow compact label="Taille (% de la hauteur)" min={2} max={25} suffix=" %" value={textOverlay.size} onChange={(v) => setTx({ size: v })} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#9ca3af' }}>
-                Couleur
-                <input type="color" aria-label="Couleur du texte" value={textOverlay.color} onChange={(e) => setTx({ color: e.target.value })} style={{ width: '34px', height: '26px', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }} />
-              </label>
-            </div>
-            <div style={row}>
-              <span style={label}>Position</span>
-              {[['top', 'Haut'], ['middle', 'Milieu'], ['bottom', 'Bas']].map(([id, text]) => (
-                <button key={id} type="button" aria-pressed={textOverlay.pos === id} onClick={() => setTx({ pos: id })} style={chip(textOverlay.pos === id)}>{text}</button>
-              ))}
-              <span style={{ width: '10px' }} />
-              {[['left', 'Gauche'], ['center', 'Centre'], ['right', 'Droite']].map(([id, text]) => (
-                <button key={id} type="button" aria-pressed={textOverlay.align === id} onClick={() => setTx({ align: id })} style={chip(textOverlay.align === id)}>{text}</button>
-              ))}
-            </div>
-            <div style={row}>
-              <span style={label}>Fond</span>
-              {[['none', 'Aucun'], ['dark', 'Sombre'], ['light', 'Clair']].map(([id, text]) => (
-                <button key={id} type="button" aria-pressed={textOverlay.bg === id} onClick={() => setTx({ bg: id })} style={chip(textOverlay.bg === id)}>{text}</button>
-              ))}
-              <button type="button" aria-pressed={textOverlay.bold} onClick={() => setTx({ bold: !textOverlay.bold })} style={{ ...chip(textOverlay.bold), fontWeight: 900 }}>G</button>
-              <button type="button" onClick={() => setTextOverlay({ ...DEFAULT_TEXT })} style={chip(false)}>↺ Effacer</button>
-            </div>
-            <span style={hint}>Le texte est affiché sur toute la vidéo (aperçu, capture et export).</span>
-          </div>
-        )}
-
-        {quickTab === 'fade' && (
-          isVideo ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 20px' }}>
-                <SliderRow compact label="Fondu d’entrée" min={0} max={30} value={Math.round(fx.inSec * 10)} format={(v) => `${(v / 10).toFixed(1)} s`} onChange={(v) => setF({ inSec: v / 10 })} />
-                <SliderRow compact label="Fondu de sortie" min={0} max={30} value={Math.round(fx.outSec * 10)} format={(v) => `${(v / 10).toFixed(1)} s`} onChange={(v) => setF({ outSec: v / 10 })} />
-                <SliderRow compact label="Volume du son" min={0} max={200} suffix=" %" value={fx.volume} onChange={(v) => setF({ volume: v })} />
-              </div>
-              <div style={row}>
-                <span style={label}>Couleur</span>
-                <button type="button" aria-pressed={fx.color === 'black'} onClick={() => setF({ color: 'black' })} style={chip(fx.color === 'black')}>Noir</button>
-                <button type="button" aria-pressed={fx.color === 'white'} onClick={() => setF({ color: 'white' })} style={chip(fx.color === 'white')}>Blanc</button>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#e5e7eb', cursor: 'pointer', marginLeft: '8px' }}>
-                  <input type="checkbox" checked={fx.fadeAudio} onChange={(e) => setF({ fadeAudio: e.target.checked })} style={{ accentColor: '#00b4d8' }} />
-                  Fondu aussi sur le son
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#e5e7eb', cursor: 'pointer', marginLeft: '8px' }}>
-                  <input type="checkbox" checked={fx.mute} onChange={(e) => setF({ mute: e.target.checked })} style={{ accentColor: '#00b4d8' }} />
-                  Couper le son
-                </label>
-                <button type="button" onClick={() => setFx({ ...DEFAULT_FX })} style={chip(false)}>↺ Réinitialiser</button>
-              </div>
-              <span style={hint}>Les fondus se calculent sur la vidéo finale (après découpe). L’aperçu les montre quand la tête de lecture est dans la zone de fondu.</span>
-            </div>
-          ) : (
-            <div style={hint}>Les fondus et le réglage du son concernent les vidéos.</div>
-          )
-        )}
-      </div>
-    );
-  };
-
   const renderTimelineBlock = () => {
     if (!isVideo) return null;
     const edited = segments.length > 1 || finalDuration < duration - 0.05;
