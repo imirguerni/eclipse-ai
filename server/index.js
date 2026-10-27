@@ -3876,38 +3876,30 @@ else if (engineId.includes("hailuo")) {
     // 5. PAYLOAD RUNWARE
     // ========================================================
 
-    // Sélection serveur autoritaire : une image valide active Hailuo Fast,
-    // sinon Hailuo 2.3 standard accepte le prompt seul.
-    const hailuoModel = cleanHailuoImg
-        ? "minimax:4@2"
-        : "minimax:4@1";
+    // Détection automatique : standard pour texte→vidéo, Fast pour image→vidéo.
+    const hailuoModel = cleanHailuoImg ? "minimax:4@2" : "minimax:4@1";
+    const requestedAspectRatio = String(req.body.aspect_ratio || "16:9");
+    const hailuoDimensions = {
+        "768p": {
+            "16:9": [1366, 768],
+            "1:1": [768, 768],
+            "9:16": [768, 1366]
+        },
+        "1080p": {
+            "16:9": [1920, 1080],
+            "1:1": [1080, 1080],
+            "9:16": [1080, 1920]
+        }
+    };
 
     const hailuoRequest = {
-
-        taskType:
-            "videoInference",
-
-        model:
-            hailuoModel,
-
-        positivePrompt:
-            hailuoPrompt,
-
-        duration:
-            hailuoDuration,
-
-        includeCost:
-            true,
-
+        taskType: "videoInference",
+        model: hailuoModel,
+        positivePrompt: hailuoPrompt,
+        duration: hailuoDuration,
+        includeCost: true,
         providerSettings: {
-
-            minimax: {
-
-                promptOptimizer:
-                    true
-
-            }
-
+            minimax: { promptOptimizer: true }
         }
     };
 
@@ -3916,41 +3908,15 @@ else if (engineId.includes("hailuo")) {
     // ========================================================
 
     if (cleanHailuoImg) {
-
-        hailuoRequest.inputs = {
-
-            frameImages: [
-                cleanHailuoImg
-            ]
-
-        };
-
-        // Avec frameImages, on ne fournit PAS width/height.
-        // Hailuo utilise l'image comme première frame.
-    }
-
-    // ========================================================
-    // 7. TEXT → VIDEO
-    // ========================================================
-
-    else {
-
-        if (is1080p) {
-
-            hailuoRequest.width =
-                1920;
-
-            hailuoRequest.height =
-                1080;
-
-        } else {
-
-            hailuoRequest.width =
-                1366;
-
-            hailuoRequest.height =
-                768;
-        }
+        // Fast exige une image de première frame. Le ratio vient de cette image :
+        // ne pas envoyer width/height ni tenter de forcer un ratio différent.
+        hailuoRequest.inputs = { frameImages: [cleanHailuoImg] };
+    } else {
+        // Standard : le ratio choisi dans l'interface est appliqué à la génération texte→vidéo.
+        const tier = is1080p ? "1080p" : "768p";
+        const dimensions = hailuoDimensions[tier][requestedAspectRatio] || hailuoDimensions[tier]["16:9"];
+        hailuoRequest.width = dimensions[0];
+        hailuoRequest.height = dimensions[1];
     }
 
     // ========================================================
@@ -3970,6 +3936,12 @@ else if (engineId.includes("hailuo")) {
     console.log(
         "➡️ Modèle :",
         hailuoModel
+    );
+
+    console.log(
+        "➡️ Ratio demandé :",
+        requestedAspectRatio,
+        cleanHailuoImg ? "(ratio final hérité de l’image source)" : ""
     );
 
     console.log(
@@ -4013,10 +3985,6 @@ else if (engineId.includes("hailuo")) {
     // ========================================================
 
     try {
-
-        // Le client doit être initialisé dans cette branche :
-        // sinon "runware is not defined" survient à l'appel .run().
-        const runware = await getRunwareClient();
 
         const [result] =
             await runware.run(

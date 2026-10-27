@@ -775,7 +775,25 @@ const engines = [
     annotation: t("line3_app_annotation_nano_banana2_lite")
   }
 
-]; // Fermeture correcte de l'array engines
+ ]; // Fermeture correcte de l'array engines
+
+// Ratios réellement pris en charge par les moteurs vidéo Runware vérifiés.
+function getAspectRatioOptions(modelName) {
+  const normalizedName = String(modelName || "").toLowerCase().trim();
+  const engine = engines.find(e => String(e.name || "").toLowerCase() === normalizedName || String(e.id || "").toLowerCase() === normalizedName);
+  const id = String(engine?.id || normalizedName).toLowerCase();
+  if (id.includes("hailuo")) return ["16:9", "1:1", "9:16"];
+  if (id === "pixverse6" || id.includes("pixverse-v6")) return ["16:9", "4:3", "1:1", "3:4", "9:16"];
+  if (id === "seedance20" || id === "seedance25" || normalizedName.includes("seedance 2.0") || normalizedName.includes("seedance 2.5") || id.includes("seedance-2.0") || id.includes("seedance-2.5")) {
+    return ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"];
+  }
+  return ["16:9", "1:1", "9:16"];
+}
+
+useEffect(() => {
+  const allowedRatios = getAspectRatioOptions(selectedModel);
+  if (!allowedRatios.includes(aspectRatio)) setAspectRatio("16:9");
+}, [selectedModel, aspectRatio]);
 // Réduit immédiatement un ancien prompt si l'utilisateur change de moteur
 // ou ajoute une image/vidéo qui impose une limite plus stricte.
 useEffect(() => {
@@ -825,14 +843,11 @@ function getPriceDisplay(engine, duration, resolution, userPlan) {
         return Number.isFinite(Number(diamondPrice)) && Number(diamondPrice) > 0 ? `${diamondPrice} 💎` : "Tarif indisponible";
     }
 
-    const normalizedPriceResolution = String(resolution || "").toLowerCase().replace(/\\s/g, "");
-    const isH3 = String(engine?.id || "").toLowerCase().includes("minimax_h3");
-    const is1440p = ["1440p", "2k", "2k1440"].includes(normalizedPriceResolution);
-    const isFullHD = normalizedPriceResolution.includes("1080") || normalizedPriceResolution.includes("fullhd") || normalizedPriceResolution.includes("fhd");
-    const resKey = isH3 ? (is1440p ? "2k" : "hd") : (isFullHD ? "fhd" : "hd");
+    const isFullHD = String(resolution || "").toLowerCase().includes("1080") || String(resolution || "").toLowerCase().includes("full hd") || String(resolution || "").toLowerCase().includes("fhd");
+    const resKey = isFullHD ? "fhd" : "hd";
     const lookupKey = duration === "0" ? resKey : `${resKey}${duration}`;
     const price = PRICING_DATA[planKey]?.[engine?.id]?.[lookupKey];
-    const diamondPrice = PRICING_DATA["0.00"]?.[engine?.id]?.[lookupKey] ?? engine?.rubyPrice;
+    const diamondPrice = PRICING_DATA["0.00"]?.[engine?.id]?.[lookupKey] || engine?.rubyPrice;
     const required = packs.indexOf(String(engine?.minPriceForLightning));
     const current = packs.indexOf(planKey);
     return current >= 0 && required >= 0 && current >= required && price !== undefined ? `${price} ⚡` : `${diamondPrice ?? "—"} 💎`;
@@ -1330,15 +1345,9 @@ else if (isPixverse) {
     }
 }
 else if (isMinimax) {
-    // MiniMax H3 : clés tarifaires hd4...hd15 et 2k4...2k15.
-    const isH3Engine = currentEngineId.includes("minimax_h3");
-    const is2K =
-        ["2k", "1440p", "2k1440"].includes(normalizedResolution) ||
-        String(resolution || "").toLowerCase().includes("2k") ||
-        (isHighResMode && !isH3Engine);
-    const resPrefix = isH3Engine
-        ? (is2K ? "2k" : "hd")
-        : (is2K ? "fhd" : "hd");
+    // ⚙️ Logique spécifique pour MiniMax (768p -> hd, 2K -> fhd)
+    const is2K = resolution === "2K" || resolution?.toLowerCase().includes("2k") || isHighResMode;
+    const resPrefix = is2K ? "fhd" : "hd";
     priceKey = `${resPrefix}${calcDuration}`;
 }
 else {
@@ -1394,26 +1403,23 @@ else {
     // Fallback de sécurité corrigé pour Hailuo ; ne pas remplacer un tarif d'image manquant par un ancien prix FLUX.
     if (mode === "VIDEO" && baseCost === 0) {
         const fallbackData = currentEngineData.prices?.[calcDuration] || Object.values(currentEngineData.prices || {})[0];
-
+        
         let defaultResKey = isHighResMode ? "1080p" : "720p";
-        if (currentEngineId === "kling2.6" || currentEngineId.includes("kling26")) {
-            defaultResKey = "1080p";
-        } else if (currentEngineId.includes("minimax_h3")) {
-            // Le tableau local MiniMax H3 utilise les clés 768p et 1440p.
-            defaultResKey = ["2k", "1440p", "2k1440"].includes(normalizedResolution) ? "1440p" : "768p";
-        } else if (isHailuo) {
-            // Le tableau Hailuo utilise 768p/1080p, pas hd6/fhd6.
-            defaultResKey = is512p
-                ? (calcDuration === "10" ? "p512_10" : "p512_6")
-                : (isHighResMode ? "1080p" : "768p");
-        } else if (isPixverse) {
-            defaultResKey = is360p ? `p360_${calcDuration}`
-                : is540p ? `p540_${calcDuration}`
-                : isHighResMode ? `fhd${calcDuration}`
-                : `hd${calcDuration}`;
-        }
+  if (currentEngineId === "kling2.6" || currentEngineId.includes("kling26")) {
+    defaultResKey = "1080p";
+} else if (isHailuo) {
+    defaultResKey = is512p
+        ? (calcDuration === "10" ? "p512_10" : "p512_6")
+        : "hd" + calcDuration;
+} else if (isPixverse) {
+        // ⚙️ Fallback Pixverse dynamique selon résolution demandée
+        defaultResKey = is360p ? `p360_${calcDuration}`
+                      : is540p ? `p540_${calcDuration}`
+                      : isHighResMode ? `fhd${calcDuration}`
+                      : `hd${calcDuration}`;
+    }
 
-        baseCost = fallbackData?.[defaultResKey] ?? currentEngineData.rubyPrice ?? 20;
+        baseCost = fallbackData?.[defaultResKey] || currentEngineData.rubyPrice || 20;
     }
 
 // 4. MULTIPLICATEURS ET ARRONDIS
@@ -1798,6 +1804,7 @@ const getValidDuration = (modelId, dur) => {
 if (finalModelId === "pixverse6") {
     return {
         prompt: finalPrompt,
+        aspect_ratio: aspectRatio || "16:9",
         resolution: ["360p", "540p", "720p", "1080p"].includes(resolution) ? resolution : "720p",
         duration: Math.max(1, Math.min(15, parseFloat(effectiveDuration) || 5)),
         enable_audio: Boolean(wantsAudio),
@@ -5209,11 +5216,26 @@ const isModelSeedance2 = cleanId.includes("seedance2"); // Attrape seedance 2.0 
     <div style={{ flex: 1 }}>
       <label className="field-label-tiny">{t("app.formatStyle")}</label>
       <div style={{ display: 'flex', gap: '5px' }}>
-        <select className="artlist-select" value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
-<option value="16:9">▭ 16:9</option>
-      <option value="1:1">◻ 1:1</option>
-      <option value="9:16">▯ 9:16</option>
+        <select
+          className="artlist-select"
+          value={aspectRatio}
+          onChange={(e) => setAspectRatio(e.target.value)}
+          disabled={String(selectedModel || "").toLowerCase().includes("hailuo") && Boolean(startImage || uploadedImage)}
+          title={String(selectedModel || "").toLowerCase().includes("hailuo") && Boolean(startImage || uploadedImage)
+            ? "Hailuo Fast reprend le ratio de l’image source."
+            : "Format de sortie pris en charge par le moteur sélectionné."}
+        >
+          {getAspectRatioOptions(selectedModel).map((ratio) => (
+            <option key={ratio} value={ratio}>
+              {ratio === "16:9" ? "▭ " : ratio === "1:1" ? "◻ " : ratio === "9:16" ? "▯ " : "▱ "}{ratio}
+            </option>
+          ))}
         </select>
+        {String(selectedModel || "").toLowerCase().includes("hailuo") && Boolean(startImage || uploadedImage) && (
+          <div style={{ fontSize: "10px", color: "#a78bfa", marginTop: "4px" }}>
+            Hailuo Fast : le ratio final suit l’image de départ.
+          </div>
+        )}
         <select className="artlist-select" value={selectedStyle} onChange={(e) => setSelectedStyle(e.target.value)}>
           {styles.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
