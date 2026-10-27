@@ -327,6 +327,8 @@ const [wantsAudio, setWantsAudio] = useState(false);
 const [veoMode, setVeoMode] = useState("text-to-video");
 const [veoAudioSource, setVeoAudioSource] = useState(null);
 const [veoReferenceImages, setVeoReferenceImages] = useState([]);
+const [pixverseReferenceImages, setPixverseReferenceImages] = useState([]);
+const [pixverseReferenceVideos, setPixverseReferenceVideos] = useState([]);
 const [veoReferenceSlot, setVeoReferenceSlot] = useState(null);
 const veoReferenceSlotRef = useRef(null);
 const [resolution, setResolution] = useState("1080p");
@@ -749,7 +751,7 @@ const engines = [
     runwareModel: "openai:gpt-image@2",
     minPriceForLightning: "12.99",
     prices: { "0": { "1080p": p.flux?.pro || 18 } },
-    maxReferenceImages: 26,
+    maxReferenceImages: 16,
     annotation: t("line3_app_annotation_gpt_image2")
   },
 
@@ -760,7 +762,7 @@ const engines = [
     runwareModel: "bfl:5@1",
     minPriceForLightning: "12.99",
     prices: { "0": { "1080p": p.flux?.dev || 14 } },
-    maxReferenceImages: 14,
+    maxReferenceImages: 9,
     annotation: t("line3_app_annotation_flux2pro")
   },
 
@@ -771,7 +773,7 @@ const engines = [
     runwareModel: "google:nano-banana@2-lite",
     minPriceForLightning: "12.99",
     prices: { "0": { "1080p": p.flux?.schnell || 15 } },
-    maxReferenceImages: 15,
+    maxReferenceImages: 14,
     annotation: t("line3_app_annotation_nano_banana2_lite")
   }
 
@@ -1517,6 +1519,38 @@ const handleGenerate = async () => {
     if (typeof setShowInsufficientFunds === 'function') setShowInsufficientFunds(true);
     return; // STOP TOTAL INSTANTANÉ !
   }
+  const preflightEngineId = String(engines.find(e => e.name === selectedModel)?.id || selectedModel || "").toLowerCase();
+  if (mode === "VIDEO") {
+    const hasSelectedFrame = Boolean(startImage || uploadedImage || endImage);
+    const hasSelectedRefs =
+      (preflightEngineId.includes("veo3.1") && veoReferenceImages.some(Boolean)) ||
+      (preflightEngineId === "pixverse6" && (pixverseReferenceImages.some(Boolean) || pixverseReferenceVideos.some(Boolean))) ||
+      ((preflightEngineId === "seedance20" || preflightEngineId === "seedance25") &&
+        (seedanceReferenceImages.some(Boolean) || seedanceReferenceVideos.some(Boolean) || seedanceReferenceAudios.some(Boolean))) ||
+      (preflightEngineId.includes("minimax_h3") &&
+        (h3ReferenceImages.some(Boolean) || h3ReferenceVideos.some(Boolean) || h3ReferenceAudios.some(Boolean)));
+    if (hasSelectedFrame && hasSelectedRefs &&
+        (preflightEngineId.includes("veo3.1") || preflightEngineId === "seedance20" || preflightEngineId === "seedance25" || preflightEngineId === "pixverse6" || preflightEngineId.includes("minimax_h3"))) {
+      setErrorMsg("Ce moteur n'accepte pas les images de début/fin et les références multimodales dans la même génération. Choisissez un seul mode.");
+      return;
+    }
+    if (endImage && !(startImage || uploadedImage)) {
+      setErrorMsg("Une image de fin nécessite aussi une image de début.");
+      return;
+    }
+    if (preflightEngineId.includes("veo3.1") && videoSource && (hasSelectedFrame || hasSelectedRefs)) {
+      setErrorMsg("Veo 3.1 : retirez la vidéo source ou les autres images/références pour choisir un seul mode.");
+      return;
+    }
+    if (preflightEngineId.includes("minimax_h3") && videoSource && (hasSelectedFrame || hasSelectedRefs)) {
+      setErrorMsg("MiniMax H3 : choisissez soit la vidéo source, soit les images de début/fin, soit les références.");
+      return;
+    }
+    if (preflightEngineId === "pixverse6" && videoSource && (hasSelectedFrame || hasSelectedRefs)) {
+      setErrorMsg("PixVerse V6 : choisissez soit la vidéo source, soit les images de début/fin, soit les références.");
+      return;
+    }
+  }
   setIsLoading(true);
 // 🧪 MODE TEST (Placé au bon endroit)
   const TEST_MODE = false;
@@ -1818,7 +1852,9 @@ if (finalModelId === "pixverse6") {
         },
         ...(videoSource ? { video_url: videoSource } : {}),
         ...(startImage || uploadedImage ? { start_image_url: startImage || uploadedImage } : {}),
-        ...(endImage ? { end_image_url: endImage } : {})
+        ...(endImage ? { end_image_url: endImage } : {}),
+        ...(pixverseReferenceImages.length ? { referenceImages: pixverseReferenceImages } : {}),
+        ...(pixverseReferenceVideos.length ? { referenceVideos: pixverseReferenceVideos } : {})
     };
 }
 
@@ -2267,16 +2303,10 @@ video_url: videoSource || null,
 
 
 ...(finalModelId.toLowerCase().includes("veo3.1") &&
-    veoReferenceImages.filter(
-        url => url && url !== currentStartImg
-    ).length > 0 && {
-        referenceImages: [
-            ...new Set(
-                veoReferenceImages.filter(
-                    url => url && url !== currentStartImg
-                )
-            )
-        ].slice(0, 3)
+    veoReferenceImages.filter(url => typeof url === "string" && url.trim()).length > 0 && {
+        referenceImages: [...new Set(
+            veoReferenceImages.filter(url => typeof url === "string" && url.trim())
+        )].slice(0, 3)
     }),
 
     // Images de référence MiniMax H3
@@ -2365,12 +2395,11 @@ if (!res.ok) {
     return; // On stoppe l'exécution immédiatement !
 }
 
-// --- PARSAGE COMPATIBLE JSON RUNWARE + FLUX SSE (VEO / SEEDANCE 1.5) ---
+// --- PARSAGE JSON + SSE : arrêter le loader dès l'événement terminal ---
 let data = null;
 const contentType = (res.headers.get("content-type") || "").toLowerCase();
 
 if (contentType.includes("application/json")) {
-    // Les moteurs Runware synchrones renvoient du JSON classique.
     data = await res.json();
     if (data?.status === "failed" || data?.error) {
         setIsLoading(false);
@@ -2381,41 +2410,72 @@ if (contentType.includes("application/json")) {
         return;
     }
 } else {
-    // Veo et Seedance 1.5 utilisent encore un flux SSE.
-    const reader = res.body.getReader();
+    const reader = res.body?.getReader();
+    if (!reader) {
+        throw new Error("Le serveur n'a retourné aucun flux de génération lisible.");
+    }
     const decoder = new TextDecoder();
     let sseBuffer = "";
+    let terminalEvent = null;
+
+    // Retourne 'failed', 'completed' ou null. Un événement terminal arrête
+    // immédiatement la lecture au lieu d'attendre une fermeture réseau tardive.
     const parseSseLine = (line) => {
-        if (!line.startsWith("data:")) return false;
+        if (!line.startsWith("data:")) return null;
         try {
             const jsonStr = line.slice(5).trim();
-            if (!jsonStr) return false;
+            if (!jsonStr || jsonStr === "[DONE]") return null;
             const parsed = JSON.parse(jsonStr);
             data = parsed;
-            if (parsed.status === "failed" || parsed.error) {
-                setIsLoading(false);
-                setProgress(0);
-                setStatusMsg("");
-                setErrorMsg(parsed.error || t("line3_app_error_technicalGeneration"));
-                if (typeof fetchUserProfile === "function") fetchUserProfile();
-                return true;
+
+            if (parsed.status === "failed" || parsed.error) return "failed";
+
+            const hasResultUrl = Boolean(
+                parsed.videoURL || parsed.videoUrl || parsed.video_url ||
+                parsed.imageUrl || parsed.url || parsed.resultUrl
+            );
+            if (parsed.status === "completed" || parsed.status === "success" ||
+                (Number(parsed.percent) >= 100 && hasResultUrl) ||
+                (parsed.success === true && hasResultUrl)) {
+                return "completed";
             }
         } catch (e) {
             console.warn("Événement SSE JSON ignoré :", e.message);
         }
-        return false;
+        return null;
     };
-    while (true) {
+
+    readSse: while (true) {
         const { value, done } = await reader.read();
         sseBuffer += decoder.decode(value || new Uint8Array(), { stream: !done });
         const lines = sseBuffer.split(/\r?\n/);
         sseBuffer = lines.pop() || "";
+
         for (const line of lines) {
-            if (parseSseLine(line)) return;
+            const eventStatus = parseSseLine(line);
+            if (eventStatus) {
+                terminalEvent = eventStatus;
+                break readSse;
+            }
         }
         if (done) break;
     }
-    if (sseBuffer.trim() && parseSseLine(sseBuffer.trim())) return;
+
+    if (!terminalEvent && sseBuffer.trim()) {
+        terminalEvent = parseSseLine(sseBuffer.trim());
+    }
+
+    // Ne pas laisser un flux SSE ouvert bloquer indéfiniment l'interface.
+    try { reader.cancel().catch(() => {}); } catch (_) {}
+
+    if (terminalEvent === "failed") {
+        setIsLoading(false);
+        setProgress(0);
+        setStatusMsg("");
+        setErrorMsg(data?.error || t("line3_app_error_technicalGeneration"));
+        if (typeof fetchUserProfile === "function") fetchUserProfile();
+        return;
+    }
 }
 
 if (!data) {
@@ -4908,10 +4968,6 @@ engineId.includes("minimax_h3") ||
   e.stopPropagation(); 
   setStartImage(null); 
   setStartImagePreview(null); 
-
-  if (isVeo) {
-    setVeoReferenceImages(prev => prev.slice(1));
-  }
 }}
         style={{
           position: 'absolute', 
@@ -6250,6 +6306,42 @@ alt={t("app.defaultImageAlt", {
     </label>
   </section>
 )}
+
+{/* RÉFÉRENCES PIXVERSE V6 — INPUTS RUNWARE DISTINCTS DES FRAMES */}
+{mode === "VIDEO" && (engines.find(e => e.name === selectedModel)?.id || "").toLowerCase() === "pixverse6" && (() => {
+  const addMedia = async (event, kind) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!files.length) return;
+    const isImage = kind === "image";
+    const current = isImage ? pixverseReferenceImages : pixverseReferenceVideos;
+    const limit = isImage ? 10 : 2;
+    const remaining = Math.max(0, limit - current.length);
+    if (!remaining) return;
+    const urls = await uploadFilesToPublicUrls(files.slice(0, remaining));
+    const setter = isImage ? setPixverseReferenceImages : setPixverseReferenceVideos;
+    setter(prev => [...new Set([...prev, ...urls])].slice(0, limit));
+  };
+  const renderPixverseRefs = (label, list, setter, accept, kind, max) => <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, color: "#e4e4e7", fontSize: 12, fontWeight: 650 }}><span>{label}</span><span>{list.length}/{max}</span></div>
+    <label style={{ display: "inline-flex", marginTop: 8, padding: "8px 10px", borderRadius: 8, cursor: list.length >= max ? "not-allowed" : "pointer", opacity: list.length >= max ? .45 : 1, color: "#bfdbfe", background: "rgba(59,130,246,.12)", border: "1px solid rgba(96,165,250,.3)", fontSize: 11 }}>
+      + {t("line1_app_references_addMedia", { defaultValue: "Ajouter" })}
+      <input type="file" accept={accept} multiple hidden disabled={list.length >= max} onChange={event => addMedia(event, kind)} />
+    </label>
+    {list.map((url, index) => <div key={`${kind}-${url}`} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7, minWidth: 0 }}>
+      <span style={{ color: "#a1a1aa", fontSize: 10, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{kind === "image" ? `Image ${index + 1}` : `Vidéo ${index + 1}`}</span>
+      <button type="button" onClick={() => setter(prev => prev.filter((_, i) => i !== index))} style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 6, background: "rgba(248,113,113,.1)", color: "#fca5a5", cursor: "pointer" }}>×</button>
+    </div>)}
+  </div>;
+  return <section style={{ width: "97%", marginTop: 12, padding: 14, borderRadius: 13, background: "rgba(13,25,43,.65)", border: "1px solid rgba(59,130,246,.25)", boxSizing: "border-box" }}>
+    <div style={{ color: "#e4e4e7", fontSize: 13, fontWeight: 700, marginBottom: 5 }}>Références PixVerse V6</div>
+    <div style={{ color: "#a1a1aa", fontSize: 10, lineHeight: 1.5, marginBottom: 10 }}>Jusqu’à 10 images et 2 vidéos. Les références ne peuvent pas être combinées avec les images de début/fin ni avec une vidéo source.</div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+      {renderPixverseRefs("Images de référence", pixverseReferenceImages, setPixverseReferenceImages, "image/*", "image", 10)}
+      {renderPixverseRefs("Vidéos de référence", pixverseReferenceVideos, setPixverseReferenceVideos, "video/mp4,video/quicktime,.mp4,.mov", "video", 2)}
+    </div>
+  </section>;
+})()}
 
 {/* RÉFÉRENCES MULTIMODALES SEEDANCE 2.0 / 2.5 — PANNEAU PERSONNALISÉ */}
 {mode === "VIDEO" && ["seedance20", "seedance25"].includes((engines.find(e => e.name === selectedModel)?.id || "").toLowerCase()) && (() => {

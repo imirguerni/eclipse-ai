@@ -653,9 +653,10 @@ const transporter = nodemailer.createTransport({
 });
 // --- ROUTES ---
 app.post('/test-simulate-video', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders(); // 💡 Ajout recommandé pour forcer l'envoi immédiat des en-têtes
 
     let percent = 0;
@@ -1349,8 +1350,8 @@ if (engineId === "nano_banana2_lite" && referenceVideoList.length) {
 }
 
 console.log("🎨 [RUNWARE IMAGE] Modèle :", runwareImageModel);
-console.log("🖼️ [RUNWARE IMAGE] Références image :", referenceImageList.length);
-console.log("🎞️ [RUNWARE IMAGE] Références vidéo :", referenceVideoList.length);
+console.log("🖼️ [RUNWARE IMAGE] Références image :", referenceImageList.length, referenceImageList.map((_, i) => `image#${i + 1}`));
+console.log("🎞️ [RUNWARE IMAGE] Références vidéo :", referenceVideoList.length, referenceVideoList.map((_, i) => `video#${i + 1}`));
 console.log("📦 [RUNWARE IMAGE] Requête :", JSON.stringify(runwareImageRequest, null, 2));
 
 const runware = await getRunwareClient();
@@ -1486,6 +1487,64 @@ console.log(
         qualityKey
     } = req.body;
 
+    // Validate input-mode combinations before opening SSE or charging credits.
+    // Runware models reject frameImages mixed with reference media; never silently discard a selected input.
+    const inputEngine = String(engineId || "").toLowerCase();
+    const hasStartFrameInput = Boolean(
+        req.body.start_image_url || req.body.startImage || req.body.image_url ||
+        req.body.start_image || req.body.first_frame_url
+    );
+    const hasEndFrameInput = Boolean(
+        req.body.end_image_url || req.body.endImage || req.body.tail_image_url
+    );
+    const hasFrameInputs = hasStartFrameInput || hasEndFrameInput;
+    const hasImageRefs = [req.body.referenceImages, req.body.reference_images]
+        .some(list => Array.isArray(list) && list.some(value => typeof value === "string" && value.trim()));
+    const hasVideoRefs = [req.body.referenceVideos, req.body.reference_videos, req.body.video_urls]
+        .some(list => Array.isArray(list) && list.some(value => typeof value === "string" && value.trim()));
+    const hasAudioRefs = [req.body.referenceAudios, req.body.reference_audios, req.body.audio_urls]
+        .some(list => Array.isArray(list) && list.some(value => typeof value === "string" && value.trim())) ||
+        Boolean(req.body.audio_url);
+    const hasMultimodalRefs = hasImageRefs || hasVideoRefs || hasAudioRefs;
+    const hasSourceVideo = Boolean(req.body.video_url || req.body.videoSource || req.body.videoUrl || videoSource);
+    const frameAndReferenceExclusive =
+        inputEngine.includes("veo3.1") ||
+        inputEngine === "seedance20" ||
+        inputEngine === "seedance25" ||
+        inputEngine === "pixverse6" ||
+        inputEngine.includes("minimax_h3");
+
+    if (frameAndReferenceExclusive && hasFrameInputs && hasMultimodalRefs) {
+        return res.status(400).json({
+            error: "Choisissez un seul mode : images de début/fin OU médias de référence. Runware n'accepte pas ces entrées ensemble pour ce moteur."
+        });
+    }
+    if (frameAndReferenceExclusive && hasEndFrameInput && !hasStartFrameInput) {
+        return res.status(400).json({
+            error: "Une image de fin nécessite aussi une image de début. Ajoutez l'image de début ou retirez l'image de fin."
+        });
+    }
+    if (inputEngine.includes("veo3.1") && hasSourceVideo && (hasFrameInputs || hasMultimodalRefs)) {
+        return res.status(400).json({
+            error: "Veo 3.1 : le mode vidéo source (édition/extension) ne peut pas être combiné avec les images de début/fin ou les références dans cette configuration. Retirez les autres médias ou la vidéo source."
+        });
+    }
+    if (inputEngine.includes("minimax_h3") && hasSourceVideo && (hasFrameInputs || hasMultimodalRefs)) {
+        return res.status(400).json({
+            error: "MiniMax H3 : sélectionnez soit la vidéo source, soit les images de début/fin, soit les références multimodales. Les modes ne doivent pas être mélangés."
+        });
+    }
+    if (inputEngine === "pixverse6" && hasSourceVideo && (hasFrameInputs || hasMultimodalRefs)) {
+        return res.status(400).json({
+            error: "PixVerse V6 : la vidéo source ne peut pas être combinée avec les images de début/fin ou les références. Choisissez un seul mode."
+        });
+    }
+    if ((inputEngine === "seedance20" || inputEngine === "seedance25") && hasSourceVideo && hasFrameInputs) {
+        return res.status(400).json({
+            error: `${inputEngine === "seedance20" ? "Seedance 2.0" : "Seedance 2.5"} : retirez la vidéo source ou les images de début/fin pour ne pas mélanger les modes.`
+        });
+    }
+
 
     // On vérifie maintenant engineId et cost (userId est garanti puisqu'il vient de req.user.uid)
     if (!engineId || cost === undefined) {
@@ -1597,10 +1656,22 @@ console.log("👉 2. Crédits validés avec succès");
     // -------------------------------------------------------------
     // 2. 🟢 SEULEMENT S'IL A ASSEZ DE CRÉDITS : On ouvre le flux SSE !
     // -------------------------------------------------------------
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
+
+    // Keep-alive SSE : les générations vidéo peuvent prendre plusieurs minutes.
+    const sseHeartbeat = setInterval(() => {
+        if (res.writableEnded || res.destroyed) {
+            clearInterval(sseHeartbeat);
+            return;
+        }
+        res.write(': keep-alive\n\n');
+        if (typeof res.flush === 'function') res.flush();
+    }, 15000);
+    res.on('close', () => clearInterval(sseHeartbeat));
 
     res.write(`data: ${JSON.stringify({ status: "processing", message: "Vérification des crédits..." })}\n\n`);
 const requestId = `${userId}_${Date.now()}`;
@@ -1697,6 +1768,7 @@ req.on('close', () => {
  // 3. 🛑 SI DÉJÀ EN COURS
         if (isAlreadyLocked) {
             console.log("⚠️ Requête bloquée : Un verrou existe déjà.");
+            clearInterval(sseHeartbeat);
             res.write(`data: ${JSON.stringify({ error: "Génération déjà en cours. Veuillez patienter.", status: "failed" })}\n\n`);
             // On laisse 100ms au réseau pour transmettre le message SSE au front avant de fermer
             setTimeout(() => {
@@ -1768,7 +1840,10 @@ req.on('close', () => {
             };
             // /generate-video utilise Server-Sent Events : ne pas répondre avec res.json().
             if (!res.writableEnded) {
+                clearInterval(sseHeartbeat);
                 res.write(`data: ${JSON.stringify(payload)}\n\n`);
+                // Forcer l'envoi de l'événement terminal aux proxies qui supportent flush().
+                if (typeof res.flush === "function") res.flush();
                 res.end();
             }
             return payload;
@@ -1813,22 +1888,27 @@ if (engineId.toLowerCase().includes("veo3.1")) {
             req.body.videoSource ||
             null;
 
-        const veoStartImage =
-            startImage ||
-            start_image_url ||
-            image_url ||
-            null;
-
-        const veoEndImage =
-            end_image_url ||
-            null;
-
-        const veoReferenceImages =
-            Array.isArray(req.body.referenceImages)
-                ? req.body.referenceImages
-                    .filter(Boolean)
-                    .slice(0, 3)
-                : [];
+        const veoToPublicUrl = (value) => {
+            if (typeof value !== "string" || !value.trim()) return null;
+            const url = value.trim();
+            if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
+                return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com");
+            }
+            return url;
+        };
+        const veoStartImage = veoToPublicUrl(
+            startImage || start_image_url || image_url || null
+        );
+        const veoEndImage = veoToPublicUrl(
+            req.body.end_image_url || req.body.tail_image_url || req.body.endImage || null
+        );
+        const veoReferenceImages = [...new Set(
+            (Array.isArray(req.body.referenceImages) ? req.body.referenceImages : [])
+                .filter(value => typeof value === "string" && value.trim())
+                .map(veoToPublicUrl)
+                .filter(Boolean)
+                .filter(url => url !== veoStartImage && url !== veoEndImage)
+        )].slice(0, 3);
 console.log(
     "🖼️ [DEBUG] REFERENCE IMAGES REÇUES PAR LE SERVEUR :",
     JSON.stringify(veoReferenceImages, null, 2)
@@ -2036,33 +2116,10 @@ const runwareRequest = {
                     : "720p";
 
             // ----------------------------------------------------
-            // DIMENSIONS
+            // DIMENSIONS : frameImages utilise resolution ; ne pas envoyer width/height.
+            // Le ratio est hérité de l'image de début, selon le schéma Runware Veo 3.1.
             // ----------------------------------------------------
-
-            if (requestedAspectRatio === "9:16") {
-
-                runwareRequest.width =
-                    safeResolution === "1080p"
-                        ? 1080
-                        : 720;
-
-                runwareRequest.height =
-                    safeResolution === "1080p"
-                        ? 1920
-                        : 1280;
-
-            } else {
-
-                runwareRequest.width =
-                    safeResolution === "1080p"
-                        ? 1920
-                        : 1280;
-
-                runwareRequest.height =
-                    safeResolution === "1080p"
-                        ? 1080
-                        : 720;
-            }
+            runwareRequest.resolution = safeResolution;
 
             // ----------------------------------------------------
             // FIRST / LAST FRAME
@@ -4156,29 +4213,20 @@ else if (engineId.includes("minimax_h3")) {
     // 5. VIDÉOS DE RÉFÉRENCE
     // ========================================================
 
-const sourceH3Video =
-    req.body.video_url ||
-    req.body.videoSource ||
-    req.body.videoUrl ||
-    null;
+const sourceH3Video = h3ToPublicUrl(
+    req.body.video_url || req.body.videoSource || req.body.videoUrl || null
+);
 
-const extraH3Videos = Array.isArray(video_urls)
-    ? video_urls.filter(
-        url =>
-            typeof url === "string" &&
-            url.trim() &&
-            url !== sourceH3Video
-      )
-    : [];
-
-const uniqueH3Videos = [
-    ...new Set([
-        ...(typeof sourceH3Video === "string" && sourceH3Video.trim()
-            ? [sourceH3Video]
-            : []),
-        ...extraH3Videos
-    ])
-].slice(0, 3).map(h3ToPublicUrl).filter(Boolean);
+// video_urls / referenceVideos are reference clips only. The source video has its own field
+// and must never be silently reclassified as a reference clip.
+const extraH3Videos = [
+    ...(Array.isArray(video_urls) ? video_urls : []),
+    ...(Array.isArray(req.body.referenceVideos) ? req.body.referenceVideos : [])
+].filter(url =>
+    typeof url === "string" && url.trim() && url !== sourceH3Video
+);
+const uniqueH3Videos = [...new Set(extraH3Videos)]
+    .slice(0, 3).map(h3ToPublicUrl).filter(Boolean);
 
     // ========================================================
     // 6. AUDIOS DE RÉFÉRENCE
@@ -4259,6 +4307,10 @@ const h3Request = {
 
 const h3Inputs = {};
 
+if (sourceH3Video) {
+    h3Inputs.video = sourceH3Video;
+}
+
 // --------------------------------------------------------
 // Références multimodales : 12 fichiers au total maximum
 // --------------------------------------------------------
@@ -4304,8 +4356,19 @@ if (hasH3VisualReferences) {
 // --------------------------------------------------------
 
 else if (uniqueH3Images.length > 0) {
-    h3Inputs.frameImages =
-        publicH3Images.slice(0, 2);
+    // Frame inputs are exclusively the dedicated start/end slots, never the reference-image list.
+    const h3StartFrame = h3ToPublicUrl(
+        req.body.start_image_url || req.body.startImage || req.body.image_url || null
+    );
+    const h3EndFrame = h3ToPublicUrl(
+        req.body.end_image_url || req.body.endImage || null
+    );
+    if (!h3StartFrame && h3EndFrame) {
+        throw new Error("MiniMax H3 : une image de fin nécessite une image de début.");
+    }
+    h3Inputs.frameImages = h3StartFrame && h3EndFrame
+        ? [{ image: h3StartFrame, frame: "first" }, { image: h3EndFrame, frame: "last" }]
+        : h3StartFrame ? [{ image: h3StartFrame, frame: "first" }] : [];
 }
 
 if (Object.keys(h3Inputs).length > 0) {
@@ -4498,15 +4561,45 @@ else if (engineId === "pixverse6") {
         },
         ...(typeof req.body.negativePrompt === "string" && req.body.negativePrompt.trim() ? { negativePrompt: req.body.negativePrompt.trim().slice(0, 2048) } : {})
     };
+    const pixverseReferenceImages = [...new Set(
+        (Array.isArray(req.body.referenceImages) ? req.body.referenceImages : [])
+            .filter(url => typeof url === "string" && url.trim()).map(toPublicUrl).filter(Boolean)
+    )].slice(0, 10);
+    const pixverseReferenceVideos = [...new Set(
+        [
+            ...(Array.isArray(req.body.referenceVideos) ? req.body.referenceVideos : []),
+            ...(Array.isArray(req.body.video_urls) ? req.body.video_urls : [])
+        ].filter(url => typeof url === "string" && url.trim()).map(toPublicUrl).filter(Boolean)
+    )].slice(0, 2);
+
     if (sourceVideo) {
         request.inputs = { video: sourceVideo };
         request.resolution = safeResolution;
+        delete request.duration;
+        delete request.width;
+        delete request.height;
+        delete request.settings.style;
+        delete request.settings.multiClip;
+        delete request.settings.thinking;
     } else if (sourceStart || sourceEnd) {
+        if (!sourceStart && sourceEnd) throw new Error("PixVerse V6 : une image de fin nécessite une image de début.");
         request.inputs = { frameImages: sourceStart && sourceEnd
-            ? [sourceStart, { image: sourceEnd, frame: "last" }]
-            : sourceStart ? [sourceStart] : [{ image: sourceEnd, frame: "last" }] };
+            ? [{ image: sourceStart, frame: "first" }, { image: sourceEnd, frame: "last" }]
+            : [{ image: sourceStart, frame: "first" }] };
         request.resolution = safeResolution;
+        delete request.width;
+        delete request.height;
         if (request.inputs.frameImages.length > 1 && request.settings.thinking === "auto") request.settings.thinking = "enabled";
+    } else if (pixverseReferenceImages.length || pixverseReferenceVideos.length) {
+        request.inputs = {
+            ...(pixverseReferenceImages.length ? { referenceImages: pixverseReferenceImages } : {}),
+            ...(pixverseReferenceVideos.length ? { referenceVideos: pixverseReferenceVideos } : {})
+        };
+        request.resolution = safeResolution;
+        delete request.width;
+        delete request.height;
+        // Runware PixVerse V6 forbids duration when referenceVideos is provided.
+        if (pixverseReferenceVideos.length) delete request.duration;
     } else {
         request.width = baseW;
         request.height = baseH;
@@ -4579,26 +4672,12 @@ else if (engineId === "seedance25") {
         request.inputs = { video: sourceVideo };
         request.resolution = safeResolution;
     } else if (start || end) {
-        // frameImages exige toujours une première image. Une image de fin seule est traitée comme référence.
-        if (start) {
-            request.inputs = { frameImages: start && end
-                ? [{ image: start, frame: "first" }, { image: end, frame: "last" }]
-                : [{ image: start, frame: "first" }] };
-            request.resolution = safeResolution;
-        } else {
-            request.inputs = {
-                referenceImages: [...new Set([end, ...images].filter(Boolean))].slice(0, 30),
-                ...(videos.length ? { referenceVideos: videos } : {}),
-                ...(audios.length ? { referenceAudios: audios } : {})
-            };
-            const aspect = String(req.body.aspect_ratio || "16:9");
-            const sizesByTier = {
-                "480p": { "16:9": [854,480], "9:16": [480,854], "1:1": [640,640], "4:3": [752,560], "3:4": [560,752], "21:9": [992,432] },
-                "720p": { "16:9": [1280,720], "9:16": [720,1280], "1:1": [960,960], "4:3": [1112,834], "3:4": [834,1112], "21:9": [1470,630] },
-                "1080p": { "16:9": [1920,1080], "9:16": [1080,1920], "1:1": [1440,1440], "4:3": [1664,1248], "3:4": [1248,1664], "21:9": [2206,946] }
-            };
-            [request.width, request.height] = sizesByTier[safeResolution][aspect] || sizesByTier[safeResolution]["16:9"];
-        }
+        // Les frames sont un mode distinct : jamais de conversion de l'image de fin en référence.
+        // La validation d'entrée impose une image de début dès qu'une image de fin est fournie.
+        request.inputs = { frameImages: start && end
+            ? [{ image: start, frame: "first" }, { image: end, frame: "last" }]
+            : [{ image: start, frame: "first" }] };
+        request.resolution = safeResolution;
     } else if (images.length || videos.length || audios.length) {
         request.inputs = {
             ...(images.length ? { referenceImages: images } : {}),
@@ -4664,6 +4743,7 @@ else if (engineId === "seedance20") {
         settings: { audio: req.body.settings?.audio !== false }
     };
     if (sourceVideo || images.length || videos.length || audios.length) {
+        // The route-level validation prevents frameImages and multimodal references from being mixed.
         // Seedance 2.0 audio-reference mode requires at least one image or video reference.
         const referenceVideos = [...new Set([...(sourceVideo ? [sourceVideo] : []), ...videos])].slice(0, 3);
         const hasVisual = images.length > 0 || referenceVideos.length > 0;
@@ -4788,6 +4868,7 @@ if (!falVideoUrl) {
         }
 
         // 3️⃣ Envoi du message SSE de fin au client
+        clearInterval(sseHeartbeat);
         res.write(`data: ${JSON.stringify({ 
             percent: 100, 
             videoUrl: falVideoUrl, 
@@ -4795,11 +4876,12 @@ if (!falVideoUrl) {
             status: "completed", 
             message: "Génération terminée !" 
         })}\n\n`);
-
+        if (typeof res.flush === "function") res.flush();
         res.end();
         
 
 } catch (error) {
+        clearInterval(sseHeartbeat);
         console.error("❌ Erreur dans le flux de génération :", error.message);
 
 // 🛡️ SÉCURITÉ : Remboursement SEULEMENT si débité ET non terminé ET pas encore remboursé
@@ -4854,6 +4936,7 @@ if (!falVideoUrl) {
             return res.status(400).json({ error: error.message });
         } else if (!res.writableEnded) {
             res.write(`event: error\ndata: ${JSON.stringify({ error: error.message, status: "failed" })}\n\n`);
+            if (typeof res.flush === "function") res.flush();
             res.end();
         }
     }
