@@ -102,22 +102,21 @@ const PRESET_FILTERS = [
   {
     id: 'cinema', name: 'Cinéma',
     contrast: 18, shadows: 8, blacks: -8, saturation: 12, temperature: 8, tint: -4, vignette: 18, sharpness: 15,
-    thumb: null, swatch: ['#0f3d4a', '#d9822b']
-  },
+    thumb:  '/images/ecran-cinema.webp' }, 
   {
     id: 'pastel', name: 'Pastel doux',
     contrast: -15, blacks: 20, saturation: -10, vibrance: 15, fade: 20, temperature: 5,
-    thumb: null, swatch: ['#f8d7e0', '#cfe3f3']
-  },
+  thumb:  '/images/lumiere-naturel.webp' }, 
+  
   {
     id: 'dramatique', name: 'Dramatique',
     contrast: 35, shadows: -15, saturation: -15, clarity: 25, vignette: 25, grain: 15,
-    thumb: null, swatch: ['#1a1a1f', '#8a8d99']
-  },
+    thumb:  '/images/dramatique.webp' }, 
+  
   {
-    id: 'frais', name: 'Frais éclatant',
+    id: 'frais', name: 'lumineux',
     contrast: 8, whites: 10, vibrance: 30, temperature: -10, sharpness: 20,
-    thumb: null, swatch: ['#7dd3fc', '#86efac']
+     thumb:  '/images/dramatique.webp' 
   }
 ];
 
@@ -887,6 +886,7 @@ const Filtre = ({
   initialTool,
   colorSettings: colorSettingsProp,
   setColorSettings: setColorSettingsProp,
+  uploadResult, // optionnel : async (result, { onProgress, settings, meta }) => ({ url, storagePath?, docId? }) — envoi vers votre stockage (voir firebaseUpload.js)
   looks: looksProp, // optionnel : looks enregistrés par l'application (compte utilisateur)
   onLooksChange // optionnel : (looks) => void, appelé à chaque changement
 }) => {
@@ -949,6 +949,7 @@ const Filtre = ({
   const [exportResolution, setExportResolution] = useState('original');
   const [exportEta, setExportEta] = useState('');
   const lastResultRef = useRef(null);
+  const [uploadProgress, setUploadProgress] = useState(null); // null | 0..1
   const [hasLastResult, setHasLastResult] = useState(false);
   const [showClipping, setShowClipping] = useState(false);
   const [gridMode, setGridMode] = useState('off');
@@ -1567,7 +1568,8 @@ const Filtre = ({
 
       // Si une fonction onApply est fournie par le parent, on lui envoie l'image et on ferme l'éditeur
       if (typeof onApply === 'function') {
-        await onApply(resultObject);
+        const stored = await persistResult(resultObject, { meta: { filterName: selectedFilter.name, originalUrl: activeMedia } });
+        await onApply({ ...resultObject, ...stored });
         setSaveMessage('Image capturée et transmise au moteur IA.');
         setTimeout(() => {
           closeInspector();
@@ -2143,6 +2145,27 @@ const exportImage = async () => {
     }
   };
 
+  // Envoie le fichier vers votre stockage (si `uploadResult` est fourni) et renvoie les champs à fusionner dans l'objet transmis à onApply.
+  const persistResult = async (result, { settings = null, meta = null } = {}) => {
+    if (typeof uploadResult !== 'function') {
+      if (typeof result.url === 'string' && result.url.startsWith('blob:')) {
+        console.warn('[Filtre] Aucun « uploadResult » fourni : l’adresse envoyée à onApply est temporaire (blob:) et disparaîtra à l’actualisation. Voir firebaseUpload.js.');
+      }
+      return { persisted: false };
+    }
+    setSaveMessage('Envoi vers votre stockage en ligne…');
+    setUploadProgress(0);
+    try {
+      const uploaded = await uploadResult(result, { onProgress: setUploadProgress, settings, meta });
+      if (!uploaded || !uploaded.url) throw new Error('uploadResult doit renvoyer { url } (l’adresse permanente du fichier).');
+      return { persisted: true, localUrl: result.url, url: uploaded.url, storagePath: uploaded.storagePath ?? null, docId: uploaded.docId ?? null };
+    } catch (error) {
+      throw new Error(`Envoi vers le stockage impossible : ${error?.message || error}`);
+    } finally {
+      setUploadProgress(null);
+    }
+  };
+
   const handleApply = async () => {
     if (isExporting || isSaving) return;
     try {
@@ -2178,12 +2201,16 @@ const exportImage = async () => {
       lastResultRef.current = result;
       setHasLastResult(true);
 
+      let safeSettings = null;
+      try { safeSettings = JSON.parse(JSON.stringify(settings)); } catch { safeSettings = null; }
+      const stored = typeof onApply === 'function'
+        ? await persistResult(result, { settings: safeSettings, meta: { filterName: selectedFilter.name, originalUrl: activeMedia, intensity } })
+        : { persisted: false };
+
       if (typeof onApply === 'function') {
-        // Réglages « propres » : uniquement du JSON (sans valeurs `undefined`, refusées par certaines bases de données).
-        let safeSettings = null;
-        try { safeSettings = JSON.parse(JSON.stringify(settings)); } catch { safeSettings = null; }
         const payload = {
           ...result,
+          ...stored,
           ...(typeof File === 'function' ? { file: new File([result.blob], result.fileName, { type: result.mimeType }) } : {}),
           size: result.blob.size,
           settings: safeSettings,
@@ -2191,7 +2218,7 @@ const exportImage = async () => {
           filterName: selectedFilter.name,
           intensity
         };
-        console.info('[Filtre] Envoi à l’historique :', { type: payload.type, fileName: payload.fileName, mimeType: payload.mimeType, size: payload.size, url: payload.url });
+        console.info('[Filtre] Envoi à l’historique :', { type: payload.type, fileName: payload.fileName, size: payload.size, persisted: payload.persisted, url: payload.url });
         const saved = await onApply(payload);
         if (saved === false) throw new Error('Votre application a refusé l’enregistrement dans l’historique (onApply a renvoyé false).');
         pendingUrlRef.current = null; // l'URL appartient maintenant au parent
@@ -2482,6 +2509,14 @@ const exportImage = async () => {
               </div>
             </>
           )}
+        </div>
+      )}
+      {uploadProgress !== null && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ height: '6px', borderRadius: '3px', background: '#27272a', overflow: 'hidden' }}>
+            <div style={{ width: `${Math.round(uploadProgress * 100)}%`, height: '100%', background: '#4ade80', transition: 'width .2s' }} />
+          </div>
+          <div style={{ fontSize: '10px', color: '#9ca3af' }}>Envoi vers votre stockage… {Math.round(uploadProgress * 100)}%</div>
         </div>
       )}
       {saveMessage && <div role="status" style={{ color: '#4ade80', fontSize: '11px', lineHeight: 1.4 }}>{saveMessage}</div>}

@@ -16,10 +16,13 @@ const LanguageSelector = () => {
 
   const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[3];
 
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-    setIsOpen(false);
-  };
+const changeLanguage = (lng) => {
+  // Mémorise explicitement le choix manuel
+  localStorage.setItem('ovortexManualLanguage', lng);
+
+  i18n.changeLanguage(lng);
+  setIsOpen(false);
+};
 
   useEffect(() => {
     const handleClickOutside = (event) => {

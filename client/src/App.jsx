@@ -350,9 +350,46 @@ useEffect(() => {
     setResolution("720p");
   }
 }, [selectedModel, mode, resolution]);
+
 const [startImage, setStartImage] = useState(null);
 const [startImagePreview, setStartImagePreview] = useState(null);
 const [endImage, setEndImage] = useState(null);
+
+// Hailuo Fast est utilisé en image→vidéo et ne produit que 6 secondes.
+useEffect(() => {
+  const isHailuo = String(selectedModel || "").toLowerCase().includes("hailuo");
+  const isFullHd = resolution === "Full HD" || resolution === "1080p";
+  if (
+    mode === "VIDEO" &&
+    isHailuo &&
+    ((startImage || uploadedImage) || isFullHd) &&
+    String(duration) !== "6"
+  ) {
+    setDuration("6");
+  }
+}, [selectedModel, mode, startImage, uploadedImage, resolution, duration]);
+
+// Les vidéos source et les frames de début/fin sont des modes exclusifs, sauf Kling Motion Control
+// où l'image est le personnage à animer et la vidéo porte le mouvement.
+useEffect(() => {
+  if (!videoSource) return;
+  const modelName = String(selectedModel || "").toLowerCase();
+  const isMotionControlModel = modelName.includes("motion control") || modelName.includes("motioncontrol");
+  if (isMotionControlModel) {
+    if (endImage) setEndImage(null);
+    return;
+  }
+  if (startImage) setStartImage(null);
+  if (startImagePreview) setStartImagePreview(null);
+  if (uploadedImage) setUploadedImage(null);
+  if (endImage) setEndImage(null);
+  // Ces deux moteurs ne combinent pas la vidéo source avec leurs références dans ce flux.
+  if (modelName.includes("veo") && veoReferenceSlot) setVeoReferenceSlot(null);
+  if (modelName.includes("pixverse")) {
+    if (pixverseReferenceImages.length) setPixverseReferenceImages([]);
+    if (pixverseReferenceVideos.length) setPixverseReferenceVideos([]);
+  }
+}, [videoSource, selectedModel, startImage, startImagePreview, uploadedImage, endImage, veoReferenceSlot, pixverseReferenceImages, pixverseReferenceVideos]);
 
 const [colorSettings, setColorSettings] = useState({
   exposure: 0,
@@ -589,7 +626,7 @@ const engines = [
     name: "Kling 2.6 Pro",
     type: "VIDEO",
     runwareModel: "klingai:kling-video@2.6-pro",
-    canDualImage: false,
+    canDualImage: true,
     minPriceForLightning: "12.99",
     prices: {
       "5": {
@@ -784,6 +821,10 @@ function getAspectRatioOptions(modelName) {
   const normalizedName = String(modelName || "").toLowerCase().trim();
   const engine = engines.find(e => String(e.name || "").toLowerCase() === normalizedName || String(e.id || "").toLowerCase() === normalizedName);
   const id = String(engine?.id || normalizedName).toLowerCase();
+  // Veo 3.1 accepte uniquement le paysage 16:9 et le portrait 9:16.
+  if (id.includes("veo3.1") || id.includes("veo3_1")) return ["16:9", "9:16"];
+  // H3 prend en charge six formats, y compris l'ultra-large.
+  if (id === "minimax_h3" || id.includes("minimax-h3")) return ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"];
   if (id.includes("hailuo")) return ["16:9", "1:1", "9:16"];
   if (id === "pixverse6" || id.includes("pixverse-v6")) return ["16:9", "4:3", "1:1", "3:4", "9:16"];
   if (id === "seedance20" || id === "seedance25" || normalizedName.includes("seedance 2.0") || normalizedName.includes("seedance 2.5") || id.includes("seedance-2.0") || id.includes("seedance-2.5")) {
@@ -1893,7 +1934,7 @@ if (["gpt_image2", "flux2pro", "nano_banana2_lite"].includes(finalModelId)) {
         aspect_ratio: aspectRatio || "1:1",
         outputFormat: imageOutputFormat,
         ...(imageSeed.trim() !== "" && Number.isInteger(Number(imageSeed)) && Number(imageSeed) >= 0 ? { seed: Number(imageSeed) } : {}),
-        ...(finalModelId === "gpt_image2" ? { providerSettings: { openai: { quality: gptImageQuality, moderation: gptImageModeration } } } : {}),
+        ...(finalModelId === "gpt_image2" ? { settings: { quality: gptImageQuality, moderation: gptImageModeration } } : {}),
         ...(finalModelId === "flux2pro" ? { providerSettings: { bfl: { safetyTolerance: Number(fluxSafetyTolerance) } } } : {}),
         ...(finalModelId === "nano_banana2_lite" ? { settings: { thinking: nanoThinking, temperature: Number(nanoTemperature), topP: Number(nanoTopP), ...(nanoSystemPrompt.trim() ? { systemPrompt: nanoSystemPrompt.trim().slice(0, 50000) } : {}) } } : {}),
         ...(modelReferenceImages.length ? { referenceImages: modelReferenceImages } : {}),
@@ -2250,6 +2291,18 @@ recaptchaToken = await window.grecaptcha.enterprise.execute(
     return;
 }
 console.log("🔍 Valeur actuelle de videoSource :", videoSource);
+const normalizedVideoModelId = `${finalModelId} ${selectedModel || ""}`.toLowerCase().replace(/[-_ .]/g, "");
+const isKling26VideoModel = normalizedVideoModelId.includes("kling26") || normalizedVideoModelId.includes("26pro");
+const isKlingV3VideoModel = normalizedVideoModelId.includes("kling30") || normalizedVideoModelId.includes("klingv3") || normalizedVideoModelId.includes("v3standard") || normalizedVideoModelId.includes("v3pro");
+const isSeedance15VideoModel = normalizedVideoModelId.includes("seedance") && (normalizedVideoModelId.includes("15") || normalizedVideoModelId.includes("pro"));
+const supportsSourceVideoForCurrentModel =
+    normalizedVideoModelId.includes("veo31") ||
+    normalizedVideoModelId.includes("minimaxh3") ||
+    normalizedVideoModelId.includes("kling26motion") ||
+    normalizedVideoModelId.includes("seedance20") ||
+    normalizedVideoModelId.includes("seedance25") ||
+    ((normalizedVideoModelId.includes("kling") || normalizedVideoModelId.includes("pixverse") || normalizedVideoModelId.includes("luma")) &&
+        !isKling26VideoModel && !isKlingV3VideoModel && !isSeedance15VideoModel && !normalizedVideoModelId.includes("lite"));
 const payload = { 
     userId: user.uid,
     engineId: finalModelId,
@@ -2284,14 +2337,14 @@ resolution: (finalModelId.includes("hailuo") || finalModelId.includes("seedance2
  end_image_url: endImage || null,
 
 
-video: videoSource || null,
+video: supportsSourceVideoForCurrentModel ? (videoSource || null) : null,
 
 ...(finalModelId === "minimax_h3" &&
     h3ReferenceVideos.length > 0 && {
       video_urls: h3ReferenceVideos
     }),
 
-video_url: videoSource || null,
+video_url: supportsSourceVideoForCurrentModel ? (videoSource || null) : null,
 
 // Opération Veo 3.1 : modification ou prolongation
 
@@ -4854,13 +4907,13 @@ const isSeedance15 = cleanId.includes("seedance") && (cleanId.includes("15") || 
 const isSeedance25 = cleanId.includes("seedance25") || cleanId.includes("seedance-2.5");
 const isSeedance2 = cleanId.includes("seedance") && cleanId.includes("2") && !isSeedance25;
 
-const isDualAllowed = (currentEngine?.canDualImage || engineId.includes("lite") || isSeedance15 || isSeedance25) && !isVeo;
+const isDualAllowed = (currentEngine?.canDualImage || engineId.includes("lite") || isSeedance15 || isSeedance25) && !isVeo && !Boolean(videoSource);
 
 const isMotion = cleanId.includes("motion") || cleanId.includes("motioncontrol");
-// L'image de début est bloquée si sur Luma/Pixverse ou si Seedance 2
+// Une vidéo source ne se combine pas avec les frames de début/fin; Motion Control garde son image personnage.
 const hasSeedanceReferences = (isSeedance2 || isSeedance25) && (seedanceReferenceImages.length > 0 || seedanceReferenceVideos.length > 0 || seedanceReferenceAudios.length > 0);
 const hasH3References = engineId.includes("minimax_h3") && (h3ReferenceImages.length > 0 || h3ReferenceVideos.length > 0 || h3ReferenceAudios.length > 0);
-const isStartBlocked = (Boolean(videoSource) && (cleanId.includes("luma") || cleanId.includes("pixverse") || engineId.includes("minimax_h3") || isSeedance2 || isSeedance25)) || hasSeedanceReferences || hasH3References;
+const isStartBlocked = (Boolean(videoSource) && !isMotion) || hasSeedanceReferences || hasH3References;
 
 // 3. Condition d'autorisation V2V (Seedance 2 et 2.5 retrouvent leur comportement vidéo)
 const isVideoToVideoAllowed = 
@@ -5186,8 +5239,9 @@ const isModelSeedance2 = cleanId.includes("seedance2"); // Attrape seedance 2.0 
         stepVal = 1;
       } else if (model.includes("hailuo")) {
         const isHd = resolution === "Full HD" || resolution === "1080p";
+        const hasStartFrame = Boolean(startImage || uploadedImage);
         minSec = 6;
-        maxSec = isHd ? 6 : 10;
+        maxSec = (isHd || hasStartFrame) ? 6 : 10;
         stepVal = 4;
       } else if (model.includes("minimax")) {
         minSec = 4;
@@ -5210,7 +5264,10 @@ const isModelSeedance2 = cleanId.includes("seedance2"); // Attrape seedance 2.0 
         stepVal = 1; 
       }
 
-      const isDisabled = Boolean(model.includes("hailuo") && (resolution === "Full HD" || resolution === "1080p"));
+      const isDisabled = Boolean(
+        model.includes("hailuo") &&
+        ((resolution === "Full HD" || resolution === "1080p") || Boolean(startImage || uploadedImage))
+      );
 
       return (
         <div style={{ 
@@ -6815,8 +6872,7 @@ alt={t("app.defaultImageAlt", {
     </div>
   </div>
 )}
-
-{/* 🎨 === C'EST ICI QU'IL FAUT LE PLACER === 🎨 */}
+{/* 🎨 --- MODALE FILTRE UNIQUE --- */}
 {showEditor && (
   <Filtre
     mediaSrc={veoEditVideo || videoSource || activeItem?.url || activeItem?.videoUrl}
@@ -6835,41 +6891,6 @@ alt={t("app.defaultImageAlt", {
         await outilsRef.current.applyMedia(result);
       } else {
         console.error('❌ Outils.applyMedia() est introuvable');
-      }
-    }}
-  />
-)}
-
-
-{showEditor && (
-  <Filtre
-    mediaSrc={veoEditVideo || videoSource || activeItem?.url || activeItem?.videoUrl}
-    onBack={() => setShowEditor(false)}
-
-    selectedOptionModal={selectedOptionModal}
-    setSelectedOptionModal={setSelectedOptionModal}
-
-    prompt={prompt}
-    setPrompt={setPrompt}
-
-    colorSettings={colorSettings}
-    setColorSettings={setColorSettings}
-
-    handleFileToUrl={handleFileToUrl}
-    handleGenerate={handleGenerate}
-
-    onApply={async (result) => {
-      console.log(
-        '🎨 Vidéo filtrée reçue dans App.jsx :',
-        result
-      );
-
-      if (outilsRef.current?.applyMedia) {
-        await outilsRef.current.applyMedia(result);
-      } else {
-        console.error(
-          '❌ Outils.applyMedia() est introuvable'
-        );
       }
     }}
   />

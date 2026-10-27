@@ -1050,7 +1050,8 @@ if (!prompt || !engineId) {
 // 1. Récupérer le plan de l'utilisateur (par exemple depuis sa base de données ou req.user, ici on met "0.00" par défaut ou on récupère son pack)
 // Adapte "userDoc.data().plan" selon le nom du champ de ton plan utilisateur dans Firestore
 // 🔒 SÉCURITÉ : Récupération du plan utilisateur en BDD pour appliquer le bon tarif
-    const userRef = db.collection('users').doc(userId);
+    let finalImageUrl = null;
+const userRef = db.collection('users').doc(userId);
     const initialUserDoc = await userRef.get();
     const userData = initialUserDoc.exists ? initialUserDoc.data() : {};
 
@@ -1268,7 +1269,9 @@ const referenceVideoList = engineId === "nano_banana2_lite"
 const safeAspect = ["16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "4:5", "5:4", "21:9"].includes(aspect_ratio) ? aspect_ratio : "1:1";
 const dimensionsByAspect = {
     "16:9": [1536, 864], "9:16": [864, 1536], "1:1": [1024, 1024],
-    "4:3": [1152, 864], "3:4": [864, 1152], "21:9": [1536, 656]
+    "4:3": [1152, 864], "3:4": [864, 1152], "3:2": [1264, 848],
+    "2:3": [848, 1264], "4:5": [928, 1152], "5:4": [1152, 928],
+    "21:9": [1536, 656]
 };
 let [safeWidth, safeHeight] = dimensionsByAspect[safeAspect];
 const parsedWidth = parseInt(width, 10);
@@ -1309,10 +1312,11 @@ if (engineId === "nano_banana2_lite" && referenceImageList.length > 0) {
     runwareImageRequest.resolution = "1K";
 }
 if (engineId === "gpt_image2") {
-    runwareImageRequest.providerSettings = { openai: {
-        quality: ["auto", "high", "medium", "low"].includes(providerSettings?.openai?.quality) ? providerSettings.openai.quality : "auto",
-        moderation: ["auto", "low"].includes(providerSettings?.openai?.moderation) ? providerSettings.openai.moderation : "auto"
-    }};
+    // Runware attend quality et moderation dans settings, pas providerSettings.openai.
+    runwareImageRequest.settings = {
+        quality: ["auto", "high", "medium", "low"].includes(settings?.quality) ? settings.quality : "auto",
+        moderation: ["auto", "low"].includes(settings?.moderation) ? settings.moderation : "auto"
+    };
 }
 if (engineId === "flux2pro") {
     const rawSafetyTolerance = providerSettings?.bfl?.safetyTolerance;
@@ -1479,7 +1483,7 @@ console.log(
 
     const { 
         engineId, cost, costType, 
-        prompt, duration, aspect_ratio, 
+        prompt, duration, aspect_ratio, resolution,
         image_urls, video_urls, loop, enable_audio, videoSource,
         startImage, start_image_url, image_url,
         character_orientation,
@@ -1506,22 +1510,33 @@ console.log(
         .some(list => Array.isArray(list) && list.some(value => typeof value === "string" && value.trim())) ||
         Boolean(req.body.audio_url);
     const hasMultimodalRefs = hasImageRefs || hasVideoRefs || hasAudioRefs;
-    const hasSourceVideo = Boolean(req.body.video_url || req.body.videoSource || req.body.videoUrl || videoSource);
+    const hasSourceVideo = Boolean(req.body.video || req.body.video_url || req.body.videoSource || req.body.videoUrl || videoSource);
+    const toPublicVideoInputUrl = (url) => {
+        if (typeof url !== "string" || !url.trim()) return null;
+        if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
+            return url.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com");
+        }
+        return url;
+    };
     const frameAndReferenceExclusive =
         inputEngine.includes("veo3.1") ||
         inputEngine === "seedance20" ||
         inputEngine === "seedance25" ||
         inputEngine === "pixverse6" ||
-        inputEngine.includes("minimax_h3");
+        inputEngine.includes("minimax_h3") ||
+        inputEngine === "kling2.6" ||
+        inputEngine === "kling30" ||
+        inputEngine === "kling3" ||
+        inputEngine.includes("kling-video/v3");
 
+    if (hasEndFrameInput && !hasStartFrameInput) {
+        return res.status(400).json({
+            error: "Une image de fin nécessite aussi une image de début. Ajoutez l'image de début ou retirez l'image de fin."
+        });
+    }
     if (frameAndReferenceExclusive && hasFrameInputs && hasMultimodalRefs) {
         return res.status(400).json({
             error: "Choisissez un seul mode : images de début/fin OU médias de référence. Runware n'accepte pas ces entrées ensemble pour ce moteur."
-        });
-    }
-    if (frameAndReferenceExclusive && hasEndFrameInput && !hasStartFrameInput) {
-        return res.status(400).json({
-            error: "Une image de fin nécessite aussi une image de début. Ajoutez l'image de début ou retirez l'image de fin."
         });
     }
     if (inputEngine.includes("veo3.1") && hasSourceVideo && (hasFrameInputs || hasMultimodalRefs)) {
@@ -1529,9 +1544,14 @@ console.log(
             error: "Veo 3.1 : le mode vidéo source (édition/extension) ne peut pas être combiné avec les images de début/fin ou les références dans cette configuration. Retirez les autres médias ou la vidéo source."
         });
     }
-    if (inputEngine.includes("minimax_h3") && hasSourceVideo && (hasFrameInputs || hasMultimodalRefs)) {
+    if (inputEngine.includes("minimax_h3") && hasSourceVideo && hasFrameInputs) {
         return res.status(400).json({
-            error: "MiniMax H3 : sélectionnez soit la vidéo source, soit les images de début/fin, soit les références multimodales. Les modes ne doivent pas être mélangés."
+            error: "MiniMax H3 : la vidéo source ne peut pas être combinée avec des images de début/fin. Utilisez les références multimodales pour ajouter des images ou d'autres vidéos."
+        });
+    }
+    if ((inputEngine === "kling2.6" || inputEngine === "kling26") && hasSourceVideo && (hasFrameInputs || hasMultimodalRefs)) {
+        return res.status(400).json({
+            error: "Kling 2.6 Pro : retirez la vidéo source pour utiliser le mode texte/image, ou choisissez le moteur de contrôle de mouvement."
         });
     }
     if (inputEngine === "pixverse6" && hasSourceVideo && (hasFrameInputs || hasMultimodalRefs)) {
@@ -1544,11 +1564,29 @@ console.log(
             error: `${inputEngine === "seedance20" ? "Seedance 2.0" : "Seedance 2.5"} : retirez la vidéo source ou les images de début/fin pour ne pas mélanger les modes.`
         });
     }
+    if ((inputEngine === "kling30" || inputEngine === "kling3" || inputEngine.includes("kling-video/v3")) && hasSourceVideo) {
+        return res.status(400).json({
+            error: "Kling 3.0 : la vidéo source n'est pas disponible dans ce mode. Retirez-la ou choisissez le moteur adapté au contrôle de mouvement."
+        });
+    }
+    if (inputEngine.includes("hailuo") && hasSourceVideo) {
+        return res.status(400).json({
+            error: "Hailuo 2.3 ne prend pas de vidéo source dans ce flux. Retirez la vidéo et utilisez le texte ou une image de départ."
+        });
+    }
+    if (inputEngine === "seedance" && hasSourceVideo) {
+        return res.status(400).json({
+            error: "Seedance 1.5 Pro ne prend pas de vidéo source dans ce flux. Retirez la vidéo et utilisez le texte ou les images prises en charge."
+        });
+    }
 
 
     // On vérifie maintenant engineId et cost (userId est garanti puisqu'il vient de req.user.uid)
     if (!engineId || cost === undefined) {
         return res.status(400).json({ error: "Données manquantes" });
+    }
+    if (typeof prompt !== "string" || !prompt.trim()) {
+        return res.status(400).json({ error: "Le prompt de génération vidéo est vide." });
     }
 // Récupération sécurisée du plan utilisateur dans Firestore
 const userDoc = await db.collection('users').doc(userId).get();
@@ -1584,13 +1622,14 @@ if (enginePricing) {
         const userEmail = userData.email || req.body.email || "Non fourni";
         const userIdVal = userId || "Non fourni";
 
-        await sendSecurityAlert(
-            clientIp, 
-            "Modification frauduleuse du coût de génération", 
-            "Requête bloquée (403)", 
-            userEmail, 
-            userIdVal
-        );
+        console.warn("🚨 [ALERTE SÉCURITÉ] Coût de génération modifié", {
+            clientIp,
+            userEmail,
+            userId: userIdVal,
+            engineId,
+            receivedCost: cost,
+            expectedCost: officialCost
+        });
 
         await detectSuspicious(req, "Modification frauduleuse du coût de génération");
         return res.status(403).json({ error: "Erreur de validation du coût de la génération." });
@@ -1882,11 +1921,10 @@ if (engineId.toLowerCase().includes("veo3.1")) {
             String(aspect_ratio || req.body.aspect_ratio || "16:9")
                 .trim();
 
-        const veoVideoSource =
-            videoSource ||
-            req.body.video_url ||
-            req.body.videoSource ||
-            null;
+        const veoVideoSourceRaw = videoSource || req.body.video || req.body.video_url || req.body.videoSource || req.body.videoUrl || null;
+        const veoVideoSource = typeof veoVideoSourceRaw === "string" && (veoVideoSourceRaw.includes("localhost:5000") || veoVideoSourceRaw.includes("127.0.0.1:5000"))
+            ? veoVideoSourceRaw.replace(/http:\/\/(localhost|127\.0\.0\.1):5000/, process.env.PUBLIC_API_URL || "https://eclipse-ai.onrender.com")
+            : veoVideoSourceRaw;
 
         const veoToPublicUrl = (value) => {
             if (typeof value !== "string" || !value.trim()) return null;
@@ -1897,7 +1935,7 @@ if (engineId.toLowerCase().includes("veo3.1")) {
             return url;
         };
         const veoStartImage = veoToPublicUrl(
-            startImage || start_image_url || image_url || null
+            startImage || start_image_url || image_url || req.body.first_frame_url || null
         );
         const veoEndImage = veoToPublicUrl(
             req.body.end_image_url || req.body.tail_image_url || req.body.endImage || null
@@ -1949,6 +1987,14 @@ console.log(
         console.log(
             `🎬 [RUNWARE] Mode Veo 3.1 : ${veoOperation}`
         );
+
+        // Le choix édition/prolongation doit aussi orienter le prompt envoyé au modèle.
+        const veoBasePrompt = String(prompt || req.body.prompt || "").trim();
+        const veoPrompt = veoVideoSource
+            ? (veoOperation === "edit"
+                ? ["Edit the provided source video according to the following instruction. Preserve everything not explicitly changed.", veoBasePrompt].filter(Boolean).join("\n")
+                : ["Continue the provided source video seamlessly beyond its ending, preserving the scene, subject, style and motion.", veoBasePrompt].filter(Boolean).join("\n"))
+            : veoBasePrompt;
 
         // --------------------------------------------------------
         // AUDIO
@@ -2005,7 +2051,7 @@ const runwareRequest = {
     model: runwareModel,
 
             positivePrompt:
-                String(prompt || "").trim(),
+                veoPrompt,
 
             duration: safeDuration,
 
@@ -2418,6 +2464,7 @@ if (
     engineId.toLowerCase() === "kling-2.6-motion"
 ) {
 
+    const runware = await getRunwareClient();
     console.log(
         "🎬 [RUNWARE] Kling 2.6 Motion Control détecté"
     );
@@ -2429,23 +2476,17 @@ if (
     // IMAGE PERSONNAGE
     // ========================================================
 
-    const motionImage =
-        startImage ||
-        image_url ||
-        req.body.start_image_url ||
-        req.body.startImage ||
-        null;
+    const motionImage = toPublicVideoInputUrl(
+        startImage || image_url || req.body.start_image_url || req.body.startImage || req.body.first_frame_url || null
+    );
 
     // ========================================================
     // VIDÉO DE MOUVEMENT
     // ========================================================
 
-    const motionVideo =
-        video ||
-        video_url ||
-        req.body.video_url ||
-        req.body.videoSource ||
-        null;
+    const motionVideo = toPublicVideoInputUrl(
+        req.body.video || req.body.video_url || req.body.videoSource || req.body.videoUrl || null
+    );
 
     // ========================================================
     // VALIDATION
@@ -2617,6 +2658,7 @@ if (
     engineId.toLowerCase() === "kling2.6-pro"
 ) {
 
+    const runware = await getRunwareClient();
     console.log("🎬 [RUNWARE] Kling 2.6 Pro détecté");
 
     const runwareModel =
@@ -2630,15 +2672,14 @@ if (
     // IDENTIFICATION DES SOURCES
     // ========================================================
 
-    const imageInput =
-        startImage ||
-        image_url ||
-        null;
+    const imageInput = toPublicVideoInputUrl(
+        startImage || image_url || req.body.start_image_url || req.body.first_frame_url || null
+    );
 
-    const videoInput =
-        video ||
-        video_url ||
-        null;
+    const videoInput = toPublicVideoInputUrl(
+        req.body.video || req.body.video_url || req.body.videoSource || req.body.videoUrl || null
+    );
+    const endImageInput = toPublicVideoInputUrl(req.body.end_image_url || req.body.endImage || req.body.tail_image_url || null);
 
     const hasImage =
         Boolean(imageInput);
@@ -2745,11 +2786,12 @@ if (
                 safeKlingDuration,
 
             inputs: {
-
-                frameImages: [
-                    imageInput
-                ]
-
+                frameImages: imageInput && endImageInput
+                    ? [
+                        { image: imageInput, frame: "first" },
+                        { image: endImageInput, frame: "last" }
+                    ]
+                    : [{ image: imageInput, frame: "first" }]
             },
 
             providerSettings: {
@@ -2801,6 +2843,13 @@ if (
     // TEXT → VIDEO
     // ========================================================
 
+    const requestedKlingAspect = String(req.body.aspect_ratio || aspect_ratio || "16:9");
+    const klingTextDimensions = {
+        "16:9": [1920, 1080],
+        "1:1": [1440, 1440],
+        "9:16": [1080, 1920]
+    };
+    const [klingTextWidth, klingTextHeight] = klingTextDimensions[requestedKlingAspect] || klingTextDimensions["16:9"];
     const klingRequest = {
 
         taskType:
@@ -2816,10 +2865,10 @@ if (
             safeKlingDuration,
 
         width:
-            1920,
+            klingTextWidth,
 
         height:
-            1080,
+            klingTextHeight,
 
         providerSettings: {
 
@@ -3464,6 +3513,7 @@ if (
     engineId.includes("kling-video/v3")
 ) {
 
+    const runware = await getRunwareClient();
     console.log("🚀 KLING 3.0 : configuration RUNWARE");
 
     // ========================================================
@@ -3482,18 +3532,14 @@ if (
     // 1. RÉCUPÉRATION DES IMAGES
     // ========================================================
 
-    const sourceStartImage =
-        req.body.start_image_url ||
-        req.body.image_url ||
-        req.body.startImage ||
-        (Array.isArray(image_urls) ? image_urls[0] : null) ||
-        null;
+    const sourceStartImage = toPublicVideoInputUrl(
+        req.body.start_image_url || req.body.image_url || req.body.startImage || req.body.first_frame_url ||
+        (Array.isArray(image_urls) ? image_urls[0] : null) || null
+    );
 
-    const sourceEndImage =
-        req.body.end_image_url ||
-        req.body.tail_image_url ||
-        req.body.endImage ||
-        null;
+    const sourceEndImage = toPublicVideoInputUrl(
+        req.body.end_image_url || req.body.tail_image_url || req.body.endImage || null
+    );
 
     // ========================================================
     // 2. DÉTECTION RÉSOLUTION
@@ -3846,19 +3892,17 @@ else if (engineId.includes("kling26") || (engineId.includes("kling") && !engineI
 // Text-to-Video + Image-to-Video
 // ============================================================
 else if (engineId.includes("hailuo")) {
+    const runware = await getRunwareClient();
     console.log("🚀 HAILUO 2.3 : configuration RUNWARE");
 
     // ========================================================
     // 1. IMAGE DE DÉPART
     // ========================================================
 
-    const hailuoImg =
-        validImg ||
-        req.body.startImage ||
-        req.body.start_image ||
-        req.body.image_url ||
-        req.body.start_image_url ||
-        (Array.isArray(image_urls) ? image_urls[0] : null);
+    const hailuoImg = toPublicVideoInputUrl(
+        req.body.startImage || req.body.start_image || req.body.image_url || req.body.start_image_url ||
+        req.body.first_frame_url || (Array.isArray(image_urls) ? image_urls[0] : null)
+    );
 
     const cleanHailuoImg =
         (
@@ -3899,17 +3943,11 @@ else if (engineId.includes("hailuo")) {
             10
         );
 
-    // 1080p = uniquement 6 secondes
-    // 768p = 6 ou 10 secondes
-
-    const hailuoDuration =
-        is1080p
-            ? 6
-            : (
-                requestedDuration === 10
-                    ? 10
-                    : 6
-            );
+    // 1080p = 6 secondes. Standard texte→vidéo en 768p peut faire 6 ou 10 secondes.
+    // Fast image→vidéo est limité à 6 secondes, quelle que soit la résolution.
+    const hailuoDuration = cleanHailuoImg
+        ? 6
+        : (is1080p ? 6 : (requestedDuration === 10 ? 10 : 6));
 
     // ========================================================
     // 4. PROMPT
@@ -3965,9 +4003,12 @@ else if (engineId.includes("hailuo")) {
     // ========================================================
 
     if (cleanHailuoImg) {
-        // Fast exige une image de première frame. Le ratio vient de cette image :
-        // ne pas envoyer width/height ni tenter de forcer un ratio différent.
-        hailuoRequest.inputs = { frameImages: [cleanHailuoImg] };
+        // Fast ne prend qu'une première frame. Les dimensions choisies fixent le niveau 768p/1080p.
+        const tier = is1080p ? "1080p" : "768p";
+        const dimensions = hailuoDimensions[tier][requestedAspectRatio] || hailuoDimensions[tier]["16:9"];
+        hailuoRequest.width = dimensions[0];
+        hailuoRequest.height = dimensions[1];
+        hailuoRequest.inputs = { frameImages: [{ image: cleanHailuoImg, frame: "first" }] };
     } else {
         // Standard : le ratio choisi dans l'interface est appliqué à la génération texte→vidéo.
         const tier = is1080p ? "1080p" : "768p";
@@ -4082,17 +4123,13 @@ else if (engineId.includes("hailuo")) {
 // ============================================================
 else if (engineId.includes("minimax_h3")) {
 
+    const runware = await getRunwareClient();
     console.log("🚀 MINIMAX H3 : configuration RUNWARE");
 
     // ========================================================
     // 1. PROMPT
     // ========================================================
 
-    const h3BasePrompt = String(prompt || req.body.prompt || "").trim();
-    const h3Dialogue = String(req.body.dialogue || "").trim().slice(0, 2000);
-    const h3HasAudioReference = Boolean(
-        (Array.isArray(req.body.audio_urls) && req.body.audio_urls.some(Boolean)) || req.body.audio_url
-    );
     const h3ToPublicUrl = (url) => {
         if (typeof url !== "string" || !url.trim()) return null;
         if (url.includes("localhost:5000") || url.includes("127.0.0.1:5000")) {
@@ -4100,7 +4137,25 @@ else if (engineId.includes("minimax_h3")) {
         }
         return url;
     };
+    const sourceH3Video = h3ToPublicUrl(
+        req.body.video || req.body.video_url || req.body.videoSource || req.body.videoUrl || null
+    );
+    const h3Operation = String(req.body.operation || req.body.videoOperation || "edit").toLowerCase();
+    const h3BasePrompt = String(prompt || req.body.prompt || "").trim();
+    const h3Dialogue = String(req.body.dialogue || "").trim().slice(0, 2000);
+    const h3HasAudioReference = Boolean(
+        (Array.isArray(req.body.audio_urls) && req.body.audio_urls.some(Boolean)) ||
+        (Array.isArray(req.body.referenceAudios) && req.body.referenceAudios.some(Boolean)) ||
+        (Array.isArray(req.body.reference_audios) && req.body.reference_audios.some(Boolean)) ||
+        req.body.audio_url
+    );
+    const h3OperationPrompt = sourceH3Video
+        ? (h3Operation === "extend"
+            ? "Continue Video 1 seamlessly beyond its ending, preserving its subject, scene, style and motion."
+            : "Edit Video 1 according to the following instruction. Preserve everything not explicitly changed.")
+        : "";
     const h3Prompt = [
+        h3OperationPrompt,
         h3BasePrompt,
         h3Dialogue
             ? `Sound: The character says exactly: "${h3Dialogue}". Use any provided reference audio to guide the voice, accent and delivery, and synchronize the character's lip movements with the dialogue.`
@@ -4172,6 +4227,10 @@ else if (engineId.includes("minimax_h3")) {
         );
     }
 
+    if (req.body.first_frame_url) {
+        h3Images.push(req.body.first_frame_url);
+    }
+
     if (req.body.start_image_url) {
         h3Images.push(
             req.body.start_image_url
@@ -4213,20 +4272,13 @@ else if (engineId.includes("minimax_h3")) {
     // 5. VIDÉOS DE RÉFÉRENCE
     // ========================================================
 
-const sourceH3Video = h3ToPublicUrl(
-    req.body.video_url || req.body.videoSource || req.body.videoUrl || null
-);
-
-// video_urls / referenceVideos are reference clips only. The source video has its own field
-// and must never be silently reclassified as a reference clip.
+// Les vidéos supplémentaires sont normalisées et dédupliquées; la vidéo source sera placée en premier.
 const extraH3Videos = [
     ...(Array.isArray(video_urls) ? video_urls : []),
-    ...(Array.isArray(req.body.referenceVideos) ? req.body.referenceVideos : [])
-].filter(url =>
-    typeof url === "string" && url.trim() && url !== sourceH3Video
-);
-const uniqueH3Videos = [...new Set(extraH3Videos)]
-    .slice(0, 3).map(h3ToPublicUrl).filter(Boolean);
+    ...(Array.isArray(req.body.referenceVideos) ? req.body.referenceVideos : []),
+    ...(Array.isArray(req.body.reference_videos) ? req.body.reference_videos : [])
+].map(h3ToPublicUrl).filter(url => url && url !== sourceH3Video);
+const uniqueH3Videos = [...new Set(extraH3Videos)].slice(0, 3);
 
     // ========================================================
     // 6. AUDIOS DE RÉFÉRENCE
@@ -4234,17 +4286,10 @@ const uniqueH3Videos = [...new Set(extraH3Videos)]
 
     const h3Audios = [];
 
-    if (Array.isArray(req.body.audio_urls)) {
-        h3Audios.push(
-            ...req.body.audio_urls.filter(Boolean)
-        );
-    }
-
-    if (req.body.audio_url) {
-        h3Audios.push(
-            req.body.audio_url
-        );
-    }
+    if (Array.isArray(req.body.audio_urls)) h3Audios.push(...req.body.audio_urls.filter(Boolean));
+    if (Array.isArray(req.body.referenceAudios)) h3Audios.push(...req.body.referenceAudios.filter(Boolean));
+    if (Array.isArray(req.body.reference_audios)) h3Audios.push(...req.body.reference_audios.filter(Boolean));
+    if (req.body.audio_url) h3Audios.push(req.body.audio_url);
 
     const uniqueH3Audios = [
         ...new Set(
@@ -4307,47 +4352,35 @@ const h3Request = {
 
 const h3Inputs = {};
 
-if (sourceH3Video) {
-    h3Inputs.video = sourceH3Video;
-}
+// H3 utilise referenceVideos pour l'édition/prolongation aussi; la vidéo source est Video 1.
+const allH3ReferenceVideos = [...new Set([
+    ...(sourceH3Video ? [sourceH3Video] : []),
+    ...uniqueH3Videos
+])].slice(0, 3);
 
 // --------------------------------------------------------
 // Références multimodales : 12 fichiers au total maximum
 // --------------------------------------------------------
-if (publicH3ReferenceImages.length + uniqueH3Videos.length + publicH3Audios.length > 12) {
+if (publicH3ReferenceImages.length + allH3ReferenceVideos.length + publicH3Audios.length > 12) {
     throw new Error("MiniMax H3 : 12 fichiers de référence maximum au total (images, vidéos et audios combinés).");
 }
 const effectiveH3ReferenceImages = publicH3ReferenceImages.slice(0, 9);
 let h3RemainingFiles = Math.max(0, 12 - effectiveH3ReferenceImages.length);
-const effectiveH3ReferenceVideos = uniqueH3Videos.slice(0, Math.min(3, h3RemainingFiles));
+const effectiveH3ReferenceVideos = allH3ReferenceVideos.slice(0, Math.min(3, h3RemainingFiles));
 h3RemainingFiles -= effectiveH3ReferenceVideos.length;
 const effectiveH3ReferenceAudios = publicH3Audios.slice(0, Math.min(3, h3RemainingFiles));
 
 const hasH3ReferenceImages = effectiveH3ReferenceImages.length > 0;
 const hasH3ReferenceVideos = effectiveH3ReferenceVideos.length > 0;
-
-const hasH3VisualReferences =
-    hasH3ReferenceImages || hasH3ReferenceVideos;
-
-if (uniqueH3Audios.length > 0 && !hasH3VisualReferences) {
-    throw new Error("MiniMax H3 : une référence audio nécessite aussi au moins une image ou une vidéo dans les références visuelles.");
-}
+const hasH3VisualReferences = hasH3ReferenceImages || hasH3ReferenceVideos;
 
 if (hasH3VisualReferences) {
-    if (hasH3ReferenceImages) {
-        h3Inputs.referenceImages =
-            effectiveH3ReferenceImages;
-    }
-
-    if (hasH3ReferenceVideos) {
-        h3Inputs.referenceVideos =
-            effectiveH3ReferenceVideos;
-    }
-
-    if (effectiveH3ReferenceAudios.length > 0) {
-        h3Inputs.referenceAudios =
-            effectiveH3ReferenceAudios;
-    }
+    if (hasH3ReferenceImages) h3Inputs.referenceImages = effectiveH3ReferenceImages;
+    if (hasH3ReferenceVideos) h3Inputs.referenceVideos = effectiveH3ReferenceVideos;
+    if (effectiveH3ReferenceAudios.length > 0) h3Inputs.referenceAudios = effectiveH3ReferenceAudios;
+}
+else if (uniqueH3Audios.length > 0) {
+    throw new Error("MiniMax H3 : une référence audio nécessite aussi au moins une image ou une vidéo dans les références visuelles.");
 }
 
 // --------------------------------------------------------
@@ -4358,7 +4391,7 @@ if (hasH3VisualReferences) {
 else if (uniqueH3Images.length > 0) {
     // Frame inputs are exclusively the dedicated start/end slots, never the reference-image list.
     const h3StartFrame = h3ToPublicUrl(
-        req.body.start_image_url || req.body.startImage || req.body.image_url || null
+        req.body.start_image_url || req.body.startImage || req.body.image_url || req.body.first_frame_url || (Array.isArray(image_urls) ? image_urls[0] : null) || null
     );
     const h3EndFrame = h3ToPublicUrl(
         req.body.end_image_url || req.body.endImage || null
@@ -4427,7 +4460,7 @@ if (Object.keys(h3Inputs).length > 0) {
 
     console.log(
         "➡️ Mode :",
-        uniqueH3Videos.length > 0
+        (sourceH3Video || uniqueH3Videos.length > 0)
             ? "VIDEO → VIDEO"
             : uniqueH3Audios.length > 0
                 ? "AUDIO → VIDEO"
@@ -4531,8 +4564,8 @@ else if (engineId === "pixverse6") {
         }
         return url;
     };
-    const sourceVideo = toPublicUrl(req.body.video_url || req.body.videoSource || req.body.videoUrl || null);
-    const sourceStart = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || null);
+    const sourceVideo = toPublicUrl(req.body.video || req.body.video_url || req.body.videoSource || req.body.videoUrl || null);
+    const sourceStart = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || req.body.first_frame_url || null);
     const sourceEnd = toPublicUrl(req.body.end_image_url || req.body.endImage || null);
     const safeDuration = Math.max(1, Math.min(15, Number(req.body.duration) || 5));
     const safeResolution = ["360p", "540p", "720p", "1080p"].includes(String(req.body.resolution)) ? String(req.body.resolution) : "720p";
@@ -4550,7 +4583,7 @@ else if (engineId === "pixverse6") {
         positivePrompt: String(prompt || req.body.prompt || "").trim().slice(0, 5000),
         duration: safeDuration,
         includeCost: true,
-        ...(Number.isInteger(Number(req.body.seed)) && String(req.body.seed ?? "").trim() !== "" && Number(req.body.seed) >= 0 ? { seed: Number(req.body.seed) } : {}),
+        ...(Number.isInteger(Number(req.body.seed)) && String(req.body.seed ?? "").trim() !== "" && Number(req.body.seed) >= 0 && Number(req.body.seed) <= 2147483647 ? { seed: Number(req.body.seed) } : {}),
         settings: {
             audio: req.body.settings?.audio ?? req.body.enable_audio === true,
             ...(!sourceVideo ? {
@@ -4633,7 +4666,7 @@ else if (engineId === "seedance25") {
     const videos = cleanList(req.body.referenceVideos, 10);
     const audios = cleanList(req.body.referenceAudios, 10);
     const sourceVideo = toPublicUrl(req.body.video_url || req.body.videoSource || req.body.video || null);
-    const start = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || null);
+    const start = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || req.body.first_frame_url || null);
     const end = toPublicUrl(req.body.end_image_url || null);
     const operation = sourceVideo && req.body.settings?.operation === "edit" ? "edit" : sourceVideo ? "extend" : null;
     const rawSeedance25Prompt = String(prompt || req.body.prompt || "").trim();
@@ -4668,8 +4701,14 @@ else if (engineId === "seedance25") {
     };
 
     if (sourceVideo) {
-        // Video-to-video : la résolution choisit la qualité, l'aspect reste celui de la vidéo source.
-        request.inputs = { video: sourceVideo };
+        // Édition/prolongation : conserver les références multimodales facultatives autorisées par Runware.
+        const extraVideos = videos.filter(url => url !== sourceVideo).slice(0, 10);
+        request.inputs = {
+            video: sourceVideo,
+            ...(images.length ? { referenceImages: images } : {}),
+            ...(extraVideos.length ? { referenceVideos: extraVideos } : {}),
+            ...(audios.length ? { referenceAudios: audios } : {})
+        };
         request.resolution = safeResolution;
     } else if (start || end) {
         // Les frames sont un mode distinct : jamais de conversion de l'image de fin en référence.
@@ -4731,7 +4770,7 @@ else if (engineId === "seedance20") {
     const videos = requestedVideos.slice(0, Math.min(sourceVideo ? 2 : 3, referenceBudget));
     referenceBudget -= videos.length;
     const audios = requestedAudios.slice(0, Math.min(3, referenceBudget));
-    const start = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || null);
+    const start = toPublicUrl(req.body.start_image_url || req.body.startImage || req.body.image_url || req.body.first_frame_url || null);
     const end = toPublicUrl(req.body.end_image_url || null);
     const request = {
         taskType: "videoInference",
@@ -4788,8 +4827,8 @@ else if (engineId === "seedance20") {
 
 // --- Logic Seedance 1.5 ---
 else if (engineId === "seedance") {
-    const sourceImage = validImg || req.body.image_url || req.body.start_image_url || null;
-    const sourceEndImage = req.body.end_image_url || null;
+    const sourceImage = toPublicVideoInputUrl(req.body.startImage || req.body.image_url || req.body.start_image_url || req.body.first_frame_url || null);
+    const sourceEndImage = toPublicVideoInputUrl(req.body.end_image_url || null);
 
     const currentDuration = parseInt(req.body.duration) || 5;
     
