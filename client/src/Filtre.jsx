@@ -1253,6 +1253,8 @@ const Filtre = ({
   // ---------- Références ----------
   const mediaRef = useRef(null);
   const canvasRef = useRef(null);
+  // Canvas hors écran : lecture des pixels sans exposer l'image brute à l'aperçu.
+  const previewWorkCanvasRef = useRef(null);
   const histRef = useRef(null);
   const compareBoxRef = useRef(null);
   const isDraggingCompare = useRef(false);
@@ -1329,11 +1331,15 @@ const Filtre = ({
           ? hoverFilter
           : selectedFilter;
         const activeIntensity = activeFilter === selectedFilter ? intensity : 100;
-        planRef.current = prepareGrade(
-          resolveAdjustments(activeFilter, activeIntensity, nextColor, extras)
-        );
-        previewPlanVersionRef.current += 1;
-        scheduleDrawRef.current?.();
+   planRef.current = prepareGrade(
+  resolveAdjustments(activeFilter, activeIntensity, nextColor, extras)
+);
+
+// Transmettre immédiatement le dernier plan aux Workers.
+poolRef.current?.setPlan(planRef.current);
+
+previewPlanVersionRef.current += 1;
+scheduleDrawRef.current?.();
         return;
       }
 
@@ -1623,25 +1629,46 @@ const Filtre = ({
     const renderPlanVersion = previewPlanVersionRef.current;
     // Pendant le glissement, le petit aperçu est calculé immédiatement sur le thread UI.
     // Cela évite la file d'attente des workers et la latence de propagation des plans.
-    const useWorkers = Boolean(!LIVE.active && pool && !pool.failed && plan && !plan.identity);
-    // Les workers travaillent en arrière-plan : on saute les images si ils sont occupés.
-    if (useWorkers && previewBusyRef.current) { previewDirtyRef.current = true; return; }
+const useWorkers = Boolean(!LIVE.active && pool && !pool.failed && plan && !plan.identity);    if (useWorkers && previewBusyRef.current) { previewDirtyRef.current = true; return; }
+// Même résolution pendant et après le déplacement du slider.
+let maxSide =
+  PREVIEW_SIDES[previewQualityRef.current] ||
+  PREVIEW_SIDES.standard;
 
-    let maxSide = LIVE.active ? 480 : PREVIEW_SIDES[previewQualityRef.current] || PREVIEW_SIDES.standard;
-    if (!LIVE.active && viewRef.current.z > 1) maxSide = Math.min(2400, Math.round(maxSide * Math.min(viewRef.current.z, 2.5))); // zoom : plus de détails
+if (viewRef.current.z > 1) {
+  maxSide = Math.min(
+    2400,
+    Math.round(maxSide * Math.min(viewRef.current.z, 2.5))
+  );
+}
     const scale = Math.min(1, maxSide / Math.max(sw, sh));
     const cw = Math.max(2, Math.round(sw * scale));
     const ch = Math.max(2, Math.round(sh * scale));
-    if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(src, 0, 0, cw, ch);
+    // Le canvas visible ne sert qu'à afficher le résultat filtré.
+    // On conserve ses dimensions et son image actuelle pendant le calcul :
+    // changer width/height ici effacerait immédiatement l'aperçu visible.
+    // Les pixels bruts sont lus depuis un canvas de travail invisible.
+    const outputCtx = canvas.getContext('2d');
+    if (!outputCtx) return;
+
+    let workCanvas = previewWorkCanvasRef.current;
+    if (!workCanvas) {
+      workCanvas = document.createElement('canvas');
+      previewWorkCanvasRef.current = workCanvas;
+    }
+    if (workCanvas.width !== cw || workCanvas.height !== ch) {
+      workCanvas.width = cw;
+      workCanvas.height = ch;
+    }
+    const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+    if (!workCtx) return;
+    workCtx.imageSmoothingEnabled = true;
+    workCtx.imageSmoothingQuality = 'high';
+    workCtx.drawImage(src, 0, 0, cw, ch);
 
     let frame;
     try {
-      frame = ctx.getImageData(0, 0, cw, ch);
+      frame = workCtx.getImageData(0, 0, cw, ch);
     } catch (error) {
       console.error('Aperçu étalonné impossible :', error);
       setPreviewError('Aperçu précis indisponible : le média doit autoriser CORS.');
@@ -1658,7 +1685,15 @@ const Filtre = ({
         drawScope(histRef.current, frame, scopeModeRef.current);
         if (showClippingRef.current) applyClippingOverlay(frame.data);
       }
-      ctx.putImageData(frame, 0, 0);
+      // Redimensionner seulement lorsque le nouveau rendu est prêt.
+      // Le redimensionnement et putImageData s'exécutent dans la même tâche :
+      // le navigateur n'affiche donc pas un canvas vide entre les deux.
+      if (canvas.width !== cw || canvas.height !== ch) {
+        canvas.width = cw;
+        canvas.height = ch;
+      }
+      // Publication atomique : aucune image brute n'est dessinée sur le canvas visible.
+      outputCtx.putImageData(frame, 0, 0);
       setPreviewError((prev) => (prev ? '' : prev));
     };
 
