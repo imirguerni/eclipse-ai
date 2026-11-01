@@ -1,0 +1,101 @@
+--- a/client/src/Filtre.jsx
++++ b/client/src/Filtre.jsx
+@@ -20,6 +20,7 @@
+   channelStats, buildMatchLuts, detectScene
+ } from './gradeEngine.js';
+ import { GradePool, detectCores, workersSupported } from './gradePool.js';
++import { createGradePreviewGPU } from './gradePreviewGPU.js';
+ import { createUpscaler, suggestTileSize, webgpuAvailable } from './aiUpscale.js';
+ import { createLocalEngine, DEFAULT_ENGINE_URL, pickScale } from './localEngine.js';
+ import * as MB from 'mediabunny';
+@@ -1215,6 +1216,8 @@
+   // ---------- Références ----------
+   const mediaRef = useRef(null);
+   const canvasRef = useRef(null);
++  const gpuCanvasRef = useRef(null);
++  const gpuPreviewRef = useRef(null);
+   const histRef = useRef(null);
+   const compareBoxRef = useRef(null);
+   const isDraggingCompare = useRef(false);
+@@ -1227,6 +1230,7 @@
+   const previewBusyRef = useRef(false);
+   const previewDirtyRef = useRef(false);
+   const showClippingRef = useRef(false);
++  const showOriginalRef = useRef(false);
+   const previewQualityRef = useRef('standard');
+   const lastMsRef = useRef(0);
+   const historyRef = useRef({ stack: [], index: -1 });
+@@ -1438,6 +1442,22 @@
+     return () => { stop = true; };
+   }, [isVideo, duration, activeMedia, activeTool]);
+ 
++  // ---------- Aperçu GPU (séparé du canvas 2D utilisé par l'ancien moteur) ----------
++  useEffect(() => {
++    const canvas = gpuCanvasRef.current;
++    if (!canvas) return undefined;
++    try {
++      gpuPreviewRef.current = createGradePreviewGPU(canvas);
++    } catch (error) {
++      console.warn('Aperçu GPU indisponible, conservation du moteur CPU :', error);
++      gpuPreviewRef.current = null;
++    }
++    return () => {
++      gpuPreviewRef.current?.destroy?.();
++      gpuPreviewRef.current = null;
++    };
++  }, []);
++
+   // ---------- Aperçu étalonné (canvas) ----------
+   const drawGradedPreview = useCallback(() => {
+     const canvas = canvasRef.current;
+@@ -1449,6 +1469,30 @@
+ 
+     const pool = poolRef.current;
+     const plan = planRef.current;
++    const gpu = gpuPreviewRef.current;
++    // Le shader actuel couvre les LUT tonales, la matrice et le vignettage.
++    // Tout effet non porté sur GPU repasse automatiquement par le moteur CPU.
++    const gpuCompatible = Boolean(gpu && plan &&
++      !plan.bandLut && !(plan.wheels && plan.wheels.length) && !plan.vibrance && !plan.skinProtect && !plan.lut3d &&
++      !plan.clarity && !plan.sharpness && !plan.grain && !plan.denoise && !plan.skinSmooth && !plan.bloom && !plan.enhance);
++    if (gpuCompatible) {
++      const gpuCanvas = gpuCanvasRef.current;
++      if (gpuCanvas) {
++        const maxSide = LIVE.active ? 480 : PREVIEW_SIDES[previewQualityRef.current] || PREVIEW_SIDES.standard;
++        try {
++          gpu.render(src, plan, { maxSide, videoFrame: isVideo });
++          gpuCanvas.style.opacity = showOriginalRef.current ? '0' : '1';
++          canvas.style.opacity = '0';
++          return;
++        } catch (error) {
++          console.warn('Aperçu GPU en échec, retour au moteur CPU :', error);
++          gpuCanvas.style.opacity = '0';
++          gpuCanvas.style.display = 'block';
++        }
++      }
++    }
++    if (gpuCanvasRef.current) gpuCanvasRef.current.style.opacity = '0';
++    canvas.style.opacity = showOriginalRef.current ? '0' : '1';
+     const useWorkers = Boolean(pool && !pool.failed && plan && !plan.identity);
+     // Les workers travaillent en arrière-plan : on saute les images si ils sont occupés.
+     if (useWorkers && previewBusyRef.current) { previewDirtyRef.current = true; return; }
+@@ -1562,9 +1606,10 @@
+ 
+   useEffect(() => {
+     showClippingRef.current = showClipping;
++    showOriginalRef.current = showOriginal;
+     previewQualityRef.current = previewQuality;
+     scheduleDraw();
+-  }, [showClipping, previewQuality, scheduleDraw]);
++  }, [showClipping, showOriginal, previewQuality, scheduleDraw]);
+ 
+   // Temps de traitement affiché (mis à jour 1 fois par seconde environ).
+   useEffect(() => {
+@@ -2917,6 +2962,7 @@
+ 
+           {/* Rendu étalonné : exactement le même moteur que l'export */}
+           <canvas ref={canvasRef} style={{ ...mediaStyle, clipPath: `inset(0 ${100 - comparePosition}% 0 0)`, pointerEvents: 'none', opacity: showOriginal ? 0 : 1 }} />
++          <canvas ref={gpuCanvasRef} style={{ ...mediaStyle, clipPath: `inset(0 ${100 - comparePosition}% 0 0)`, pointerEvents: 'none', opacity: 0 }} />
+ 
+           {gridMode !== 'off' && (
+             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 9, pointerEvents: 'none' }}>

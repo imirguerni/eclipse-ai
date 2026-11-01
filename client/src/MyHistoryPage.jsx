@@ -446,28 +446,29 @@ const MyHistoryPage = ({
                           {translations.remix}
                         </button>
 
-                        {video && url && (
-                          <button
-                            type="button"
-                            className="history-media-action"
-                            onClick={() => onEdit?.(item)}
-                            title={translations.editTitle}
-                            style={{
-                              flex: 1,
-                              background: 'rgba(168,85,247,0.14)',
-                              color: '#c084fc',
-                              border: '1px solid rgba(168,85,247,0.55)',
-                              padding: '8px',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: 'bold',
-                              transition: '0.15s'
-                            }}
-                          >
-                            {translations.edit}
-                          </button>
-                        )}
+{url && (
+  <button
+    type="button"
+    className="history-media-action"
+    onClick={() => onEdit?.(item)}
+    title={video ? translations.editTitle : translations.edit}
+    style={{
+      flex: 1,
+      background: 'rgba(168,85,247,0.14)',
+      color: '#c084fc',
+      border: '1px solid rgba(168,85,247,0.55)',
+      padding: '8px',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      transition: '0.15s'
+    }}
+  >
+    {translations.edit}
+  </button>
+)}
+
 
                         <button
                           type="button"

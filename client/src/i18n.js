@@ -6014,13 +6014,99 @@ const resources = {
   }
 };
 
+
+const SUPPORTED_LANGUAGES = ['fr', 'en', 'ko', 'ja', 'zh'];
+
+const getManualLanguage = () => {
+  if (typeof window === 'undefined') return undefined;
+
+  const saved = localStorage.getItem('ovortexManualLanguage');
+
+  return SUPPORTED_LANGUAGES.includes(saved) ? saved : undefined;
+};
+
+const getBrowserLanguage = () => {
+  if (typeof navigator === 'undefined') return 'fr';
+
+  const browserLanguage = navigator.language
+    ?.split('-')[0]
+    ?.toLowerCase();
+
+  return SUPPORTED_LANGUAGES.includes(browserLanguage)
+    ? browserLanguage
+    : 'fr';
+};
+
+const getLanguageFromCountry = (countryCode) => {
+  const country = countryCode?.toUpperCase();
+
+  if (country === 'KR') return 'ko';
+  if (country === 'JP') return 'ja';
+  if (country === 'CN') return 'zh';
+
+  const frenchCountries = [
+    'FR', 'BE', 'CH', 'LU', 'MC', 'CA',
+    'SN', 'CI', 'CM', 'MG', 'CD', 'CG',
+    'BJ', 'BF', 'GA', 'GN', 'ML', 'NE',
+    'TG', 'TD', 'DJ', 'KM', 'HT', 'MU',
+    'SC', 'RW', 'BI', 'CF'
+  ];
+
+  if (frenchCountries.includes(country)) return 'fr';
+
+  const englishCountries = [
+    'US', 'GB', 'IE', 'AU', 'NZ', 'IN',
+    'SG', 'ZA', 'NG', 'GH', 'KE', 'PH',
+    'JM', 'TT', 'BZ', 'BW', 'ZM', 'ZW'
+  ];
+
+  if (englishCountries.includes(country)) return 'en';
+
+  return getBrowserLanguage();
+};
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
+    lng: getManualLanguage() || getBrowserLanguage(),
     fallbackLng: 'fr',
-    interpolation: { escapeValue: false }
+    supportedLngs: SUPPORTED_LANGUAGES,
+    detection: {
+      order: ['navigator', 'htmlTag'],
+      caches: []
+    },
+    interpolation: {
+      escapeValue: false
+    }
+  })
+  .then(async () => {
+    // Une langue choisie manuellement reste prioritaire.
+    if (getManualLanguage()) return;
+
+    try {
+      const response = await fetch('https://ipapi.co/country/');
+
+      if (!response.ok) {
+        throw new Error('Détection du pays indisponible');
+      }
+
+      const countryCode = (await response.text()).trim();
+
+      // Vérifie à nouveau qu'aucun choix manuel n'a été fait
+      // pendant la détection du pays.
+      if (getManualLanguage()) return;
+
+      const detectedLanguage = getLanguageFromCountry(countryCode);
+
+      await i18n.changeLanguage(detectedLanguage);
+    } catch (error) {
+      console.warn(
+        'OVortex : détection automatique du pays indisponible.',
+        error
+      );
+    }
   });
 
 export default i18n;

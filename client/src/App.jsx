@@ -1218,12 +1218,12 @@ const handleLogout = async () => {
   }
 console.log("👤 USER UID ACTUEL :", user.uid);
   // Écoute directement la collection imageLocks pour cet utilisateur
-  const q = query(
-    collection(db, "imageLocks"),
-    where("userId", "==", user.uid),
-    where("status", "==", "completed"),
-    orderBy("createdAt", "desc")
-  );
+const q = query(
+  collection(db, "imageLocks"),
+  where("status", "==", "completed"),
+  where("userId", "==", user.uid),
+  orderBy("createdAt", "desc")
+);
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const firestoreItems = snapshot.docs.map(doc => {
@@ -1388,8 +1388,11 @@ else if (isPixverse) {
     }
 }
 else if (isMinimax) {
-    // ⚙️ Logique spécifique pour MiniMax (768p -> hd, 2K -> fhd)
-    const is2K = resolution === "2K" || resolution?.toLowerCase().includes("2k") || isHighResMode;
+    const is2K =
+        resolution === "2K" ||
+        resolution === "1440p" ||
+        resolution?.toLowerCase().includes("2k");
+
     const resPrefix = is2K ? "fhd" : "hd";
     priceKey = `${resPrefix}${calcDuration}`;
 }
@@ -2850,14 +2853,29 @@ console.log("🔐 Token Firebase récupéré :", !!token);
           <p className="history-prompt-text">{item.prompt || item.description || item.text || t("app.history.noDescription")}</p>
           <div className="history-actions">
             <button className="btn-remix-small" onClick={(e) => { e.stopPropagation(); handleRemix(item); }}>{t("app.history.remixButton")}</button>
-            {item.type === "VIDEO" && (item.url || item.videoUrl) && (
-              <button
-                type="button"
-                className="btn-remix-small"
-                onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(item); }}
-                title={t("app.history.editVideoTitle")}
-              >{t("app.history.editButton")}</button>
-            )}
+          
+     {(
+  (item.type === "VIDEO" && (item.url || item.videoUrl)) ||
+  (item.type === "IMAGE" && (item.url || item.imageUrl))
+) && (
+  <button
+    type="button"
+    className="btn-remix-small"
+    onClick={(e) => {
+      e.stopPropagation();
+
+      if (item.type === "IMAGE") {
+        handleEditHistoryItem(item);
+        return;
+      }
+
+      handleEditHistoryItem(item);
+    }}
+    title={t("app.history.editVideoTitle")}
+  >
+    {t("app.history.editButton")}
+  </button>
+)}
 <button
     className="btn-delete-small"
     onClick={(e) => deleteHistoryItem(e, item.id)}
@@ -3656,13 +3674,37 @@ if (isAuthLoading || isInitializing) {
       🪄 Remixer
     </button>
 
-    {/* ✏️ MODIFIER — ouvre directement la modal Filtre */}
-    {item.type === "VIDEO" && (item.url || item.videoUrl) && (
+{/* ✏️ MODIFIER — S'affiche pour les Vidéos et les Images */}
+    {((item.type === "VIDEO" && (item.url || item.videoUrl)) || item.type === "IMAGE" || !item.type) && (
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleEditHistoryItem(item);
-        }}
+   onClick={(e) => {
+  e.stopPropagation();
+
+  if (item.type === "IMAGE" || !item.type) {
+    const imageUrl = item.url || item.imageUrl || item.mediaUrl;
+
+    if (!imageUrl) {
+      console.error("Impossible d'ouvrir le filtre : URL de l'image absente.", item);
+      return;
+    }
+
+    setActiveItem(item);
+    setMode("IMAGE");
+    setPrompt(item.prompt || item.description || "");
+    setUploadedImage(imageUrl);
+
+    // Ouvrir le composant Filtre avec l'image sélectionnée
+    setVideoSource(null);
+    setVeoEditVideo(imageUrl);
+    setSelectedOptionModal(null);
+    setShowEditor(true);
+
+    console.log("🖼️ Ouverture du filtre pour l'image :", imageUrl);
+  } else {
+    // Conserver le fonctionnement actuel des vidéos
+    handleEditHistoryItem(item);
+  }
+}}
         style={{
           flex: 1,
           background: '#333',
@@ -3746,6 +3788,7 @@ if (isAuthLoading || isInitializing) {
         setActiveItem(null);
         setStartImage(null);
         setEndImage(null);
+        
       }}
     >
       {modeLabel}
@@ -4849,9 +4892,13 @@ const isKling26 = (currentModelLower.includes("kling26") || currentModelLower.in
                         </>
                       )}
 
-                     {!isHailuo && !isKling26 && !isSeedance25 && !currentModelId.includes("motion") && (
-                        <option value="720p"> HD {hdIcon} </option>
-                      )}
+                   {!isHailuo &&
+ !isKling26 &&
+ !isSeedance25 &&
+ !normalizedModelId.includes("minimaxh3") &&
+ !currentModelId.includes("motion") && (
+  <option value="720p"> HD {hdIcon} </option>
+)}
                     </>
                   )}
                   

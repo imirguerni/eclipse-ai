@@ -6,8 +6,9 @@ export const detectCores = () =>
 export const workersSupported = () => typeof Worker !== 'undefined';
 
 export class GradePool {
-  constructor(size) {
+  constructor(size, { onFail = null } = {}) {
     this.size = Math.max(1, Math.floor(size));
+    this.onFail = onFail;
     this.workers = [];
     this.idle = [];
     this.queue = [];
@@ -75,6 +76,7 @@ export class GradePool {
     this.pending.clear();
     this.queue = [];
     this.terminate();
+    if (this.onFail) this.onFail(error);
   }
 
   // Traite une image entière. Sans effet « global » (flous), l'image est découpée en bandes

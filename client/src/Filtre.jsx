@@ -16,10 +16,14 @@ import {
 import {
   clamp, num, SRGB_TO_LINEAR, HSL_BANDS, bandKey, hueDistance, hexToUnitRgb, hueToHex,
   buildCurveLut, resolveAdjustments, prepareGrade, processImageData, parseCubeLut,
-  analyzeAutoCorrection, drawScope, applyClippingOverlay,
+  analyzeAutoCorrection, analyzeAutoEnhance, temporalDenoise, drawScope, applyClippingOverlay,
   channelStats, buildMatchLuts, detectScene
 } from './gradeEngine.js';
 import { GradePool, detectCores, workersSupported } from './gradePool.js';
+import { createUpscaler, suggestTileSize, webgpuAvailable } from './aiUpscale.js';
+import { createAiEnhancer } from './aiEnhance.js';
+import { loadOnnxRuntime } from './onnxRuntimeLoader.js';
+import { createLocalEngine, DEFAULT_ENGINE_URL, pickScale } from './localEngine.js';
 import * as MB from 'mediabunny';
 import {
   createSegments, splitAt, toggleRemoved, keptRanges, keptDuration, isTrimmed,
@@ -42,7 +46,8 @@ const DEFAULT_COLOR_SETTINGS = Object.freeze({
   exposure: 0, contrast: 0, brightness: 0, shadows: 0, highlights: 0, whites: 0, blacks: 0,
   saturation: 0, vibrance: 0, temperature: 0, tint: 0, hue: 0,
   clarity: 0, dehaze: 0, sharpness: 0, vignette: 0, grain: 0, grainSize: 0, fade: 0, sepia: 0, monochrome: 0,
-  denoise: 0, skinSmooth: 0, bloom: 0, skinProtect: 0,
+  denoise: 0, tDenoise: 0, skinSmooth: 0, bloom: 0, enhance: 0, skinProtect: 0,
+  sharpnessRadius: 0, sharpnessNoise: 0,
   curveShadows: 0, curveDarks: 0, curveMidtones: 0, curveLights: 0, curveHighlights: 0,
   wheelShadows: '#808080', wheelShadowsAmount: 0,
   wheelMidtones: '#808080', wheelMidtonesAmount: 0,
@@ -242,17 +247,49 @@ const AI_OPTIONS = {
       ['/images/pluie.jpg', 'Pluie', 'Add realistic cinematic rain while preserving the scene.']
     ]
   },
+  // Commandes simples : [commande, libellé, description, icône, miniature]. La miniature (image .webp/.jpg ou vidéo .webm/.mp4) est facultative :
+  // mettez-en une pour remplacer l'icône (null = pas encore de miniature).
+  // Ancienne forme documentée : [commande, libellé, description, icône]. Une commande par groupe, les groupes se combinent
+  // (ex. « /dollyin /closeup »). Le texte envoyé à l'IA est la liste des commandes choisies.
   camera: {
     title: 'Modifier la caméra',
-    subtitle: 'Modifiez le mouvement et le cadrage.',
-    options: [
-      ['/videos/Couloir-sombre.webm', 'Zoom', 'Add a smooth cinematic camera zoom.'],
-      ['/videos/smooth-cinematic.webm', 'Travelling', 'Add a smooth cinematic tracking camera movement.'],
-      ['/videos/encore-une.webm', 'Rotation', 'Add a smooth cinematic camera rotation.'],
-      ['/videos/plan_large.webm', 'Plan large', 'Change the framing into a cinematic wide shot.'],
-      ['/videos/gros_plan.webm', 'Gros plan', 'Change the framing into a cinematic close-up.'],
-      ['/videos/Foret-sombre.webm', 'Drone vue aérienne', 'The camera rises smoothly and moves backward, transitioning from a low-angle shot to an aerial, high-angle view.'],
-      ['/videos/camera_fixe.webm', 'Caméra fixe', 'Keep the camera completely static, locked on a tripod, with no movement or zoom.']
+    subtitle: 'Choisissez un mouvement et un cadre : les commandes se combinent (ex. /dollyin /closeup).',
+    commandGroups: [
+      {
+        id: 'movements',
+        title: 'Mouvements de caméra',
+        command: '/cameramovements',
+        options: [
+          ['/panleft', 'Panoramique gauche', 'Panoramique vers la gauche.', '⬅️', null],
+          ['/panright', 'Panoramique droite', 'Panoramique vers la droite.', '➡️', null],
+          ['/tiltup', 'Inclinaison haut', 'Inclinaison / panoramique vertical vers le haut.', '⬆️', null],
+          ['/tiltdown', 'Inclinaison bas', 'Inclinaison / panoramique vertical vers le bas.', '⬇️', null],
+          ['/zoomin', 'Zoom avant', 'Zoom avant sur le sujet.', '🔍', '/videos/Couloir-sombre.webm'],
+          ['/zoomout', 'Zoom arrière', 'Zoom arrière pour élargir la scène.', '🔭', null],
+          ['/dollyin', 'Travelling avant', 'Avancement physique de la caméra vers le sujet (dolly in).', '🎥', null],
+          ['/dollyout', 'Travelling arrière', 'Recul physique de la caméra par rapport au sujet (dolly out).', '🎬', null],
+          ['/trackingshot', 'Plan suivi', 'La caméra suit le sujet en déplacement.', '🏃', '/videos/smooth-cinematic.webm'],
+          ['/orbitshot', 'Orbite', 'La caméra tourne en cercle autour du sujet.', '🔄', '/videos/encore-une.webm'],
+          ['/staticshot', 'Caméra fixe', 'Caméra immobile, sans mouvement ni zoom.', '📍', '/videos/camera_fixe.webm']
+        ]
+      },
+      {
+        id: 'shots',
+        title: 'Cadres cinématographiques',
+        command: '/cinematicshots',
+        options: [
+          ['/establishingshot', 'Plan de situation', 'Plan d’ensemble qui pose le lieu.', '🏙️', null],
+          ['/droneshot', 'Vue drone', 'Vue aérienne prise par drone.', '🚁', '/videos/Foret-sombre.webm'],
+          ['/aerialshot', 'Plan aérien', 'Plan aérien à haute altitude.', '✈️', null],
+          ['/topshot', 'Vue du dessus', 'Vue du dessus à la verticale (bird’s eye view).', '🦅', null],
+          ['/wideangle', 'Grand-angle', 'Plan au grand-angle.', '🌐', '/videos/plan_large.webm'],
+          ['/longshot', 'Plan général', 'Plan général.', '🏞️', null],
+          ['/mediumshot', 'Plan moyen', 'Plan moyen.', '🧍', null],
+          ['/closeup', 'Gros plan', 'Gros plan.', '👤', '/videos/gros_plan.webm'],
+          ['/extremecloseup', 'Très gros plan', 'Très gros plan sur un détail.', '👁️', null],
+          ['/overtheshoulder', 'Par-dessus l’épaule', 'Plan par-dessus l’épaule.', '🎞️', null]
+        ]
+      }
     ]
   },
   extend: {
@@ -292,8 +329,12 @@ const COLOR_SLIDERS = [
 const DETAIL_SLIDERS = [
   ['Clarté (contraste local)', 'clarity', -100],
   ['Correction du voile', 'dehaze', -100],
-  ['Netteté', 'sharpness', 0],
-  ['Réduction du bruit', 'denoise', 0],
+  ['Netteté adaptative', 'sharpness', 0],
+  ['OVortex Enhance — détails multi-échelle', 'enhance', 0],
+  ['Rayon de netteté', 'sharpnessRadius', 0],
+  ['Protection du bruit', 'sharpnessNoise', 0],
+  ['Réduction du bruit (luminosité + couleur)', 'denoise', 0],
+  ['Débruitage temporel (vidéo, à l’export)', 'tDenoise', 0],
   ['Lissage de la peau', 'skinSmooth', 0],
   ['Lueur (bloom)', 'bloom', 0],
   ['Grain', 'grain', 0],
@@ -400,7 +441,7 @@ function loadPerf() {
     if (!saved || typeof saved !== 'object') return defaults;
     return {
       enabled: typeof saved.enabled === 'boolean' ? saved.enabled && workersSupported() : defaults.enabled,
-      threads: clamp(Math.round(num(saved.threads)) || defaults.threads, 1, Math.min(16, Math.max(cores, 2))),
+      threads: clamp(Math.round(num(saved.threads)) || defaults.threads, 1, Math.min(8, Math.max(cores, 2))),
       previewQuality: PREVIEW_SIDES[saved.previewQuality] ? saved.previewQuality : defaults.previewQuality
     };
   } catch {
@@ -451,8 +492,29 @@ const sectionTitleStyle = { fontSize: '12px', fontWeight: '700', marginBottom: '
 const panelStyle = { background: '#18181b', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', minWidth: 0, boxSizing: 'border-box' };
 const panelTitleStyle = { fontSize: '11px', fontWeight: 700, color: '#38bdf8', marginBottom: '12px', letterSpacing: '.5px' };
 const ghostButtonStyle = { padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: '#27272a', color: '#f87171', fontSize: '11px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' };
+// Panneaux de l'onglet Couleur (barre d'icônes) et de l'onglet Filtre (version mobile).
+const COLOR_PANELS = [
+  { id: 'light', icon: '🎚️', label: 'Lumière' },
+  { id: 'color', icon: '🎨', label: 'Couleur' },
+  { id: 'curves', icon: '📈', label: 'Courbes' },
+  { id: 'wheels', icon: '🎡', label: 'Roues' },
+  { id: 'hsl', icon: '🌈', label: 'HSL' },
+  { id: 'detail', icon: '✨', label: 'Détails' },
+  { id: 'auto', icon: '🤖', label: 'Auto' },
+  { id: 'export', icon: '⬇️', label: 'Export' }
+];
+const FILTER_PANELS = [
+  { id: 'presets', icon: '🎞️', label: 'Filtres' },
+  { id: 'film', icon: '🎬', label: 'Pellicule' },
+  { id: 'lut', icon: '🧪', label: 'LUT' },
+  { id: 'looks', icon: '⭐', label: 'Looks' },
+  { id: 'cut', icon: '✂️', label: 'Découpe', videoOnly: true },
+  { id: 'color', icon: '🎨', label: 'Couleur', goto: 'color' },
+  { id: 'export', icon: '⬇️', label: 'Export' }
+];
+
 const toolChipStyle = (active, disabled) => ({
-  padding: '5px 10px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
+  padding: '5px 10px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
   border: active ? '1px solid #00b4d8' : '1px solid rgba(255,255,255,0.1)',
   background: active ? 'rgba(0,180,216,0.2)' : '#27272a', color: active ? '#38bdf8' : '#d1d5db', opacity: disabled ? 0.4 : 1
 });
@@ -472,24 +534,111 @@ function PanelHeader({ title, subtitle }) {
 }
 
 // Curseur réutilisable. Double-clic = remise à zéro du réglage.
-function SliderRow({ label, value, onChange, min = -100, max = 100, suffix = '', compact = false }) {
+// Interaction en direct : tant qu'un curseur est tiré, l'aperçu passe en basse résolution (réactif) puis revient en pleine qualité.
+const LIVE = { active: false, onEnd: null };
+const liveStart = () => { LIVE.active = true; };
+const liveEnd = () => {
+  if (!LIVE.active) return;
+  LIVE.active = false;
+  if (LIVE.onEnd) LIVE.onEnd();
+};
+
+function useMediaQuery(query) {
+  const get = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : false);
+  const [matches, setMatches] = useState(get);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia(query);
+    const on = () => setMatches(mq.matches);
+    on();
+    if (mq.addEventListener) mq.addEventListener('change', on); else mq.addListener(on);
+    return () => { if (mq.removeEventListener) mq.removeEventListener('change', on); else mq.removeListener(on); };
+  }, [query]);
+  return matches;
+}
+
+function SliderRow({ label, value, onChange, min = -100, max = 100, suffix = '', compact = false, format }) {
   const v = Number(value) || 0;
+  const [local, setLocal] = useState(null); // valeur affichée pendant le glissement : le curseur suit le doigt sans attendre le reste de l'interface
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const pending = useRef(null);
+  const raf = useRef(0);
+  const keyTimer = useRef(0);
+  const keyActive = useRef(false);
+
+  const flush = useCallback(() => {
+    raf.current = 0;
+    if (pending.current !== null) {
+      const n = pending.current;
+      pending.current = null;
+      onChangeRef.current(n);
+    }
+  }, []);
+
+  const endDrag = useCallback(() => {
+    window.removeEventListener('pointerup', endDrag);
+    window.removeEventListener('pointercancel', endDrag);
+    if (raf.current) { cancelAnimationFrame(raf.current); raf.current = 0; }
+    flush();
+    setLocal(null);
+    liveEnd();
+  }, [flush]);
+
+  useEffect(() => () => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    clearTimeout(keyTimer.current);
+    window.removeEventListener('pointerup', endDrag);
+    window.removeEventListener('pointercancel', endDrag);
+    // Sécurité : un changement d'onglet pendant le glissement ne doit pas bloquer la qualité.
+    if (LIVE.active) liveEnd();
+  }, [endDrag]);
+
+  const push = (n) => {
+    setLocal(n);
+    pending.current = n;
+    if (!raf.current) raf.current = requestAnimationFrame(flush); // au plus une mise à jour par image
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '2px' : '4px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: compact ? '9px' : '11px', fontWeight: compact ? 400 : 600, color: compact ? '#bbb' : '#d1d5db' }}>{label}</span>
-        <span style={{ fontSize: compact ? '9px' : '10px', color: '#00b4d8', fontWeight: 700 }}>{v}{suffix}</span>
+        <span style={{ fontSize: compact ? '9px' : '10px', color: '#00b4d8', fontWeight: 700 }}>{format ? format(local !== null ? local : v) : `${local !== null ? local : v}${suffix}`}</span>
       </div>
       <input
         type="range"
         aria-label={label}
         min={min}
         max={max}
-        value={v}
-        onChange={(e) => onChange(Number(e.target.value))}
-        onDoubleClick={() => onChange(0)}
+        value={local !== null ? local : v}
+        onPointerDown={() => {
+          liveStart();
+          window.addEventListener('pointerup', endDrag);
+          window.addEventListener('pointercancel', endDrag);
+        }}
+        onChange={(e) => push(Number(e.target.value))}
+        onKeyDown={() => { keyActive.current = true; liveStart(); clearTimeout(keyTimer.current); }}
+        onKeyUp={() => {
+          keyActive.current = false;
+          clearTimeout(keyTimer.current);
+          keyTimer.current = setTimeout(() => {
+            setLocal(null);
+            liveEnd();
+          }, 220);
+        }}
+        onBlur={() => {
+          if (!keyActive.current) return;
+          keyActive.current = false;
+          clearTimeout(keyTimer.current);
+          if (raf.current) { cancelAnimationFrame(raf.current); raf.current = 0; }
+          flush();
+          setLocal(null);
+          liveEnd();
+        }}
+        onDoubleClick={() => { setLocal(null); onChange(0); }}
         title="Double-clic pour réinitialiser"
-        style={{ width: '100%', height: compact ? '5px' : '6px', margin: 0, accentColor: '#00b4d8', cursor: 'pointer' }}
+        style={{ width: '100%', height: compact ? '5px' : '6px', margin: 0, accentColor: '#00b4d8', cursor: 'pointer', touchAction: 'pan-y' }}
       />
     </div>
   );
@@ -522,6 +671,41 @@ function PresetTile({ filter, active, onSelect, onHover }) {
       <span style={{ position: 'absolute', left: '4px', right: '4px', bottom: '3px', fontSize: '12px', fontWeight: '600', textShadow: '0 1px 3px rgba(0,0,0,0.85)' }}>
         {filter.name}
       </span>
+    </button>
+  );
+}
+
+// Tuile de commande simple : miniature (image ou vidéo jouée au survol) si elle existe, sinon grande icône.
+function CommandTile({ option, active, onSelect }) {
+  const [command, label, description, icon, thumb] = option;
+  const videoRef = useRef(null);
+  const isVideoThumb = typeof thumb === 'string' && /\.(webm|mp4)$/i.test(thumb);
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(command)}
+      aria-pressed={active}
+      title={`${command} : ${description}`}
+      onMouseEnter={() => videoRef.current?.play().catch(() => {})}
+      onMouseLeave={() => { if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; } }}
+      style={{
+        position: 'relative', aspectRatio: '16 / 9', padding: 0, overflow: 'hidden', borderRadius: '8px', textAlign: 'left', cursor: 'pointer', color: '#fff', minWidth: 0,
+        border: active ? '2px solid #00b4d8' : '2px solid rgba(255,255,255,0.06)',
+        background: thumb ? '#000' : 'linear-gradient(135deg, #1f2937, #0f172a)'
+      }}
+    >
+      {thumb ? (
+        isVideoThumb
+          ? <video ref={videoRef} src={thumb} loop muted playsInline preload="metadata" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <div style={{ position: 'absolute', inset: 0, backgroundImage: `url("${thumb}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+      ) : (
+        <span aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '34px', paddingBottom: '14px', opacity: 0.9 }}>{icon}</span>
+      )}
+      <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', padding: '16px 8px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,0.88))', zIndex: 2 }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, lineHeight: 1.15, textShadow: '0 1px 3px rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+        <code style={{ fontSize: '10px', color: '#7dd3fc', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{command}</code>
+      </span>
+      {active && <span aria-hidden="true" style={{ position: 'absolute', top: '6px', right: '6px', width: '18px', height: '18px', borderRadius: '50%', background: '#00b4d8', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>✓</span>}
     </button>
   );
 }
@@ -822,11 +1006,12 @@ function Timeline({ duration, segments, selectedId, onSelect, onSeek, onChange, 
             const sel = c.id === selectedId;
             const tiles = [];
             if (tileW) {
-              const n = Math.min(300, Math.ceil(w / tileW));
+              const tw = Math.max(tileW, Math.ceil(w / 300)); // jamais plus de 300 tuiles par clip
+              const n = Math.ceil(w / tw);
               for (let k = 0; k < n; k++) {
-                const ts = c.start + (k * tileW + tileW / 2) / pps;
+                const ts = c.start + (k * tw + tw / 2) / pps;
                 const idx = clamp(Math.floor((ts / duration) * thumbs.length), 0, thumbs.length - 1);
-                tiles.push(<div key={k} style={{ flex: `0 0 ${tileW}px`, height: '100%', backgroundImage: `url(${thumbs[idx].url})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />);
+                tiles.push(<div key={k} style={{ flex: `0 0 ${tw}px`, height: '100%', backgroundImage: `url(${thumbs[idx].url})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />);
               }
             }
             return (
@@ -886,6 +1071,8 @@ const Filtre = ({
   initialTool,
   colorSettings: colorSettingsProp,
   setColorSettings: setColorSettingsProp,
+  localEngine, // optionnel : { url?, token? } — moteur local sur le PC (voir local-engine/README.md)
+  aiUpscale, // optionnel : { ort, modelUrl, wasmPaths? } — agrandissement par IA (voir aiUpscale.js)
   uploadResult, // optionnel : async (result, { onProgress, settings, meta }) => ({ url, storagePath?, docId? }) — envoi vers votre stockage (voir firebaseUpload.js)
   looks: looksProp, // optionnel : looks enregistrés par l'application (compte utilisateur)
   onLooksChange // optionnel : (looks) => void, appelé à chaque changement
@@ -895,11 +1082,29 @@ const Filtre = ({
   const controlled = Boolean(colorSettingsProp) && typeof setColorSettingsProp === 'function';
   const rawColor = controlled ? colorSettingsProp : localColor;
   const setColorRaw = controlled ? setColorSettingsProp : setLocalColor;
-  const colorSettings = useMemo(() => ({ ...DEFAULT_COLOR_SETTINGS, ...(rawColor || {}) }), [rawColor]);
+
+  // Pendant le glissement, les valeurs sont gardées dans Filtre et dans les refs du moteur.
+  // Le parent (App.jsx) ne reçoit qu'une seule mise à jour à la fin du geste.
+  const draftColorRef = useRef(null);
+  const latestRawColorRef = useRef(rawColor);
+  latestRawColorRef.current = rawColor;
+  const colorSettings = useMemo(
+    () => ({ ...DEFAULT_COLOR_SETTINGS, ...(rawColor || {}) }),
+    [rawColor]
+  );
 
   const [selectedFilter, setSelectedFilter] = useState(PRESET_FILTERS[0]);
   const [intensity, setIntensity] = useState(100);
   const [comparePosition, setComparePosition] = useState(50);
+  const [view, setView] = useState({ z: 1, x: 0, y: 0 }); // zoom et décalage de l'aperçu
+  const [colorPanel, setColorPanel] = useState('light');
+  const [filterPanel, setFilterPanel] = useState('presets');
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const pointersRef = useRef(new Map());
+  const panRef = useRef(null);
+  const pinchRef = useRef(null);
+  const isMobile = useMediaQuery('(max-width: 900px)'); // petit écran : aperçu fixe + barre d'icônes (style CapCut)
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -945,6 +1150,81 @@ const Filtre = ({
   const [threads, setThreads] = useState(perfSaved.threads);
   const [previewQuality, setPreviewQuality] = useState(perfSaved.previewQuality);
   const [poolStatus, setPoolStatus] = useState('off'); // 'off' | 'ready' | 'fallback'
+  const browserAi = Boolean(aiUpscale && aiUpscale.ort && aiUpscale.modelUrl);
+  const aiSaved = useMemo(() => {
+    try { return JSON.parse(window.localStorage.getItem('ovx-filtre-ai-v1') || 'null') || {}; } catch { return {}; }
+  }, []);
+  const [aiOn, setAiOn] = useState(Boolean(aiSaved.on));
+  const [aiTile, setAiTile] = useState(Number(aiSaved.tile) || suggestTileSize());
+  const [aiStatus, setAiStatus] = useState('');
+  const [aiTesting, setAiTesting] = useState(false);
+  const upscalerRef = useRef(null);
+  const aiEnhancerRef = useRef(null);
+  const aiEnhancerLoadingRef = useRef(null);
+  // Le moteur x1 charge ONNX Runtime à la demande ; aucune propriété parent n'est requise.
+  const aiEnhanceAvailable = true;
+
+  // ----- Moteur local : la puissance du PC quand le navigateur ne suffit pas -----
+  const engineSaved = useMemo(() => {
+    try { return JSON.parse(window.localStorage.getItem('ovx-filtre-engine-v1') || 'null') || {}; } catch { return {}; }
+  }, []);
+  const engineUrl = (localEngine && localEngine.url) || DEFAULT_ENGINE_URL;
+  const [engineMode, setEngineMode] = useState(['auto', 'browser', 'local'].includes(engineSaved.mode) ? engineSaved.mode : 'auto');
+  const [engineInfo, setEngineInfo] = useState({ state: 'unknown', caps: null, version: '' }); // unknown | checking | offline | unauthorized | online
+  // Jeton universel par défaut (voir localEngine.js) : aucune saisie ; localEngine.token permet d'en imposer un autre.
+  const engineTokenProp = (localEngine && localEngine.token) || undefined;
+  const engine = useMemo(() => createLocalEngine({ url: engineUrl, token: engineTokenProp }), [engineUrl, engineTokenProp]);
+  const localAiImage = engineInfo.state === 'online' && Boolean(engineInfo.caps && engineInfo.caps.realesrgan);
+  const localAiVideo = localAiImage && Boolean(engineInfo.caps.ffmpeg && engineInfo.caps.ffprobe);
+  const aiAvailable = browserAi || localAiImage;
+
+  const detectEngine = useCallback(async () => {
+    setEngineInfo((p) => (p.state === 'online' ? p : { ...p, state: 'checking' }));
+    const r = await engine.detect();
+    let next;
+    if (!r.online) next = { state: 'offline', caps: null, version: '' };
+    else if (!r.authorized) next = { state: 'unauthorized', caps: null, version: r.version };
+    else next = { state: 'online', caps: r.capabilities, version: r.version };
+    setEngineInfo(next);
+    return next.state;
+  }, [engine]);
+
+  // 100 % automatique : recherche au démarrage, puis régulièrement (3 s au début, jusqu'à 30 s), et à chaque retour sur la page.
+  useEffect(() => {
+    if (engineMode === 'browser') return undefined;
+    let stopped = false;
+    let timer = null;
+    let delay = 3000;
+    const loop = async () => {
+      const state = await detectEngine();
+      if (stopped) return;
+      delay = state === 'online' ? 30000 : Math.min(Math.round(delay * 1.5), 30000);
+      timer = setTimeout(loop, delay);
+    };
+    const recheck = () => { if (document.visibilityState !== 'hidden') { clearTimeout(timer); delay = 3000; loop(); } };
+    loop();
+    window.addEventListener('focus', recheck);
+    document.addEventListener('visibilitychange', recheck);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      window.removeEventListener('focus', recheck);
+      document.removeEventListener('visibilitychange', recheck);
+    };
+  }, [engineMode, detectEngine]);
+
+  useEffect(() => {
+    try { window.localStorage.setItem('ovx-filtre-engine-v1', JSON.stringify({ mode: engineMode })); } catch { /* ignoré */ }
+  }, [engineMode]);
+
+  // Où exécuter l'agrandissement IA ? 'local' (PC) > 'browser' (WebGPU) > null (agrandissement standard).
+  const aiRoute = (kind, force = false) => {
+    if (!force && !aiOn) return null;
+    const localOk = kind === 'video' ? localAiVideo : localAiImage;
+    if (engineMode !== 'browser' && localOk) return 'local';
+    if (engineMode !== 'local' && browserAi) return 'browser';
+    return null;
+  };
   const [previewMs, setPreviewMs] = useState(0);
   const [exportResolution, setExportResolution] = useState('original');
   const [exportEta, setExportEta] = useState('');
@@ -984,6 +1264,8 @@ const Filtre = ({
   const poolRef = useRef(null);
   const previewBusyRef = useRef(false);
   const previewDirtyRef = useRef(false);
+  // Version du plan : empêche un ancien rendu worker d'écraser le dernier réglage.
+  const previewPlanVersionRef = useRef(0);
   const showClippingRef = useRef(false);
   const previewQualityRef = useRef('standard');
   const lastMsRef = useRef(0);
@@ -1036,33 +1318,54 @@ const Filtre = ({
 
   const updateColor = useCallback(
     (patch) => {
+      if (LIVE.active) {
+        // Pas de setState dans App.jsx à chaque mouvement du curseur :
+        // on met à jour directement le plan de prévisualisation local.
+        const base = draftColorRef.current || latestRawColorRef.current || {};
+        const nextColor = { ...DEFAULT_COLOR_SETTINGS, ...base, ...patch };
+        draftColorRef.current = nextColor;
+
+        const activeFilter = hoverFilter && hoverFilter.id !== selectedFilter.id
+          ? hoverFilter
+          : selectedFilter;
+        const activeIntensity = activeFilter === selectedFilter ? intensity : 100;
+        planRef.current = prepareGrade(
+          resolveAdjustments(activeFilter, activeIntensity, nextColor, extras)
+        );
+        previewPlanVersionRef.current += 1;
+        scheduleDrawRef.current?.();
+        return;
+      }
+
       setColorRaw((prev) => ({ ...DEFAULT_COLOR_SETTINGS, ...(prev || {}), ...patch }));
       setExportError('');
       setSaveMessage('');
     },
-    [setColorRaw]
+    [setColorRaw, hoverFilter, selectedFilter, intensity, extras]
   );
 
   // ---------- Historique (annuler / rétablir) ----------
   const snapshot = useMemo(
-    () => ({ colorSettings, filterId: selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments }),
-    [colorSettings, selectedFilter.id, intensity, filmId, filmAmount, lutAmount, segments]
+    () => ({ colorSettings, filterId: selectedFilter.id, intensity, filmId, filmAmount, lut, lutAmount, matchData, matchLuts, matchAmount, segments }),
+    [colorSettings, selectedFilter.id, intensity, filmId, filmAmount, lut, lutAmount, matchData, matchLuts, matchAmount, segments]
   );
   useEffect(() => {
     const timer = setTimeout(() => {
       const h = historyRef.current;
-      const key = JSON.stringify(snapshot);
-      if (h.index >= 0 && JSON.stringify(h.stack[h.index]) === key) return;
-      const parsed = JSON.parse(key);
+      const sameSnapshot = (a, b) => Boolean(a && b) &&
+        a.lut === b.lut && a.matchData === b.matchData && a.matchLuts === b.matchLuts &&
+        JSON.stringify({ ...a, lut: null, matchData: null, matchLuts: null }) ===
+        JSON.stringify({ ...b, lut: null, matchData: null, matchLuts: null });
       const last = h.stack[h.index];
-      // Création initiale des sections : on remplace l'entrée vide au lieu d'ajouter une étape à annuler.
-      if (last && (!last.segments || last.segments.length === 0) && parsed.segments.length > 0 &&
-          JSON.stringify({ ...last, segments: [] }) === JSON.stringify({ ...parsed, segments: [] })) {
-        h.stack[h.index] = parsed;
+      if (sameSnapshot(last, snapshot)) return;
+      // La création initiale des sections ne doit pas ajouter une étape d'annulation.
+      if (last && (!last.segments || last.segments.length === 0) && snapshot.segments.length > 0 &&
+          sameSnapshot({ ...last, segments: [] }, { ...snapshot, segments: [] })) {
+        h.stack[h.index] = snapshot;
         return;
       }
       h.stack = h.stack.slice(0, h.index + 1);
-      h.stack.push(parsed);
+      h.stack.push(snapshot);
       if (h.stack.length > 60) h.stack.shift();
       h.index = h.stack.length - 1;
       setHistoryTick((t) => t + 1);
@@ -1076,8 +1379,12 @@ const Filtre = ({
     setIntensity(snap.intensity);
     setFilmId(snap.filmId);
     setFilmAmount(snap.filmAmount);
+    setLut(snap.lut || null);
     setLutAmount(snap.lutAmount);
-    if (Array.isArray(snap.segments) && snap.segments.length) setSegments(snap.segments);
+    setMatchData(snap.matchData || null);
+    setMatchLuts(snap.matchLuts || null);
+    setMatchAmount(Number.isFinite(snap.matchAmount) ? snap.matchAmount : 80);
+    if (Array.isArray(snap.segments)) setSegments(snap.segments);
   };
   const undo = () => {
     const h = historyRef.current;
@@ -1102,7 +1409,166 @@ const Filtre = ({
   useEffect(() => () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
+    if (upscalerRef.current) upscalerRef.current.dispose();
+    if (aiEnhancerRef.current) aiEnhancerRef.current.dispose();
+    if (aiEnhancerLoadingRef.current) {
+      aiEnhancerLoadingRef.current.then((engine) => engine?.dispose?.()).catch(() => {});
+    }
   }, []);
+
+  useEffect(() => {
+    try { window.localStorage.setItem('ovx-filtre-ai-v1', JSON.stringify({ on: aiOn, tile: aiTile })); } catch { /* ignoré */ }
+  }, [aiOn, aiTile]);
+
+  // Le modèle n'est chargé qu'au premier usage ; recréé si la taille des tuiles change.
+  const getUpscaler = () => {
+    if (!browserAi) return null;
+    const current = upscalerRef.current;
+    if (current && current.tileSize === aiTile) return current;
+    if (current) current.dispose();
+    upscalerRef.current = createUpscaler({ ort: aiUpscale.ort, modelUrl: aiUpscale.modelUrl, wasmPaths: aiUpscale.wasmPaths || null, tileSize: aiTile, overlap: 16 });
+    return upscalerRef.current;
+  };
+
+  // Restauration neuronale x1 autonome : charge ONNX Runtime à la demande.
+  // Si le parent fournit déjà un runtime, on le réutilise ; sinon on importe
+  // d'abord le build WebGPU, puis le build WASM standard en solution de repli.
+  const getAiEnhancer = async () => {
+    if (aiEnhancerRef.current) return aiEnhancerRef.current;
+    if (aiEnhancerLoadingRef.current) return aiEnhancerLoadingRef.current;
+    const loading = (async () => {
+      const runtime = await loadOnnxRuntime(aiUpscale?.ort);
+      const enhancer = createAiEnhancer({
+        ort: runtime,
+        modelUrl: aiUpscale?.restorationModelUrl || undefined,
+        wasmPaths: aiUpscale?.wasmPaths || null,
+        numThreads: 1
+      });
+      aiEnhancerRef.current = enhancer;
+      return enhancer;
+    })();
+    aiEnhancerLoadingRef.current = loading;
+    try {
+      return await loading;
+    } finally {
+      if (aiEnhancerLoadingRef.current === loading) aiEnhancerLoadingRef.current = null;
+    }
+  };
+
+  const handleAiRestoreFrame = async () => {
+    if (isExporting || isSaving) return;
+    const src = mediaRef.current;
+    if (!aiEnhanceAvailable) {
+      setExportError('Restauration IA non configurée : le parent doit fournir aiUpscale.ort (onnxruntime-web).');
+      return;
+    }
+    if (!src) { setExportError('Ouvrez un média dans l’aperçu avant la restauration.'); return; }
+    setIsExporting(true);
+    setExportError('');
+    setExportProgress(0);
+    cancelExportRef.current = false;
+    setSaveMessage('Restauration neuronale x1 en cours… ONNX Runtime et le modèle SwinIR sont chargés au premier usage.');
+    try {
+      const srcW = isVideo ? src.videoWidth : src.naturalWidth;
+      const srcH = isVideo ? src.videoHeight : src.naturalHeight;
+      if (!srcW || !srcH) throw new Error('Le média n’est pas encore chargé.');
+
+      const enhancer = await getAiEnhancer();
+      const restored = await enhancer.enhance(src, {
+        onProgress: setExportProgress,
+        shouldStop: () => cancelExportRef.current
+      });
+      if (!restored || restored.width !== srcW || restored.height !== srcH) {
+        throw new Error('Le modèle de restauration doit conserver exactement la résolution d’origine.');
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = srcW;
+      canvas.height = srcH;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) throw new Error('Canvas non disponible.');
+      ctx.drawImage(restored, 0, 0, srcW, srcH);
+
+      // Les réglages Filtre sont appliqués après la restauration neuronale.
+      const plan = commitPlanRef.current;
+      if (plan && !plan.identity) {
+        const frame = ctx.getImageData(0, 0, srcW, srcH);
+        processImageData(frame, plan, 0);
+        ctx.putImageData(frame, 0, 0);
+      }
+
+      const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Création PNG impossible.'))), 'image/png'));
+      const time = isVideo ? src.currentTime : 0;
+      const fileName = `restauration-swinir-${srcW}x${srcH}-${fmtTime(time).replace(':', 'm')}s.png`;
+      const url = URL.createObjectURL(blob);
+      setPendingUrl(url);
+      const result = { blob, url, mimeType: 'image/png', fileName, type: 'IMAGE', colorGradingBakedIn: true };
+
+      if (typeof onApply === 'function') {
+        const stored = await persistResult(result, { meta: { filterName: selectedFilter.name, originalUrl: activeMedia, aiModel: 'SwinIR-Denoising-Color25-x1' } });
+        await onApply({
+          ...result,
+          ...stored,
+          ...(typeof File === 'function' ? { file: new File([blob], fileName, { type: 'image/png' }) } : {}),
+          size: blob.size,
+          originalUrl: activeMedia,
+          filterName: selectedFilter.name,
+          aiEnhanced: true,
+          aiRestoration: true
+        });
+        pendingUrlRef.current = null;
+        setSaveMessage(`Restauration SwinIR x1 terminée : ${srcW}×${srcH}. Image envoyée à votre historique.`);
+      } else {
+        downloadBlob(blob, fileName);
+        setSaveMessage(`Restauration SwinIR x1 terminée : ${srcW}×${srcH}. Image téléchargée.`);
+      }
+    } catch (error) {
+      console.error('Restauration neuronale x1 :', error);
+      setSaveMessage('');
+      setExportError(error?.message || 'Restauration IA impossible. Vérifiez le modèle ONNX et son accès réseau.');
+    } finally {
+      setIsExporting(false);
+      setExportProgress(0);
+    }
+  };
+
+  // Agrandit une image par IA : PC (moteur local) si disponible, sinon navigateur. Retourne un canvas/bitmap, ou null.
+  const aiUpscaleSource = async (source, { scale = 4, onProgress, shouldStop, force = false } = {}) => {
+    const route = aiRoute('image', force);
+    if (!route) return null;
+    if (route === 'local') {
+      try {
+        const w = source.naturalWidth || source.videoWidth || source.width;
+        const h = source.naturalHeight || source.videoHeight || source.height;
+        const tmp = document.createElement('canvas');
+        tmp.width = w;
+        tmp.height = h;
+        tmp.getContext('2d').drawImage(source, 0, 0, w, h);
+        const png = await new Promise((resolve, reject) => tmp.toBlob((b) => (b ? resolve(b) : reject(new Error('Image illisible.'))), 'image/png'));
+        const out = await engine.upscaleImage(png, { scale, onProgress, shouldStop });
+        return await createImageBitmap(out);
+      } catch (error) {
+        if (/annulé/i.test(error?.message || '') || engineMode === 'local' || !browserAi) throw error;
+        console.warn('Moteur local indisponible, essai dans le navigateur :', error);
+        setSaveMessage('Moteur local indisponible : agrandissement IA dans le navigateur.');
+      }
+    }
+    return getUpscaler().upscale(source, { onProgress, shouldStop });
+  };
+
+  const testAiModel = async () => {
+    setAiTesting(true);
+    setAiStatus('Chargement du modèle…');
+    try {
+      const r = await getUpscaler().selfTest();
+      setAiStatus(`✅ Modèle opérationnel : agrandissement ×${r.scale} en ${r.ms} ms (${r.webgpu ? 'WebGPU' : 'WASM : lent, préférez des tuiles de 128'}).`);
+    } catch (error) {
+      console.error('Test du modèle IA :', error);
+      setAiStatus(`❌ ${error?.message || 'Le modèle ne se charge pas (vérifiez modelUrl et CORS).'}`);
+    } finally {
+      setAiTesting(false);
+    }
+  };
 
   segmentsRef.current = segments;
 
@@ -1133,6 +1599,7 @@ const Filtre = ({
     if (!isVideo || !(duration > 0) || activeTool !== 'filters') return undefined;
     const key = `${activeMedia}:${duration.toFixed(2)}`;
     if (thumbsKeyRef.current === key) return undefined;
+    setThumbs([]); // ne pas montrer les vignettes de l'ancienne vidéo
     let stop = false;
     generateThumbnails(activeMedia, duration, { count: 24, height: 58, shouldStop: () => stop }).then((list) => {
       if (stop) return;
@@ -1153,11 +1620,15 @@ const Filtre = ({
 
     const pool = poolRef.current;
     const plan = planRef.current;
-    const useWorkers = Boolean(pool && !pool.failed && plan && !plan.identity);
+    const renderPlanVersion = previewPlanVersionRef.current;
+    // Pendant le glissement, le petit aperçu est calculé immédiatement sur le thread UI.
+    // Cela évite la file d'attente des workers et la latence de propagation des plans.
+    const useWorkers = Boolean(!LIVE.active && pool && !pool.failed && plan && !plan.identity);
     // Les workers travaillent en arrière-plan : on saute les images si ils sont occupés.
     if (useWorkers && previewBusyRef.current) { previewDirtyRef.current = true; return; }
 
-    const maxSide = PREVIEW_SIDES[previewQualityRef.current] || PREVIEW_SIDES.standard;
+    let maxSide = LIVE.active ? 480 : PREVIEW_SIDES[previewQualityRef.current] || PREVIEW_SIDES.standard;
+    if (!LIVE.active && viewRef.current.z > 1) maxSide = Math.min(2400, Math.round(maxSide * Math.min(viewRef.current.z, 2.5))); // zoom : plus de détails
     const scale = Math.min(1, maxSide / Math.max(sw, sh));
     const cw = Math.max(2, Math.round(sw * scale));
     const ch = Math.max(2, Math.round(sh * scale));
@@ -1181,8 +1652,12 @@ const Filtre = ({
 
     const finish = () => {
       lastMsRef.current = performance.now() - t0;
-      drawScope(histRef.current, frame, scopeModeRef.current);
-      if (showClippingRef.current) applyClippingOverlay(frame.data);
+      // Les scopes et le clipping sont coûteux et ne sont pas nécessaires
+      // pendant le déplacement : ils sont recalculés à la fin du geste.
+      if (!LIVE.active) {
+        drawScope(histRef.current, frame, scopeModeRef.current);
+        if (showClippingRef.current) applyClippingOverlay(frame.data);
+      }
       ctx.putImageData(frame, 0, 0);
       setPreviewError((prev) => (prev ? '' : prev));
     };
@@ -1198,16 +1673,21 @@ const Filtre = ({
       .processFrame(frame, seed)
       .catch((error) => {
         console.warn('Workers indisponibles, retour au thread principal :', error);
-        poolRef.current = null;
+        pool.terminate(error);
+        if (poolRef.current === pool) poolRef.current = null;
         setPoolStatus('fallback');
-        processImageData(frame, plan, seed); // `frame` n'a pas été modifié par le pool
+        // Ne pas dépenser du temps à traiter un plan déjà remplacé.
+        if (renderPlanVersion === previewPlanVersionRef.current) {
+          processImageData(frame, plan, seed); // `frame` n'a pas été modifié par le pool
+        }
       })
       .then(() => {
-        if (canvasRef.current === canvas) finish();
+        // Un ancien calcul ne doit jamais remplacer l'aperçu du dernier curseur.
+        if (canvasRef.current === canvas && renderPlanVersion === previewPlanVersionRef.current) finish();
       })
       .finally(() => {
         previewBusyRef.current = false;
-        if (previewDirtyRef.current) {
+        if (previewDirtyRef.current || renderPlanVersion !== previewPlanVersionRef.current) {
           previewDirtyRef.current = false;
           scheduleDrawRef.current?.();
         }
@@ -1224,6 +1704,25 @@ const Filtre = ({
   }, [drawGradedPreview]);
   scheduleDrawRef.current = scheduleDraw;
 
+  // Fin d'un glissement de curseur : on redessine en pleine qualité.
+  useEffect(() => {
+    LIVE.onEnd = () => {
+      const committedColor = draftColorRef.current;
+      if (committedColor) {
+        // Une seule remontée vers App.jsx, au relâchement du curseur.
+        draftColorRef.current = null;
+        latestRawColorRef.current = committedColor;
+        setColorRaw(committedColor);
+        setExportError('');
+        setSaveMessage('');
+      }
+      if (scheduleDrawRef.current) scheduleDrawRef.current();
+    };
+    return () => { LIVE.onEnd = null; };
+  }, [setColorRaw]);
+  const zoomBucket = Math.ceil(view.z);
+  useEffect(() => { scheduleDraw(); }, [zoomBucket, scheduleDraw]);
+
   // Pool de workers de l'aperçu (recréé quand l'option ou le nombre de threads change).
   useEffect(() => {
     previewBusyRef.current = false;
@@ -1235,7 +1734,7 @@ const Filtre = ({
     }
     let pool = null;
     try {
-      pool = new GradePool(threads);
+      pool = new GradePool(threads, { onFail: () => { poolRef.current = null; setPoolStatus('fallback'); } });
       if (planRef.current) pool.setPlan(planRef.current);
       poolRef.current = pool;
       setPoolStatus('ready');
@@ -1268,6 +1767,8 @@ const Filtre = ({
   }, []);
 
   useEffect(() => {
+    // Publier le nouveau plan avant de demander le prochain rendu.
+    previewPlanVersionRef.current += 1;
     planRef.current = previewPlan;
     poolRef.current?.setPlan(previewPlan);
     commitPlanRef.current = plan;
@@ -1377,6 +1878,9 @@ const Filtre = ({
     setFilmAmount(100);
     setLut(null);
     setLutAmount(100);
+    setMatchData(null);
+    setMatchLuts(null);
+    setMatchAmount(80);
     setHoverFilter(null);
     setColorRaw({ ...DEFAULT_COLOR_SETTINGS });
     resetEdit();
@@ -1428,6 +1932,35 @@ const Filtre = ({
     } catch (error) {
       console.error('Correction automatique impossible :', error);
       setExportError(error?.message || 'La correction automatique a échoué. Vérifiez que le média est accessible.');
+    }
+  };
+
+  // Extrait centré à la résolution d'origine (réduire l'image cacherait le bruit).
+  const grabCrop = (size) => {
+    const src = mediaRef.current;
+    if (!src) throw new Error('Aucun média disponible.');
+    const sw = isVideo ? src.videoWidth : src.naturalWidth;
+    const sh = isVideo ? src.videoHeight : src.naturalHeight;
+    if (!sw || !sh) throw new Error('Le média n’est pas encore chargé.');
+    const cw = Math.min(size, sw), ch = Math.min(size, sh);
+    const canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('Canvas non disponible.');
+    ctx.drawImage(src, Math.floor((sw - cw) / 2), Math.floor((sh - ch) / 2), cw, ch, 0, 0, cw, ch);
+    return ctx.getImageData(0, 0, cw, ch);
+  };
+
+  const handleAutoEnhance = () => {
+    try {
+      const frame = grabCrop(512);
+      const r = analyzeAutoEnhance(frame.data, frame.width, frame.height);
+      if (!r) throw new Error('Image trop petite pour être analysée.');
+      updateColor({ denoise: r.denoise, sharpness: r.sharpness, ...(isVideo ? { tDenoise: Math.round(r.denoise * 0.8) } : {}) });
+      setSaveMessage(`Amélioration auto : bruit estimé ${r.noise}, réduction du bruit ${r.denoise} %, netteté ${r.sharpness} %. Ajustez avec les curseurs.`);
+    } catch (error) {
+      console.error('Amélioration automatique impossible :', error);
+      setExportError(error?.message || 'Amélioration automatique impossible (le média doit autoriser CORS).');
     }
   };
 
@@ -1497,7 +2030,7 @@ const Filtre = ({
     seekTo(clamp(t, 0, Math.max(0, duration - 0.001)));
   };
 
-  const resetEdit = () => { setSegments(createSegments(duration)); setSelectedSegId(null); seekTo(0); };
+  const resetEdit = () => { setSegments(duration > 0 ? createSegments(duration) : []); setSelectedSegId(null); if (isVideo) seekTo(0); };
 
   const runSceneDetect = async () => {
     if (!isVideo || !(duration > 0)) return;
@@ -1519,8 +2052,7 @@ const Filtre = ({
     }
   };
 
-  // ---------- Capture d'écran (téléchargement PNG) ----------
-// ---------- Capture d'écran vers le moteur IA ----------
+  // ---------- Capture d'écran (envoyée au parent via onApply, sinon téléchargée en PNG) ----------
   const captureFrame = async () => {
     const src = mediaRef.current;
     if (!src) {
@@ -1542,6 +2074,7 @@ const Filtre = ({
       canvas.width = w; 
       canvas.height = h;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) throw new Error('Canvas non disponible.');
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(src, 0, 0, w, h);
       
@@ -1587,6 +2120,79 @@ const Filtre = ({
     }
   };
 
+  // ---------- Capture améliorée par IA : image affichée → super-résolution (tuiles) → vos réglages → PNG ----------
+  const handleAiEnhanceFrame = async () => {
+    if (isExporting || isSaving) return;
+    const src = mediaRef.current;
+    if (!aiAvailable) { setExportError('Agrandissement IA non configuré : lancez le moteur local sur votre PC ou fournissez la propriété aiUpscale ({ ort, modelUrl }).'); return; }
+    if (!src) { setExportError('Ouvrez un onglet avec l’aperçu pour améliorer une image.'); return; }
+    setIsExporting(true);
+    setExportError('');
+    setExportProgress(0);
+    cancelExportRef.current = false; // sinon un ancien « Annuler » stopperait aussitôt
+    setSaveMessage('Agrandissement par IA en cours… (le premier passage charge le modèle)');
+    try {
+      const srcW = isVideo ? src.videoWidth : src.naturalWidth;
+      const srcH = isVideo ? src.videoHeight : src.naturalHeight;
+      if (!srcW || !srcH) throw new Error('Le média n’est pas encore chargé.');
+
+      // 1. super-résolution sur l'image brute (tuiles avec recouvrement)
+      const enhanced = await aiUpscaleSource(src, { scale: 4, force: true, onProgress: setExportProgress, shouldStop: () => cancelExportRef.current });
+      if (!enhanced) throw new Error('Aucun moteur d’agrandissement IA disponible (moteur local ou modèle navigateur).');
+
+      // 2. on ramène le résultat à une taille raisonnable pour la suite (mémoire des canvas)
+      let w = enhanced.width;
+      let h = enhanced.height;
+      if (w * h > MAX_IMAGE_PIXELS) { const k = Math.sqrt(MAX_IMAGE_PIXELS / (w * h)); w = Math.floor(w * k); h = Math.floor(h * k); }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) throw new Error('Canvas non disponible.');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(enhanced, 0, 0, w, h);
+
+      // 3. vos réglages (étalonnage, netteté…) appliqués sur l'image agrandie
+      const plan = commitPlanRef.current;
+      if (plan && !plan.identity) {
+        const frame = ctx.getImageData(0, 0, w, h);
+        processImageData(frame, plan, 0);
+        ctx.putImageData(frame, 0, 0);
+      }
+
+      const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Création de l’image impossible.'))), 'image/png'));
+      const time = isVideo ? src.currentTime : 0;
+      const url = URL.createObjectURL(blob);
+      setPendingUrl(url);
+      const result = { blob, url, mimeType: 'image/png', fileName: `ia-${w}x${h}-${fmtTime(time).replace(':', 'm')}s.png`, type: 'IMAGE', colorGradingBakedIn: true };
+
+      if (typeof onApply === 'function') {
+        const stored = await persistResult(result, { meta: { filterName: selectedFilter.name, originalUrl: activeMedia } });
+        await onApply({
+          ...result,
+          ...stored,
+          ...(typeof File === 'function' ? { file: new File([blob], result.fileName, { type: 'image/png' }) } : {}),
+          size: blob.size,
+          originalUrl: activeMedia,
+          filterName: selectedFilter.name,
+          aiEnhanced: true
+        });
+        pendingUrlRef.current = null; // l'URL appartient maintenant au parent
+        setSaveMessage(`✅ Image améliorée par IA (${srcW}×${srcH} → ${w}×${h}) envoyée à votre historique.`);
+      } else {
+        downloadBlob(blob, result.fileName);
+        setSaveMessage(`✅ Image améliorée par IA (${srcW}×${srcH} → ${w}×${h}) téléchargée.`);
+      }
+    } catch (error) {
+      console.error('Amélioration IA :', error);
+      setSaveMessage('');
+      setExportError(error?.message || 'Amélioration IA impossible (vérifiez modelUrl, CORS et WebGPU).');
+    } finally {
+      setIsExporting(false);
+      setExportProgress(0);
+    }
+  };
+
   // ---------- Détection automatique (scène, couleur de référence) ----------
   const analyzeScene = () => {
     try {
@@ -1615,15 +2221,24 @@ const Filtre = ({
     try {
       if (!file) return;
       const url = URL.createObjectURL(file);
-      const img = new Image();
-      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error('Image illisible.')); img.src = url; });
-      const s = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
-      const cv = document.createElement('canvas');
-      cv.width = Math.max(1, Math.round(img.naturalWidth * s)); cv.height = Math.max(1, Math.round(img.naturalHeight * s));
-      const cx = cv.getContext('2d', { willReadFrequently: true });
-      cx.drawImage(img, 0, 0, cv.width, cv.height);
-      URL.revokeObjectURL(url);
-      computeMatch(channelStats(cx.getImageData(0, 0, cv.width, cv.height).data), file.name);
+      try {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error('Image illisible.'));
+          img.src = url;
+        });
+        const s = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.naturalWidth * s));
+        cv.height = Math.max(1, Math.round(img.naturalHeight * s));
+        const cx = cv.getContext('2d', { willReadFrequently: true });
+        if (!cx) throw new Error('Canvas non disponible pour analyser l’image.');
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        computeMatch(channelStats(cx.getImageData(0, 0, cv.width, cv.height).data), file.name);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
       setExportError('');
       setSaveMessage(`Couleurs de « ${file.name} » copiées sur votre média. Réglez la force avec le curseur.`);
     } catch (error) {
@@ -1733,13 +2348,54 @@ const Filtre = ({
   };
 
   // ---------- Pointeur : comparaison + pipette ----------
+  const clampView = (v, rect) => {
+    const z = clamp(v.z, 1, 8);
+    return { z, x: clamp(v.x, -(rect.width * (z - 1)), 0), y: clamp(v.y, -(rect.height * (z - 1)), 0) };
+  };
+  // Zoom centré sur le point (cx, cy) de la zone d'aperçu (en pixels).
+  const zoomAt = (factor, cx, cy) => {
+    const box = compareBoxRef.current;
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
+    setView((prev) => {
+      const z2 = clamp(prev.z * factor, 1, 8);
+      if (z2 === prev.z) return prev;
+      const u = (cx - prev.x) / prev.z;
+      const w = (cy - prev.y) / prev.z;
+      return clampView({ z: z2, x: cx - u * z2, y: cy - w * z2 }, rect);
+    });
+  };
+  const zoomCenter = (factor) => {
+    const box = compareBoxRef.current;
+    if (!box) return;
+    const r = box.getBoundingClientRect();
+    zoomAt(factor, r.width / 2, r.height / 2);
+  };
+  const resetView = () => setView({ z: 1, x: 0, y: 0 });
+
   const updateCompare = (clientX) => {
     const box = compareBoxRef.current;
     if (!box) return;
     const rect = box.getBoundingClientRect();
     if (!rect.width) return;
-    setComparePosition(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
+    const v = viewRef.current;
+    setComparePosition(clamp(((clientX - rect.left - v.x) / v.z / rect.width) * 100, 0, 100));
   };
+
+  // Ctrl/⌘ + molette (et pincement du pavé tactile) : zoom autour du curseur.
+  useEffect(() => {
+    const el = compareBoxRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      zoomAt(e.deltaY < 0 ? 1.18 : 1 / 1.18, e.clientX - rect.left, e.clientY - rect.top);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, isInspectorOpen, isMobile]);
 
   const pickColorAt = (e) => {
     const src = mediaRef.current;
@@ -1748,11 +2404,13 @@ const Filtre = ({
     const sh = isVideo ? src.videoHeight : src.naturalHeight;
     if (!sw || !sh) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    // Le média est affiché en « contain » : on retire les bandes noires.
+    // Le média est affiché en « contain » : on retire les bandes noires. Le zoom est annulé pour retrouver le point visé.
     const scale = Math.min(rect.width / sw, rect.height / sh);
     const dw = sw * scale, dh = sh * scale;
-    const u = (e.clientX - rect.left - (rect.width - dw) / 2) / dw;
-    const v = (e.clientY - rect.top - (rect.height - dh) / 2) / dh;
+    const px = (e.clientX - rect.left - viewRef.current.x) / viewRef.current.z;
+    const py = (e.clientY - rect.top - viewRef.current.y) / viewRef.current.z;
+    const u = (px - (rect.width - dw) / 2) / dw;
+    const v = (py - (rect.height - dh) / 2) / dh;
     if (u < 0 || u > 1 || v < 0 || v > 1) return;
     try {
       const c = document.createElement('canvas');
@@ -1780,7 +2438,7 @@ const Filtre = ({
         let best = HSL_BANDS[0];
         HSL_BANDS.forEach((band) => { if (hueDistance(hue, band.center) < hueDistance(hue, best.center)) best = band; });
         setActiveBand(best.id);
-        setAdvancedTab('hsl');
+        setAdvancedTab('hsl'); setColorPanel('hsl');
       }
       setIsEyedropperActive(false);
     } catch (error) {
@@ -1792,12 +2450,60 @@ const Filtre = ({
 
   const onCompareDown = (e) => {
     if (isEyedropperActive) { pickColorAt(e); return; }
-    isDraggingCompare.current = true;
+    const box = compareBoxRef.current;
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
     e.currentTarget.setPointerCapture?.(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2) { // pincement à deux doigts
+      const [a, b] = [...pointersRef.current.values()];
+      pinchRef.current = { dist: Math.hypot(a.x - b.x, a.y - b.y) };
+      isDraggingCompare.current = false;
+      panRef.current = null;
+      return;
+    }
+    const v = viewRef.current;
+    const handleX = rect.left + v.x + (comparePosition / 100) * rect.width * v.z;
+    const nearHandle = Math.abs(e.clientX - handleX) < 22;
+    if (v.z > 1 && !nearHandle) { // zoomé : on déplace l'image, la poignée reste utilisable
+      panRef.current = { sx: e.clientX, sy: e.clientY, ox: v.x, oy: v.y };
+      return;
+    }
+    isDraggingCompare.current = true;
     updateCompare(e.clientX);
   };
-  const onCompareMove = (e) => { if (isDraggingCompare.current) updateCompare(e.clientX); };
-  const onCompareUp = () => { isDraggingCompare.current = false; };
+  const onCompareMove = (e) => {
+    if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinchRef.current && pointersRef.current.size >= 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchRef.current.dist > 0 && d > 0) {
+        const rect = compareBoxRef.current.getBoundingClientRect();
+        zoomAt(d / pinchRef.current.dist, (a.x + b.x) / 2 - rect.left, (a.y + b.y) / 2 - rect.top);
+      }
+      pinchRef.current.dist = d;
+      return;
+    }
+    if (panRef.current) {
+      const p = panRef.current;
+      const rect = compareBoxRef.current.getBoundingClientRect();
+      setView((prev) => clampView({ ...prev, x: p.ox + (e.clientX - p.sx), y: p.oy + (e.clientY - p.sy) }, rect));
+      return;
+    }
+    if (isDraggingCompare.current) updateCompare(e.clientX);
+  };
+  const onCompareUp = (e) => {
+    if (e && e.pointerId !== undefined) pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    panRef.current = null;
+    isDraggingCompare.current = false;
+  };
+  const onCompareDoubleClick = (e) => {
+    if (isEyedropperActive) return;
+    const rect = compareBoxRef.current.getBoundingClientRect();
+    if (viewRef.current.z > 1) resetView();
+    else zoomAt(2.5, e.clientX - rect.left, e.clientY - rect.top);
+  };
 
   // ---------- Export ----------
   const setPendingUrl = (url) => {
@@ -1806,10 +2512,18 @@ const Filtre = ({
   };
 
   // Crée un pool de workers dédié à l'export (arrêté à la fin), ou null.
-  const createExportPool = (exportPlan) => {
+  const createExportPool = (exportPlan, width = 0, height = 0) => {
     if (!perfEnabled || !workersSupported() || exportPlan.identity) return null;
     try {
-      const pool = new GradePool(Math.max(1, threads));
+      // Chaque worker peut conserver plusieurs buffers de pixels en mémoire.
+      // On plafonne donc l'export, surtout en 4K, au lieu d'ouvrir jusqu'à 16 workers.
+      const pixels = Math.max(0, Number(width) * Number(height));
+      const memoryGb = typeof navigator !== 'undefined' ? (Number(navigator.deviceMemory) || 4) : 4;
+      const memoryCap = memoryGb <= 2 ? 1 : memoryGb <= 4 ? 2 : memoryGb <= 8 ? 3 : 4;
+      const pixelCap = pixels >= 12_000_000 ? 1 : pixels >= 8_000_000 ? 2 : pixels >= 4_000_000 ? 3 : 4;
+      const coreCap = Math.max(1, detectCores() - 1);
+      const workerCount = Math.max(1, Math.min(threads, coreCap, memoryCap, pixelCap, 4));
+      const pool = new GradePool(workerCount);
       pool.setPlan(exportPlan);
       return pool;
     } catch (error) {
@@ -1830,13 +2544,13 @@ const exportImage = async () => {
       const src = mediaRef.current;
       if (!src) throw new Error('Aucun média disponible.');
 
-      let width = src.naturalWidth || 1920;
-      let height = src.naturalHeight || 1080;
-      if (!width || !height) throw new Error('L’image n’est pas encore chargée.');
+      if (!src.complete || !src.naturalWidth || !src.naturalHeight) throw new Error('L’image n’est pas encore chargée : patientez un instant puis réessayez.');
+      let width = src.naturalWidth;
+      let height = src.naturalHeight;
 
       if (exportResolution !== 'original') {
         const targetH = Number(exportResolution);
-        if (height > targetH) { width = Math.round((width * targetH) / height); height = targetH; }
+        if (height !== targetH) { width = Math.round((width * targetH) / height); height = targetH; } // réduit ou agrandit
       }
       if (width * height > MAX_IMAGE_PIXELS) {
         const k = Math.sqrt(MAX_IMAGE_PIXELS / (width * height));
@@ -1858,17 +2572,33 @@ const exportImage = async () => {
       }
 
       // 1. On dessine l'image source aux dimensions cibles
-      ctx.drawImage(src, 0, 0, width, height);
+      let drawSource = src;
+      if (aiOn && aiAvailable && width > src.naturalWidth * 1.05) { // PC ou navigateur selon le mode
+        try {
+          cancelExportRef.current = false;
+          setSaveMessage('Agrandissement par IA en cours…');
+          const up = await aiUpscaleSource(src, { scale: pickScale(width / src.naturalWidth), onProgress: setExportProgress, shouldStop: () => cancelExportRef.current });
+          if (up) drawSource = up;
+          setSaveMessage('');
+        } catch (aiError) {
+          if (/annulé/i.test(aiError?.message || '')) throw aiError;
+          console.warn('Agrandissement IA indisponible, agrandissement standard utilisé :', aiError);
+          setSaveMessage(`Agrandissement IA indisponible (${aiError?.message || 'erreur'}) : agrandissement standard utilisé.`);
+          drawSource = src;
+        }
+      }
+      ctx.drawImage(drawSource, 0, 0, width, height);
 
       // 2. On applique physiquement les modifications de filtres et de couleurs (le "baking")
       if (exportPlan && !exportPlan.identity) {
         const frame = ctx.getImageData(0, 0, width, height);
-        pool = createExportPool(exportPlan);
+        pool = createExportPool(exportPlan, width, height);
         if (pool) {
           try {
             await pool.processFrame(frame, 0);
           } catch (poolError) {
             console.warn('Workers en échec, traitement sur le thread principal :', poolError);
+            pool.terminate(poolError);
             processImageData(frame, exportPlan, 0);
           }
         } else {
@@ -1900,7 +2630,11 @@ const exportImage = async () => {
       };
     } catch (error) {
       console.error('Erreur export image :', error);
-      setExportError(error?.message || 'Impossible de générer l’image filtrée.');
+      setExportError(
+        error && error.name === 'SecurityError'
+          ? 'Export impossible : l’image provient d’un serveur qui n’autorise pas CORS (en-tête Access-Control-Allow-Origin manquant).'
+          : error?.message || 'Impossible de générer l’image filtrée.'
+      );
       throw error;
     } finally {
       pool?.terminate();
@@ -1925,7 +2659,32 @@ const exportImage = async () => {
     try {
       const response = await fetch(activeMedia);
       if (!response.ok) throw new Error(`Impossible de récupérer la vidéo source (${response.status}).`);
-      const sourceBlob = await response.blob();
+      let sourceBlob = await response.blob();
+      let progressBase = 0; // part de la barre de progression déjà occupée par l'agrandissement sur le PC
+
+      if (aiRoute('video') === 'local') {
+        try {
+          const probe = new Input({ formats: ALL_FORMATS, source: new BlobSource(sourceBlob) });
+          const probeTrack = await probe.getPrimaryVideoTrack();
+          const h0 = probeTrack ? await probeTrack.getDisplayHeight() : 0;
+          const t0 = exportResolution === 'original' ? h0 : Number(exportResolution);
+          if (h0 && t0 / h0 > 1.05) {
+            setSaveMessage('Agrandissement IA sur votre PC en cours… (laissez le moteur local ouvert)');
+            sourceBlob = await engine.upscaleVideo(sourceBlob, {
+              scale: pickScale(t0 / h0),
+              onProgress: (p) => setExportProgress(p * 0.6),
+              shouldStop: () => cancelExportRef.current
+            });
+            progressBase = 0.6;
+            setSaveMessage('');
+          }
+        } catch (localError) {
+          if (/annulé/i.test(localError?.message || '')) throw localError;
+          console.warn('Moteur local : export sans agrandissement IA :', localError);
+          setSaveMessage(`Moteur local indisponible (${localError?.message || 'erreur'}) : export sans agrandissement IA.`);
+        }
+      }
+
       const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(sourceBlob) });
       const inputVideoTrack = await input.getPrimaryVideoTrack();
       if (!inputVideoTrack) throw new Error('Aucune piste vidéo trouvée.');
@@ -1945,10 +2704,14 @@ const exportImage = async () => {
       // Dimensions paires (exigence H.264), éventuellement réduites (jamais agrandies).
       const srcW = await inputVideoTrack.getDisplayWidth();
       const srcH = await inputVideoTrack.getDisplayHeight();
-      const targetH = exportResolution === 'original' ? srcH : Math.min(srcH, Number(exportResolution));
+      const targetH = exportResolution === 'original' ? srcH : Number(exportResolution); // réduit ou agrandit
       const ratio = targetH / srcH;
       const width = toEven(srcW * ratio);
       const height = toEven(srcH * ratio);
+      // Agrandissement : on décode à la taille d'origine, puis on agrandit une seule fois avec le lissage de haute qualité.
+      let aiVideo = aiRoute('video') === 'browser' && ratio > 1.05 ? getUpscaler() : null; // expérimental : très lent
+      const sinkW = ratio > 1 ? toEven(srcW) : width;
+      const sinkH = ratio > 1 ? toEven(srcH) : height;
 
       // Cadence réelle de la source (repli : 30 i/s).
       let frameRate = 30;
@@ -2021,7 +2784,7 @@ const exportImage = async () => {
 
       await output.start();
 
-      const sink = new CanvasSink(inputVideoTrack, { width, height, fit: 'contain', poolSize: 2, alpha: false });
+      const sink = new CanvasSink(inputVideoTrack, { width: sinkW, height: sinkH, fit: 'contain', poolSize: 2, alpha: false });
 
       const audioPromise = audioSource
         ? (async () => {
@@ -2052,12 +2815,12 @@ const exportImage = async () => {
       audioPromise.catch(() => {}); // évite un « unhandled rejection » si la vidéo échoue avant
 
       // Multi-cœurs : une image par worker, plusieurs images en cours en même temps.
-      pool = createExportPool(exportPlan);
-      const windowSize = pool ? Math.max(2, threads + 1) : 0;
+      pool = createExportPool(exportPlan, width, height);
+      const windowSize = pool ? Math.max(2, pool.size + 1) : 0;
       const inflight = [];
 
       const reportProgress = (timestamp) => {
-        const progress = Math.min(1, timestamp / outDuration);
+        const progress = progressBase + Math.min(1, timestamp / outDuration) * (1 - progressBase);
         setExportProgress(progress);
         const elapsed = (performance.now() - startedAt) / 1000;
         if (progress > 0.03) setExportEta(fmtTime(elapsed / progress - elapsed));
@@ -2069,6 +2832,7 @@ const exportImage = async () => {
           pixels = await item.promise;
         } catch (poolError) {
           console.warn('Worker en échec, image traitée sur le thread principal :', poolError);
+          pool?.terminate(poolError);
           processImageData(item.frame, exportPlan, item.seed);
           pixels = item.frame.data;
         }
@@ -2077,27 +2841,46 @@ const exportImage = async () => {
         reportProgress(item.timestamp);
       };
 
-      const needsPixels = !exportPlan.identity;
+      const needsPixels = !exportPlan.identity || exportPlan.tDenoise > 0;
       let frameIndex = 0;
       for (const range of ranges) {
+        let prevPixels = null; // image précédente (nettoyée) : repart de zéro à chaque section
         for await (const frame of sink.canvases(range.start, range.end)) {
           if (cancelExportRef.current) throw new Error('Export annulé.');
           const outTs = frame.timestamp - range.start + range.outStart;
-          ctx.drawImage(frame.canvas, 0, 0, width, height);
+          // La dernière image d'une section ne doit pas déborder sur la suivante.
+          const frameDur = Math.max(1 / 240, Math.min(frame.duration, range.end - frame.timestamp));
+          let drawSrc = frame.canvas;
+          if (aiVideo) {
+            try {
+              drawSrc = await aiVideo.upscale(frame.canvas, { shouldStop: () => cancelExportRef.current });
+            } catch (aiError) {
+              if (/annulé/i.test(aiError?.message || '')) throw aiError;
+              console.warn('Agrandissement IA arrêté, agrandissement standard pour la suite :', aiError);
+              setSaveMessage(`Agrandissement IA arrêté (${aiError?.message || 'erreur'}) : agrandissement standard pour la suite.`);
+              aiVideo = null;
+              drawSrc = frame.canvas;
+            }
+          }
+          ctx.drawImage(drawSrc, 0, 0, width, height);
 
           if (!needsPixels) {
-            await videoSource.add(outTs, frame.duration);
+            await videoSource.add(outTs, frameDur);
             if (frameIndex % 4 === 0) reportProgress(outTs);
           } else {
             const data = ctx.getImageData(0, 0, width, height);
+            if (exportPlan.tDenoise > 0) {
+              if (prevPixels) temporalDenoise(data.data, prevPixels, exportPlan.tDenoise);
+              prevPixels = new Uint8ClampedArray(data.data);
+            }
             if (exportPlan.identity) {
               ctx.putImageData(data, 0, 0);
-              await videoSource.add(outTs, frame.duration);
+              await videoSource.add(outTs, frameDur);
               if (frameIndex % 4 === 0) reportProgress(outTs);
             } else if (!pool) {
               processImageData(data, exportPlan, frameIndex);
               ctx.putImageData(data, 0, 0);
-              await videoSource.add(outTs, frame.duration);
+              await videoSource.add(outTs, frameDur);
               if (frameIndex % 4 === 0) reportProgress(outTs);
             } else {
               inflight.push({
@@ -2105,7 +2888,7 @@ const exportImage = async () => {
                 frame: data,
                 seed: frameIndex,
                 timestamp: outTs,
-                duration: frame.duration
+                duration: frameDur
               });
               if (inflight.length >= windowSize) await flush(inflight.shift());
             }
@@ -2116,8 +2899,8 @@ const exportImage = async () => {
       while (inflight.length) await flush(inflight.shift());
 
       await audioPromise;
-      videoSource.close();
-      audioSource?.close?.();
+      try { videoSource.close(); } catch { /* déjà fermée */ }
+      try { audioSource?.close?.(); } catch { /* déjà fermée */ }
       await output.finalize();
       finalized = true;
 
@@ -2316,7 +3099,7 @@ const exportImage = async () => {
   // RENDU
   // ============================================================
 
-  const renderPreview = () => {
+  const renderPreview = ({ maxW = '760px', compact = false } = {}) => {
     if (!PREVIEW_TABS.includes(activeTool)) return null;
     const mediaStyle = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', display: 'block' };
 
@@ -2329,14 +3112,16 @@ const exportImage = async () => {
           onPointerMove={onCompareMove}
           onPointerUp={onCompareUp}
           onPointerCancel={onCompareUp}
+          onDoubleClick={onCompareDoubleClick}
           style={{
-            position: 'relative', width: '100%', maxWidth: '760px', margin: '0 auto', aspectRatio: '16 / 9',
+            position: 'relative', width: '100%', maxWidth: maxW, margin: '0 auto', aspectRatio: '16 / 9',
             background: '#000', overflow: 'hidden', borderRadius: '8px',
             border: isEyedropperActive ? '2px solid #00b4d8' : '1px solid rgba(255,255,255,0.1)',
-            cursor: isEyedropperActive ? 'crosshair' : 'ew-resize', userSelect: 'none', touchAction: 'none',
+            cursor: isEyedropperActive ? 'crosshair' : view.z > 1 ? 'grab' : 'ew-resize', userSelect: 'none', touchAction: 'none',
             boxShadow: '0 15px 40px rgba(0,0,0,0.5)'
           }}
         >
+          <div className="ovx-zoom-layer" style={{ position: 'absolute', inset: 0, transformOrigin: '0 0', transform: `translate(${view.x}px, ${view.y}px) scale(${view.z})`, willChange: view.z > 1 ? 'transform' : 'auto' }}>
           {isVideo ? (
             <video ref={mediaRef} src={activeMedia} playsInline loop crossOrigin="anonymous" style={mediaStyle} />
           ) : (
@@ -2350,15 +3135,17 @@ const exportImage = async () => {
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 9, pointerEvents: 'none' }}>
               {(gridMode === 'thirds' ? [33.333, 66.667] : [50]).map((pos) => (
                 <React.Fragment key={pos}>
-                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${pos}%`, width: '1px', background: 'rgba(255,255,255,0.45)' }} />
-                  <div style={{ position: 'absolute', left: 0, right: 0, top: `${pos}%`, height: '1px', background: 'rgba(255,255,255,0.45)' }} />
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${pos}%`, width: `${1 / view.z}px`, background: 'rgba(255,255,255,0.45)' }} />
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: `${pos}%`, height: `${1 / view.z}px`, background: 'rgba(255,255,255,0.45)' }} />
                 </React.Fragment>
               ))}
             </div>
           )}
 
-          <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${comparePosition}%`, width: '2px', background: '#fff', transform: 'translateX(-50%)', zIndex: 10, pointerEvents: 'none' }}>
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '28px', height: '28px', borderRadius: '50%', background: '#00b4d8', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', boxSizing: 'border-box' }}>↔</div>
+          <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${comparePosition}%`, width: `${2 / view.z}px`, background: '#fff', transform: 'translateX(-50%)', zIndex: 10, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: `translate(-50%,-50%) scale(${1 / view.z})`, width: '28px', height: '28px', borderRadius: '50%', background: '#00b4d8', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', boxSizing: 'border-box' }}>↔</div>
+          </div>
+
           </div>
 
           {isEyedropperActive && (
@@ -2373,7 +3160,7 @@ const exportImage = async () => {
           <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '3px 6px', background: 'rgba(0,0,0,0.7)', borderRadius: '3px', fontSize: '9px', zIndex: 12 }}>Original</div>
         </div>
 
-        <div style={{ width: '100%', maxWidth: '760px', margin: '0 auto', minHeight: '46px', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', background: '#141418', border: '1px solid rgba(255,255,255,0.06)', borderTop: 'none', boxSizing: 'border-box', borderRadius: '0 0 8px 8px' }}>
+        <div style={{ width: '100%', maxWidth: maxW, margin: '0 auto', minHeight: '46px', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', background: '#141418', border: '1px solid rgba(255,255,255,0.06)', borderTop: 'none', boxSizing: 'border-box', borderRadius: '0 0 8px 8px' }}>
           {isVideo && (
             <>
               <button type="button" onClick={togglePlay} aria-label={isPlaying ? 'Pause' : 'Lecture'} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: '#00b4d8', color: '#fff', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -2396,7 +3183,7 @@ const exportImage = async () => {
           <span style={{ fontSize: '10px', color: '#00b4d8', whiteSpace: 'nowrap' }}>{activeTool === 'color' ? 'Couleur' : hoverFilter && hoverFilter.id !== selectedFilter.id ? `Aperçu : ${hoverFilter.name}` : `${selectedFilter.name}${selectedFilter.id !== 'none' ? ` ${intensity}%` : ''}`}</span>
         </div>
 
-        <div style={{ width: '100%', maxWidth: '760px', margin: '8px auto 0', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+        <div style={{ width: '100%', maxWidth: maxW, margin: '8px auto 0', display: 'flex', flexWrap: compact ? 'nowrap' : 'wrap', overflowX: compact ? 'auto' : 'visible', paddingBottom: compact ? '4px' : 0, gap: '6px', alignItems: 'center' }}>
           <button type="button" onClick={undo} disabled={!canUndo} aria-label="Annuler" title="Annuler (Ctrl+Z)" style={toolChipStyle(false, !canUndo)}>↶ Annuler</button>
           <button type="button" onClick={redo} disabled={!canRedo} aria-label="Rétablir" title="Rétablir (Ctrl+Y)" style={toolChipStyle(false, !canRedo)}>↷ Rétablir</button>
           <button
@@ -2409,6 +3196,12 @@ const exportImage = async () => {
             style={toolChipStyle(showOriginal, false)}
           >👁 Original</button>
           <button type="button" onClick={captureFrame} title="Capturer l’image affichée (PNG)" style={toolChipStyle(false, false)}>📸 Capturer</button>
+          {aiEnhanceAvailable && (
+            <button type="button" onClick={handleAiRestoreFrame} disabled={isExporting || isSaving} title="Débruitage neuronal SwinIR x1 : runtime chargé à la demande, résolution d’origine conservée" style={toolChipStyle(false, isExporting || isSaving)}>🧠 Restaurer IA x1</button>
+          )}
+          {aiAvailable && (
+            <button type="button" onClick={handleAiEnhanceFrame} disabled={isExporting || isSaving} title="Agrandit l’image affichée par IA (tuiles, modèle ONNX) puis applique vos réglages" style={toolChipStyle(false, isExporting || isSaving)}>✨ Capture IA</button>
+          )}
           {isVideo && (
             <button type="button" aria-pressed={soundOn} onClick={() => setSoundOn((v) => !v)} title="Écouter le son dans l’aperçu" style={toolChipStyle(soundOn, false)}>{soundOn ? '🔊 Son' : '🔇 Son'}</button>
           )}
@@ -2418,6 +3211,11 @@ const exportImage = async () => {
             <option value="thirds">Grille : tiers</option>
             <option value="center">Grille : centre</option>
           </select>
+          <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: compact ? '0' : 'auto', flexShrink: 0 }}>
+            <button type="button" aria-label="Zoom arrière" title="Zoom arrière" onClick={() => zoomCenter(1 / 1.5)} disabled={view.z <= 1} style={toolChipStyle(false, view.z <= 1)}>−</button>
+            <button type="button" aria-label="Ajuster à la fenêtre" title="Ajuster à la fenêtre (double-clic sur l’image : zoom ×2,5). Ctrl + molette ou pincement pour zoomer." onClick={resetView} style={toolChipStyle(view.z > 1, false)}>🔍 {Math.round(view.z * 100)} %</button>
+            <button type="button" aria-label="Zoom avant" title="Zoom avant" onClick={() => zoomCenter(1.5)} disabled={view.z >= 8} style={toolChipStyle(false, view.z >= 8)}>+</button>
+          </span>
         </div>
       </div>
     );
@@ -2439,7 +3237,7 @@ const exportImage = async () => {
           )}
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10px', color: '#9ca3af' }}>
-          Résolution de sortie
+          Résolution de sortie (agrandit si besoin)
           <select aria-label="Résolution de sortie" value={exportResolution} onChange={(e) => setExportResolution(e.target.value)} style={selectStyle}>
             {EXPORT_RESOLUTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
           </select>
@@ -2471,7 +3269,7 @@ const exportImage = async () => {
               compact
               label={`Threads utilisés (processeur : ${cores} cœurs logiques)`}
               min={1}
-              max={Math.min(16, Math.max(cores, 2))}
+              max={Math.min(8, Math.max(cores, 2))}
               value={threads}
               onChange={(v) => setThreads(Math.max(1, v))}
             />
@@ -2484,6 +3282,46 @@ const exportImage = async () => {
               <option value="high">Haute (1280 px) — plus précis</option>
             </select>
           </label>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#e5e7eb' }}>
+              <span aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: engineInfo.state === 'online' ? '#22c55e' : engineInfo.state === 'unauthorized' ? '#f59e0b' : '#6b7280' }} />
+              Moteur local (puissance de votre PC)
+            </div>
+            <div style={{ fontSize: '10px', color: engineInfo.state === 'unauthorized' ? '#fbbf24' : '#9ca3af', lineHeight: 1.4 }}>
+              {engineInfo.state === 'checking' && 'Recherche du moteur local…'}
+              {engineInfo.state === 'unknown' && (engineMode === 'browser' ? 'Désactivé (mode navigateur seulement).' : 'Recherche du moteur local…')}
+              {engineInfo.state === 'offline' && 'Non détecté. Lancez le moteur local sur votre PC (dossier local-engine) : il sera trouvé automatiquement, sans rien cliquer.'}
+              {engineInfo.state === 'unauthorized' && 'Moteur détecté, mais il utilise un autre jeton que l’application (voir README : OVX_TOKEN).'}
+              {engineInfo.state === 'online' && `Connecté (v${engineInfo.version}) · Real-ESRGAN ${engineInfo.caps && engineInfo.caps.realesrgan ? '✔' : '✘'} · FFmpeg ${engineInfo.caps && engineInfo.caps.ffmpeg ? '✔' : '✘'} · ${engineInfo.caps ? engineInfo.caps.cpus : '?'} cœurs, ${engineInfo.caps ? engineInfo.caps.memoryGB : '?'} Go`}
+            </div>
+            <select aria-label="Mode de calcul" value={engineMode} onChange={(e) => setEngineMode(e.target.value)} style={selectStyle}>
+              <option value="auto">Auto (conseillé) : le PC pour les tâches lourdes, sinon le navigateur</option>
+              <option value="browser">Navigateur seulement</option>
+              <option value="local">Moteur local seulement</option>
+            </select>
+          </div>
+          {aiAvailable && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '11px', color: '#e5e7eb', cursor: 'pointer' }}>
+                <input type="checkbox" checked={aiOn} onChange={(e) => setAiOn(e.target.checked)} style={{ marginTop: '2px', accentColor: '#00b4d8' }} />
+                <span>
+                  Agrandissement par IA ({aiRoute('image', true) === 'local' ? 'sur votre PC' : webgpuAvailable() ? 'navigateur, WebGPU' : 'navigateur, WASM : lent'})
+                  <span style={{ display: 'block', fontSize: '9px', color: '#888', marginTop: '2px', lineHeight: 1.35 }}>
+                    Utilisé quand la résolution de sortie dépasse celle de la source. L’image est découpée en tuiles qui se recouvrent, pour ne pas saturer la mémoire du GPU. En vidéo (expérimental), chaque image est agrandie : c’est très long.
+                  </span>
+                </span>
+              </label>
+              {browserAi && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <select aria-label="Taille des tuiles" value={aiTile} onChange={(e) => setAiTile(Number(e.target.value))} style={{ ...selectStyle, flex: 1 }}>
+                  {[128, 192, 256, 384, 512].map((t) => <option key={t} value={t}>Tuiles de {t} px{t === suggestTileSize() ? ' (conseillé)' : ''}</option>)}
+                </select>
+                <button type="button" onClick={testAiModel} disabled={aiTesting} style={{ ...ghostButtonStyle, color: '#7dd3fc', whiteSpace: 'nowrap', opacity: aiTesting ? 0.5 : 1 }}>Tester le modèle</button>
+              </div>
+              )}
+              {browserAi && aiStatus && <div style={{ fontSize: '10px', color: aiStatus.startsWith('❌') ? '#fca5a5' : '#9ca3af', lineHeight: 1.4 }}>{aiStatus}</div>}
+            </div>
+          )}
           <div style={{ fontSize: '9px', color: '#777', lineHeight: 1.4 }}>
             {poolStatus === 'ready' && `Workers actifs. Dernier traitement de l’aperçu : ${previewMs} ms.`}
             {poolStatus === 'off' && `Traitement sur le thread principal. Dernier traitement de l’aperçu : ${previewMs} ms.`}
@@ -2498,7 +3336,7 @@ const exportImage = async () => {
     <>
       {isExporting && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {isVideo && (
+          {(isVideo || exportProgress > 0) && (
             <>
               <div style={{ height: '6px', borderRadius: '3px', background: '#27272a', overflow: 'hidden' }}>
                 <div style={{ width: `${Math.round(exportProgress * 100)}%`, height: '100%', background: '#00b4d8', transition: 'width .2s' }} />
@@ -2535,11 +3373,9 @@ const exportImage = async () => {
 
   const applyLabel = isSaving || isExporting ? 'Traitement en cours…' : 'Appliquer les modifications';
 
-  const renderFiltersEditor = () => (
-    <div className="ovx-color-editor-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px', background: '#111' }}>
-      <div className="ovx-color-editor-layout" style={{ display: 'grid', gridTemplateColumns: '330px minmax(0, 1fr) 330px', gap: '16px', alignItems: 'start', width: '100%', minWidth: 0 }}>
-        {/* GAUCHE : presets + intensité */}
-        <div className="ovx-color-editor-panel" style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
+  // ---------- Onglet Filtre : blocs réutilisables ----------
+  const renderPresetsCard = () => (
+    <div className="ovx-color-editor-panel" style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 15px 0 15px' }}>
             <PanelHeader title="Filtres" subtitle="Survolez un preset pour le prévisualiser, cliquez pour l'appliquer." />
           </div>
@@ -2553,11 +3389,10 @@ const exportImage = async () => {
           <div style={{ ...sectionStyle, borderBottom: 'none' }}>
             <SliderRow label="Intensité du filtre" min={0} max={100} suffix="%" value={intensity} onChange={(v) => { setIntensity(v); setExportError(''); setSaveMessage(''); }} />
           </div>
-        </div>
-
-        {/* CENTRE : vidéo + outils */}
-        <div className="ovx-color-editor-center" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-          {renderPreview()}
+    </div>
+  );
+  const renderColorNotice = () => (
+    <>
           {colorActiveCount > 0 && (
             <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', padding: '8px 12px', borderRadius: '8px', background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.3)', color: '#7dd3fc', fontSize: '11px', maxWidth: '760px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
               <span>🎨 {colorActiveCount} réglage(s) de couleur actif(s)</span>
@@ -2567,11 +3402,10 @@ const exportImage = async () => {
               </span>
             </div>
           )}
-        </div>
-
-        {/* DROITE : pellicule, LUT, looks */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-          <div className="ovx-color-editor-panel" style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
+    </>
+  );
+  const filmSection = () => (
+    <>
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Émulation de pellicule</div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -2584,6 +3418,10 @@ const exportImage = async () => {
         </div>
         <div style={{ fontSize: '9px', color: '#777', marginTop: '6px' }}>Réponse colorimétrique et grain de pellicule, ajustables dans l’onglet Couleur.</div>
       </div>
+    </>
+  );
+  const lutSection = () => (
+    <>
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>LUT (.cube)</div>
         <input ref={lutFileRef} type="file" accept=".cube" hidden onChange={(e) => { importLut(e.target.files?.[0]); e.target.value = ''; }} />
@@ -2599,8 +3437,10 @@ const exportImage = async () => {
           <button type="button" onClick={() => lutFileRef.current?.click()} style={{ ...ghostButtonStyle, color: '#7dd3fc', width: '100%', justifyContent: 'center' }}>📂 Importer une LUT 3D (.cube)</button>
         )}
       </div>
-          </div>
-          <div className="ovx-color-editor-panel" style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
+    </>
+  );
+  const renderLooksCard = () => (
+    <div className="ovx-color-editor-panel" style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
       <div style={{ ...sectionStyle, borderBottom: 'none' }}>
         <div style={sectionTitleStyle}>Mes looks</div>
         <input ref={looksFileRef} type="file" accept=".json,application/json" hidden onChange={(e) => { importLooks(e.target.files?.[0]); e.target.value = ''; }} />
@@ -2633,8 +3473,10 @@ const exportImage = async () => {
           <button type="button" onClick={exportCubeLut} title="Exporter le look en LUT 3D (.cube) pour DaVinci, Premiere, etc." style={{ ...ghostButtonStyle, color: '#7dd3fc', flex: 1, justifyContent: 'center' }}>LUT .cube</button>
         </div>
       </div>
-          </div>
-          <div className="ovx-color-editor-panel" style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    </div>
+  );
+  const renderFilterExportCard = () => (
+    <div className="ovx-color-editor-panel" style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {renderExportOptions()}
             {renderStatus()}
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -2645,13 +3487,55 @@ const exportImage = async () => {
             {isSaving || isExporting ? 'Veuillez patienter…' : 'Appliquer'}
           </button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {renderTimelineBlock()}
     </div>
   );
+
+  const renderFiltersEditor = () => {
+    if (isMobile) {
+      const items = FILTER_PANELS.filter((it) => !it.videoOnly || isVideo);
+      const cardStyle = { ...panelStyle, padding: 0, overflow: 'hidden' };
+      const body =
+        filterPanel === 'film' ? <div className="ovx-color-editor-panel" style={cardStyle}>{filmSection()}</div>
+        : filterPanel === 'lut' ? <div className="ovx-color-editor-panel" style={cardStyle}>{lutSection()}</div>
+        : filterPanel === 'looks' ? renderLooksCard()
+        : filterPanel === 'cut' && isVideo ? renderTimelineBlock()
+        : filterPanel === 'export' ? renderFilterExportCard()
+        : <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>{renderPresetsCard()}{renderColorNotice()}</div>;
+      return renderMobileShell({
+        title: '🎞️ Filtre',
+        items,
+        active: filterPanel,
+        onSelect: (it) => { if (it.goto) openInspector(it.goto); else setFilterPanel(it.id); },
+        body
+      });
+    }
+    return (
+      <div className="ovx-color-editor-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#111' }}>
+        <div className="ovx-color-editor-layout" style={{ display: 'grid', gridTemplateColumns: '330px minmax(0, 1fr) 330px', gap: '16px', alignItems: 'start', width: '100%', minWidth: 0 }}>
+          {/* GAUCHE : presets + intensité */}
+          {renderPresetsCard()}
+
+          {/* CENTRE : vidéo + outils (reste visible quand on fait défiler la page) */}
+          <div className="ovx-color-editor-center" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0, position: 'sticky', top: 0, alignSelf: 'start' }}>
+            {renderPreview()}
+            {renderColorNotice()}
+          </div>
+
+          {/* DROITE : pellicule, LUT, looks, export */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
+            <div className="ovx-color-editor-panel" style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
+              {filmSection()}
+              {lutSection()}
+            </div>
+            {renderLooksCard()}
+            {renderFilterExportCard()}
+          </div>
+        </div>
+
+        {renderTimelineBlock()}
+      </div>
+    );
+  };
 
   // ---------- Découpe de la vidéo ----------
   const renderTimelineBlock = () => {
@@ -2762,6 +3646,7 @@ const exportImage = async () => {
     const config = AI_OPTIONS[action.id];
     if (!config) return null;
     const canGenerate = Boolean((prompt || '').trim());
+    const commandTokens = (prompt || '').split(/\s+/).filter(Boolean);
     return (
       <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 15px 0 15px', gap: '8px' }}>
@@ -2769,16 +3654,44 @@ const exportImage = async () => {
           <button type="button" onClick={handleAIReset} style={{ ...ghostButtonStyle, flexShrink: 0 }}>🔄 Réinitialiser</button>
         </div>
         <div style={{ padding: '14px 15px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-            {config.options.map((option) => (
-              <AIOptionTile
-                key={option[1]}
-                option={option}
-                active={selectedAIOption === option[1]}
-                onSelect={() => { setSelectedAIOption(option[1]); setPrompt?.(option[2]); }}
-              />
-            ))}
-          </div>
+          {config.commandGroups ? (
+            config.commandGroups.map((group) => {
+              const groupCommands = group.options.map((o) => o[0]);
+              return (
+                <div key={group.id} style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>{group.title}</span>
+                    <code style={{ fontSize: '10px', color: '#38bdf8', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{group.command}</code>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))', gap: '8px' }}>
+                    {group.options.map((option) => (
+                      <CommandTile
+                        key={option[0]}
+                        option={option}
+                        active={commandTokens.includes(option[0])}
+                        onSelect={(command) => {
+                          // Une seule commande par groupe ; recliquer la désactive.
+                          const others = commandTokens.filter((t) => !groupCommands.includes(t));
+                          setPrompt?.((commandTokens.includes(command) ? others : [...others, command]).join(' '));
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+              {config.options.map((option) => (
+                <AIOptionTile
+                  key={option[1]}
+                  option={option}
+                  active={selectedAIOption === option[1]}
+                  onSelect={() => { setSelectedAIOption(option[1]); setPrompt?.(option[2]); }}
+                />
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2788,7 +3701,7 @@ const exportImage = async () => {
           <textarea
             value={prompt || ''}
             onChange={(e) => setPrompt?.(e.target.value)}
-            placeholder="Décrivez votre modification..."
+            placeholder={config.commandGroups ? 'Cliquez sur des commandes ci-dessus ou tapez-les (ex. /dollyin /closeup)…' : 'Décrivez votre modification...'}
             style={{ width: '100%', minHeight: '100px', boxSizing: 'border-box', resize: 'vertical', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: '#15151a', color: '#fff', padding: '10px', outline: 'none', fontSize: '11px', lineHeight: '1.4', fontFamily: 'inherit' }}
           />
           {typeof handleGenerate === 'function' && (
@@ -2810,8 +3723,10 @@ const exportImage = async () => {
     ['hue', 'sat', 'lum'].some((type) => Number(colorSettings[bandKey(type, id)] || 0) !== 0);
   const currentBand = HSL_BANDS.find((b) => b.id === activeBand) || HSL_BANDS[0];
 
-  const renderAdvanced = () => (
-    <div style={panelStyle}>
+  const renderAdvanced = (only = null) => (
+    <div style={only ? { minWidth: 0 } : panelStyle}>
+      {!only && (
+        <>
       <div style={{ ...panelTitleStyle, marginBottom: '8px' }}>ÉTALONNAGE AVANCÉ</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '6px', marginBottom: '12px' }}>
         {[['curves', 'Courbes'], ['wheels', 'Roues'], ['hsl', 'HSL']].map(([id, label]) => (
@@ -2825,8 +3740,10 @@ const exportImage = async () => {
           </button>
         ))}
       </div>
+        </>
+      )}
 
-      {advancedTab === 'curves' && (
+      {(only || advancedTab) === 'curves' && (
         <div>
           <CurveGraph values={adjustments.curves} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '6px 12px' }}>
@@ -2837,7 +3754,7 @@ const exportImage = async () => {
         </div>
       )}
 
-      {advancedTab === 'wheels' && (
+      {(only || advancedTab) === 'wheels' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ color: '#888', fontSize: '9px' }}>Teintez les ombres, les tons moyens et les hautes lumières sans changer la luminosité.</div>
           <div>
@@ -2865,7 +3782,7 @@ const exportImage = async () => {
         </div>
       )}
 
-      {advancedTab === 'hsl' && (
+      {(only || advancedTab) === 'hsl' && (
         <div>
           <div style={{ color: '#888', fontSize: '9px', marginBottom: '8px' }}>Réglez teinte, saturation et luminance par famille de couleurs. La pipette 🎯 choisit la famille automatiquement.</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
@@ -2896,53 +3813,35 @@ const exportImage = async () => {
     </div>
   );
 
-  const renderColorEditor = () => (
-    <div className="ovx-color-editor-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#111' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-        <button type="button" onClick={handleAutoColorCorrection} style={{ ...ghostButtonStyle, border: '1px solid rgba(0,180,216,0.35)', background: 'rgba(0,180,216,0.12)', color: '#7dd3fc' }}>
-          ✨ Correction automatique
-        </button>
-        <button type="button" onClick={handleColorReset} style={ghostButtonStyle}>🔄 Réinitialiser les couleurs</button>
-      </div>
-
-      <div className="ovx-color-editor-layout" style={{ display: 'grid', gridTemplateColumns: '290px 1fr 290px', gap: '16px', alignItems: 'start', width: '100%', minWidth: 0 }}>
-        {/* GAUCHE : lumière & tonalité */}
-        <div className="ovx-color-editor-panel" style={panelStyle}>
-          <div style={{ ...panelTitleStyle, marginBottom: '8px' }}>MONITEURS</div>
+  // ---------- Onglet Couleur : blocs réutilisables ----------
+  const renderMonitors = () => (
+    <div className="ovx-color-editor-panel" style={panelStyle}>
+      <div style={{ ...panelTitleStyle, marginBottom: '8px' }}>MONITEURS</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '4px', marginBottom: '6px' }}>
             {[['hist', 'Histogramme'], ['wave', 'Forme d’onde'], ['vector', 'Vectorscope']].map(([id, label]) => (
               <button key={id} type="button" aria-pressed={scopeMode === id} onClick={() => setScopeMode(id)} style={{ padding: '4px 2px', borderRadius: '5px', border: scopeMode === id ? '1px solid #00b4d8' : '1px solid rgba(255,255,255,0.08)', background: scopeMode === id ? 'rgba(0,180,216,0.15)' : '#27272a', color: scopeMode === id ? '#38bdf8' : '#9ca3af', fontSize: '9px', fontWeight: 700, cursor: 'pointer' }}>{label}</button>
             ))}
           </div>
           <canvas ref={histRef} width={256} height={160} aria-label="Moniteur du rendu" style={{ width: '100%', aspectRatio: '256 / 160', background: '#0c0c0f', borderRadius: '6px', marginBottom: '14px', display: 'block' }} />
+    </div>
+  );
 
-          <div style={panelTitleStyle}>CORRECTION GUIDÉE</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-            <button type="button" onClick={() => runAuto('tone', 'Étape 1 : exposition, contraste, noirs et blancs équilibrés.')} style={{ ...ghostButtonStyle, color: '#d1d5db', justifyContent: 'flex-start' }}>1 · Équilibrer l’exposition</button>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button type="button" onClick={() => runAuto('wb', 'Étape 2 : balance des blancs corrigée automatiquement.')} style={{ ...ghostButtonStyle, color: '#d1d5db', flex: 1, justifyContent: 'center' }}>2 · Blancs auto</button>
-              <button type="button" onClick={() => setPipetteMode(pipetteMode === 'wb' ? null : 'wb')} style={{ ...ghostButtonStyle, color: pipetteMode === 'wb' ? '#38bdf8' : '#d1d5db', border: pipetteMode === 'wb' ? '1px solid #00b4d8' : '1px solid rgba(255,255,255,0.1)', flex: 1, justifyContent: 'center' }}>⚪ Point neutre</button>
-            </div>
-            <button type="button" onClick={() => runAuto('color', 'Étape 3 : vibrance ajustée.')} style={{ ...ghostButtonStyle, color: '#d1d5db', justifyContent: 'flex-start' }}>3 · Raviver les couleurs</button>
-            <button type="button" onClick={() => { setActiveBand('orange'); setAdvancedTab('hsl'); }} style={{ ...ghostButtonStyle, color: '#fbbf24', justifyContent: 'flex-start' }}>4 · Isoler les tons chair (HSL)</button>
-          </div>
-          <PanelTitle onReset={() => resetKeys(TONE_SLIDERS)}>LUMIÈRE & TONALITÉ</PanelTitle>
+  const renderColorPanelBody = (id) => {
+    switch (id) {
+      case 'light':
+        return (
+          <div className="ovx-color-editor-panel" style={panelStyle}>
+            <PanelTitle onReset={() => resetKeys(TONE_SLIDERS)}>LUMIÈRE & TONALITÉ</PanelTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {TONE_SLIDERS.map(([label, key, min]) => (
               <SliderRow key={key} label={label} min={min} value={colorSettings[key]} onChange={(v) => updateColor({ [key]: v })} />
             ))}
           </div>
-        </div>
-
-        {/* CENTRE : aperçu + étalonnage avancé */}
-        <div className="ovx-color-editor-center" style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-          {renderPreview()}
-          {renderAdvanced()}
-        </div>
-
-        {/* DROITE : pipette, couleur, détails */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {renderAutoDetect()}
+          </div>
+        );
+      case 'color':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div className="ovx-color-editor-panel" style={panelStyle}>
             <div style={{ ...panelTitleStyle, marginBottom: '8px' }}>COULEUR DU POINT</div>
             <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '10px', lineHeight: '1.3' }}>Cliquez sur la photo pour sélectionner la famille de couleur correspondante dans HSL.</div>
@@ -2958,6 +3857,7 @@ const exportImage = async () => {
             </div>
           </div>
 
+
           <div style={panelStyle}>
             <PanelTitle onReset={() => resetKeys(COLOR_SLIDERS)}>COULEUR & AMBIANCE</PanelTitle>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -2967,6 +3867,15 @@ const exportImage = async () => {
             </div>
           </div>
 
+          </div>
+        );
+      case 'curves':
+      case 'wheels':
+      case 'hsl':
+        return renderAdvanced(id);
+      case 'detail':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={panelStyle}>
             <PanelTitle onReset={() => resetKeys(DETAIL_SLIDERS)}>DÉTAILS & FINITION</PanelTitle>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -2974,24 +3883,140 @@ const exportImage = async () => {
                 <SliderRow key={key} label={label} min={min} value={colorSettings[key]} onChange={(v) => updateColor({ [key]: v })} />
               ))}
             </div>
+            <button type="button" onClick={handleAutoEnhance} title="Mesure le bruit et le flou de l’image puis règle la réduction du bruit et la netteté" style={{ ...ghostButtonStyle, color: '#7dd3fc', width: '100%', justifyContent: 'center', marginTop: '12px' }}>
+              ✨ Amélioration auto (bruit + netteté)
+            </button>
           </div>
-        </div>
-      </div>
+          </div>
+        );
+      case 'auto':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button type="button" onClick={handleAutoColorCorrection} style={{ ...ghostButtonStyle, border: '1px solid rgba(0,180,216,0.35)', background: 'rgba(0,180,216,0.12)', color: '#7dd3fc', justifyContent: 'center', padding: '10px' }}>
+              ✨ Correction automatique
+            </button>
+            <div className="ovx-color-editor-panel" style={panelStyle}>
+              <div style={panelTitleStyle}>CORRECTION GUIDÉE</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            <button type="button" onClick={() => runAuto('tone', 'Étape 1 : exposition, contraste, noirs et blancs équilibrés.')} style={{ ...ghostButtonStyle, color: '#d1d5db', justifyContent: 'flex-start' }}>1 · Équilibrer l’exposition</button>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button type="button" onClick={() => runAuto('wb', 'Étape 2 : balance des blancs corrigée automatiquement.')} style={{ ...ghostButtonStyle, color: '#d1d5db', flex: 1, justifyContent: 'center' }}>2 · Blancs auto</button>
+              <button type="button" onClick={() => setPipetteMode(pipetteMode === 'wb' ? null : 'wb')} style={{ ...ghostButtonStyle, color: pipetteMode === 'wb' ? '#38bdf8' : '#d1d5db', border: pipetteMode === 'wb' ? '1px solid #00b4d8' : '1px solid rgba(255,255,255,0.1)', flex: 1, justifyContent: 'center' }}>⚪ Point neutre</button>
+            </div>
+            <button type="button" onClick={() => runAuto('color', 'Étape 3 : vibrance ajustée.')} style={{ ...ghostButtonStyle, color: '#d1d5db', justifyContent: 'flex-start' }}>3 · Raviver les couleurs</button>
+            <button type="button" onClick={() => { setActiveBand('orange'); setAdvancedTab('hsl'); setColorPanel('hsl'); }} style={{ ...ghostButtonStyle, color: '#fbbf24', justifyContent: 'flex-start' }}>4 · Isoler les tons chair (HSL)</button>
+          </div>
+            </div>
+            {renderAutoDetect()}
+            {isMobile && renderMonitors()}
+          </div>
+        );
+      case 'export':
+        return (
+          <div className="ovx-color-editor-panel" style={panelStyle}>
+            {renderExportOptions()}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
-      {renderStatus()}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {renderExportOptions()}
-        <button
-          type="button"
-          onClick={handleApply}
-          disabled={isSaving || isExporting}
-          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: 'none', background: isSaving || isExporting ? '#52525b' : '#ffffff', color: '#09090b', fontSize: '13px', fontWeight: '700', cursor: isSaving || isExporting ? 'not-allowed' : 'pointer', opacity: isSaving || isExporting ? 0.7 : 1, boxShadow: '0 4px 12px rgba(255,255,255,0.1)' }}
-        >
-          {applyLabel}
+  // Bouton « Appliquer » + remise à zéro (pied de page / en-tête mobile).
+  const renderApplyRow = (extraReset) => (
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <button type="button" onClick={extraReset} style={{ flex: 1, padding: '11px 10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#f87171', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>🔄 Réinitialiser</button>
+      <button type="button" onClick={handleApply} disabled={isSaving || isExporting} style={{ flex: 2, padding: '11px 12px', borderRadius: '10px', border: 'none', background: isSaving || isExporting ? '#777' : '#ffffff', color: '#09090b', fontSize: '13px', fontWeight: 700, cursor: isSaving || isExporting ? 'not-allowed' : 'pointer', opacity: isSaving || isExporting ? 0.7 : 1 }}>
+        {applyLabel}
+      </button>
+    </div>
+  );
+
+  // Mobile : aperçu fixe en haut, réglages au milieu, barre d'icônes en bas (comme CapCut).
+  const renderMobileShell = ({ title, items, active, onSelect, body }) => (
+    <div className="ovx-mobile-shell" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#0d0d10' }}>
+      <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '6px 10px' }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: '#e5e7eb' }}>{title}</span>
+        <button type="button" onClick={handleApply} disabled={isSaving || isExporting} style={{ padding: '6px 16px', borderRadius: '8px', border: 'none', background: isSaving || isExporting ? '#52525b' : '#00b4d8', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: isSaving || isExporting ? 'not-allowed' : 'pointer' }}>
+          {isSaving || isExporting ? '…' : 'Appliquer'}
         </button>
+      </div>
+      <div style={{ flex: '0 0 auto' }}>{renderPreview({ compact: true, maxW: '100%' })}</div>
+      {(isExporting || exportError || saveMessage || uploadProgress !== null) && (
+        <div style={{ flex: '0 0 auto', padding: '0 10px 6px' }}>{renderStatus()}</div>
+      )}
+      <div className="ovx-panel-scroll" style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', padding: '10px 12px', background: '#141418', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {body}
+      </div>
+      <div role="tablist" className="ovx-dock" style={{ flex: '0 0 auto', display: 'flex', gap: '2px', overflowX: 'auto', padding: '6px 6px calc(6px + env(safe-area-inset-bottom, 0px))', background: '#0b0b0e', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        {items.map((it) => (
+          <button
+            key={it.id}
+            type="button"
+            role="tab"
+            aria-selected={active === it.id}
+            onClick={() => onSelect(it)}
+            style={{ flex: '0 0 auto', width: '66px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '6px 2px', border: 'none', borderRadius: '10px', background: active === it.id ? 'rgba(0,180,216,0.16)' : 'transparent', color: active === it.id ? '#00b4d8' : '#c7c7cc', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            <span aria-hidden="true" style={{ fontSize: '21px', lineHeight: 1 }}>{it.icon}</span>
+            <span>{it.label}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
+
+  const renderColorEditor = () => {
+    if (isMobile) {
+      return renderMobileShell({
+        title: '🎨 Couleur',
+        items: COLOR_PANELS,
+        active: colorPanel,
+        onSelect: (it) => setColorPanel(it.id),
+        body: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {colorPanel === 'export' && (
+              <button type="button" onClick={handleColorReset} style={{ ...ghostButtonStyle, justifyContent: 'center' }}>🔄 Réinitialiser les couleurs</button>
+            )}
+            {renderColorPanelBody(colorPanel)}
+          </div>
+        )
+      });
+    }
+    // Ordinateur : aperçu toujours visible à gauche ; à droite, un panneau à onglets (plus besoin de défiler pour retrouver l'image).
+    return (
+      <div className="ovx-color-shell" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(380px, 0.75fr)', gap: '14px', padding: '14px', background: '#111', overflow: 'hidden' }}>
+        <div className="ovx-color-left" style={{ minHeight: 0, minWidth: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', scrollbarGutter: 'stable' }}>
+          {renderPreview({ maxW: '100%' })}
+          {renderMonitors()}
+        </div>
+        <div className="ovx-color-right" style={{ minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div role="tablist" style={{ flex: '0 0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '6px' }}>
+            {COLOR_PANELS.map((it) => (
+              <button
+                key={it.id}
+                type="button"
+                role="tab"
+                aria-selected={colorPanel === it.id}
+                onClick={() => setColorPanel(it.id)}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '7px 2px', borderRadius: '9px', border: colorPanel === it.id ? '1px solid #00b4d8' : '1px solid rgba(255,255,255,0.08)', background: colorPanel === it.id ? 'rgba(0,180,216,0.16)' : '#18181b', color: colorPanel === it.id ? '#7dd3fc' : '#c7c7cc', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                <span aria-hidden="true" style={{ fontSize: '17px', lineHeight: 1 }}>{it.icon}</span>
+                <span>{it.label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="ovx-panel-scroll" style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', paddingRight: '4px', scrollbarGutter: 'stable' }}>
+            {renderColorPanelBody(colorPanel)}
+          </div>
+          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {renderStatus()}
+            {renderApplyRow(handleColorReset)}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const tabButtonStyle = (active, size) => ({
     border: 'none',
@@ -3013,6 +4038,9 @@ const exportImage = async () => {
     <div className="ovx-filter-root" style={{ width: '100%', height: '100%', minHeight: '680px', display: 'flex', flexDirection: 'column', background: '#121216', color: '#fff', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <style>{`
         .ovx-filter-root { min-width: 0; position: relative; }
+        .ovx-dock { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .ovx-dock::-webkit-scrollbar { display: none; }
+        .ovx-panel-scroll { overscroll-behavior: contain; }
         .ovx-filter-dialog-tabs { flex-shrink: 0; }
         .ovx-filter-presets-grid { min-width: 0; }
         .ovx-color-editor-layout > * { min-width: 0; }

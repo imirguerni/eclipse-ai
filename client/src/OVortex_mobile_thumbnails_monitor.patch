@@ -1,0 +1,47 @@
+--- a/client/src/Filtre.jsx
++++ b/client/src/Filtre.jsx
+@@ -697,7 +697,8 @@
+       onMouseEnter={() => videoRef.current?.play().catch(() => {})}
+       onMouseLeave={() => { if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; } }}
+       style={{
+-        position: 'relative', aspectRatio: '16 / 9', padding: 0, overflow: 'hidden', borderRadius: '6px',
++        position: 'relative', aspectRatio: '16 / 9', minWidth: 0, minHeight: '54px',
++        padding: 0, overflow: 'hidden', borderRadius: '4px', boxSizing: 'border-box',
+         border: active ? '2px solid #00b4d8' : '2px solid transparent',
+         background: active ? 'rgba(0,180,216,0.15)' : 'rgba(255,255,255,0.02)', cursor: 'pointer'
+       }}
+@@ -3465,7 +3466,7 @@
+               );
+             })
+           ) : (
+-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
++            <div className="ovx-ai-options-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))', gap: '8px', width: '100%', minWidth: 0 }}>
+               {config.options.map((option) => (
+                 <AIOptionTile
+                   key={option[1]}
+@@ -3599,14 +3600,14 @@
+ 
+   // ---------- Onglet Couleur : blocs réutilisables ----------
+   const renderMonitors = () => (
+-    <div className="ovx-color-editor-panel" style={panelStyle}>
++    <div className="ovx-color-editor-panel ovx-color-monitors" style={{ ...panelStyle, width: '100%', maxWidth: '380px', boxSizing: 'border-box', alignSelf: 'flex-start' }}>
+       <div style={{ ...panelTitleStyle, marginBottom: '8px' }}>MONITEURS</div>
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '4px', marginBottom: '6px' }}>
+             {[['hist', 'Histogramme'], ['wave', 'Forme d’onde'], ['vector', 'Vectorscope']].map(([id, label]) => (
+               <button key={id} type="button" aria-pressed={scopeMode === id} onClick={() => setScopeMode(id)} style={{ padding: '4px 2px', borderRadius: '5px', border: scopeMode === id ? '1px solid #00b4d8' : '1px solid rgba(255,255,255,0.08)', background: scopeMode === id ? 'rgba(0,180,216,0.15)' : '#27272a', color: scopeMode === id ? '#38bdf8' : '#9ca3af', fontSize: '9px', fontWeight: 700, cursor: 'pointer' }}>{label}</button>
+             ))}
+           </div>
+-          <canvas ref={histRef} width={256} height={160} aria-label="Moniteur du rendu" style={{ width: '100%', aspectRatio: '256 / 160', background: '#0c0c0f', borderRadius: '6px', marginBottom: '14px', display: 'block' }} />
++          <canvas ref={histRef} width={256} height={160} aria-label="Moniteur du rendu" style={{ width: '100%', maxWidth: '340px', maxHeight: '212px', aspectRatio: '256 / 160', objectFit: 'contain', background: '#0c0c0f', borderRadius: '6px', margin: '0 auto 8px', display: 'block' }} />
+     </div>
+   );
+ 
+@@ -3835,6 +3836,8 @@
+         }
+         @media (max-width: 760px) {
+           .ovx-filter-root { min-height: 0 !important; height: 100dvh !important; position: relative !important; }
++          .ovx-color-monitors { max-width: 100% !important; }
++          .ovx-color-monitors canvas { max-width: min(100%, 300px) !important; max-height: 188px !important; }
+           .ovx-filter-dialog { position: absolute !important; inset: 90px 0 0 0 !important; padding: 0 !important; align-items: stretch !important; justify-content: stretch !important; background: #111 !important; backdrop-filter: none !important; }
+           .ovx-filter-dialog-content { width: 100% !important; max-width: none !important; max-height: none !important; height: 100% !important; border-radius: 0 !important; box-shadow: none !important; }
+           .ovx-filter-dialog-tabs { display: none !important; }

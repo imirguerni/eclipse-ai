@@ -195,7 +195,7 @@ function hueToHex(hue) {
 const ADJUST_KEYS = [
   'exposure', 'contrast', 'shadows', 'highlights', 'whites', 'blacks',
   'saturation', 'vibrance', 'temperature', 'tint', 'fade', 'clarity',
-  'dehaze', 'vignette', 'grain', 'sharpness', 'denoise', 'skinSmooth', 'bloom'
+  'dehaze', 'vignette', 'grain', 'sharpness', 'denoise', 'skinSmooth', 'bloom', 'tDenoise'
 ];
 
 function resolveAdjustments(filter, intensity, cs, extras) {
@@ -210,7 +210,7 @@ function resolveAdjustments(filter, intensity, cs, extras) {
   for (const key of ADJUST_KEYS) {
     a[key] = clamp(num(preset[key]) * f + num(film[key]) * fa + num(s[key]), -100, 100);
   }
-  for (const key of ['grain', 'denoise', 'skinSmooth', 'bloom']) a[key] = clamp(a[key], 0, 100);
+  for (const key of ['grain', 'denoise', 'skinSmooth', 'bloom', 'tDenoise']) a[key] = clamp(a[key], 0, 100);
   a.grainSize = clamp(num(film.grainSize) * fa + num(s.grainSize), 0, 100);
   a.skinProtect = clamp(num(s.skinProtect), 0, 100) / 100;
   a.match = extras && extras.match ? extras.match : null;
@@ -322,7 +322,8 @@ function prepareGrade(a) {
   return {
     identity, global, luts, matrix, bandLut, wheels, vibrance, skinProtect, lut3d,
     clarity: a.clarity, sharpness: a.sharpness, vignette: a.vignette, grain: a.grain,
-    grainSize: a.grainSize, denoise: a.denoise, skinSmooth: a.skinSmooth, bloom: a.bloom
+    grainSize: a.grainSize, denoise: a.denoise, skinSmooth: a.skinSmooth, bloom: a.bloom,
+    tDenoise: a.tDenoise // débruitage temporel : appliqué à l'export vidéo (voir temporalDenoise)
   };
 }
 
@@ -396,6 +397,24 @@ function lowResPlane(luma, w, h, ds, bloomMode) {
   return { small, lw, lh };
 }
 
+// Chroma (R-Y et B-Y) en basse résolution : sert au débruitage des taches de couleur.
+function lowResChroma(data, w, h, ds, luma) {
+  const lw = Math.ceil(w / ds), lh = Math.ceil(h / ds);
+  const cb = new Float32Array(lw * lh), cr = new Float32Array(lw * lh), cnt = new Float32Array(lw * lh);
+  for (let y = 0; y < h; y++) {
+    const ly = Math.min(lh - 1, (y / ds) | 0) * lw;
+    for (let x = 0; x < w; x++) {
+      const li = ly + Math.min(lw - 1, (x / ds) | 0);
+      const p = y * w + x;
+      cr[li] += data[p * 4] - luma[p];
+      cb[li] += data[p * 4 + 2] - luma[p];
+      cnt[li]++;
+    }
+  }
+  for (let i = 0; i < cb.length; i++) { const n = cnt[i] || 1; cb[i] /= n; cr[i] /= n; }
+  return { cb, cr, lw, lh };
+}
+
 function sampleLow(plane, lw, lh, x, y, ds) {
   const fx = clamp((x + 0.5) / ds - 0.5, 0, lw - 1), fy = clamp((y + 0.5) / ds - 0.5, 0, lh - 1);
   const x0 = fx | 0, y0 = fy | 0, x1 = Math.min(lw - 1, x0 + 1), y1 = Math.min(lh - 1, y0 + 1);
@@ -466,6 +485,7 @@ function processImageData(imageData, plan, seed = 0, region = null) {
   let luma = null, blurS = null, blurM = null;
   let clarityLow = null, cLw = 0, cLh = 0, cDs = 1;
   let bloomLow = null, bLw = 0, bLh = 0, bDs = 1;
+  let cbLow = null, crLow = null, chLw = 0, chLh = 0, chDs = 1;
   if (needLuma) {
     const sc = getScratch(n);
     luma = sc.luma;
@@ -473,6 +493,18 @@ function processImageData(imageData, plan, seed = 0, region = null) {
     if (hasSharp || hasDenoise) {
       blurS = sc.blurS;
       blurPlane(luma, blurS, sc.tmp, w, h, Math.max(1, Math.round(minSide / 800)));
+    }
+    if (hasDenoise) {
+      // Les taches de couleur du bruit se lissent bien en basse résolution.
+      chDs = Math.max(1, Math.floor(minSide / 540));
+      const ch = lowResChroma(data, w, h, chDs, luma);
+      chLw = ch.lw; chLh = ch.lh;
+      cbLow = new Float32Array(chLw * chLh);
+      crLow = new Float32Array(chLw * chLh);
+      const tmpLow = new Float32Array(chLw * chLh);
+      const rr = Math.max(1, Math.round(Math.min(chLw, chLh) / 90));
+      blurPlane(ch.cb, cbLow, tmpLow, chLw, chLh, rr);
+      blurPlane(ch.cr, crLow, tmpLow, chLw, chLh, rr);
     }
     if (hasSkin) {
       blurM = sc.blurM;
@@ -496,6 +528,7 @@ function processImageData(imageData, plan, seed = 0, region = null) {
   const kClarity = (plan.clarity / 100) * 1.2;
   const kSharp = (plan.sharpness / 100) * 1.4;
   const kDenoise = (plan.denoise / 100) * 0.9;
+  const kChroma = (plan.denoise / 100) * 0.9;
   const kSkin = (plan.skinSmooth / 100) * 0.9;
   const kBloom = (plan.bloom / 100) * 2.2;
 
@@ -527,11 +560,24 @@ function processImageData(imageData, plan, seed = 0, region = null) {
         if (hasSharp) {
           const diff = srcY - blurS[p];
           const ad = Math.abs(diff) - 1.5;
-          if (ad > 0) d += kSharp * (diff > 0 ? ad : -ad);
+          if (ad > 0) {
+            // Écrêtage doux : les contours très marqués ne forment plus de halos clairs/sombres.
+            const lim = 26;
+            const s = lim * Math.tanh((kSharp * ad) / lim);
+            d += diff > 0 ? s : -s;
+          }
         }
         if (hasDenoise) {
           const diff = blurS[p] - srcY;
           d += diff * kDenoise * (1 - smoothstep(4, 24, Math.abs(diff)));
+        }
+        if (hasDenoise) {
+          const cr0 = sr - srcY, cb0 = sb - srcY;
+          const crB = sampleLow(crLow, chLw, chLh, x, y, chDs);
+          const cbB = sampleLow(cbLow, chLw, chLh, x, y, chDs);
+          const kc = kChroma * (1 - smoothstep(10, 45, Math.abs(blurS[p] - srcY))); // pas sur les contours
+          const dr = (crB - cr0) * kc, db = (cbB - cb0) * kc;
+          r += dr; b += db; g -= (0.2126 * dr + 0.0722 * db) / 0.7152; // la luminosité ne change pas
         }
         if (hasSkin) {
           const dl = sr - sb;
@@ -814,6 +860,59 @@ function detectScene(pixels) {
     presetId: presetKey ? SCENE_PRESET[presetKey] : null,
     metrics: { meanY, meanSat, spread, ...f }
   };
+}
+
+// ---------- Débruitage temporel (vidéo) ----------
+// Mélange chaque image avec la précédente là où rien ne bouge : le bruit (qui change d'une image à l'autre)
+// s'efface, les zones en mouvement restent intactes. `cur` est modifié ; `prev` = image précédente (déjà nettoyée).
+export function temporalDenoise(cur, prev, amount) {
+  if (!cur || !prev || cur.length !== prev.length) return;
+  const k = clamp(amount, 0, 100) / 100;
+  const maxBlend = 0.25 + 0.6 * k;
+  const t0 = 6 + 6 * k;
+  const t1 = 24 + 20 * k;
+  for (let i = 0; i < cur.length; i += 4) {
+    const dr = prev[i] - cur[i], dg = prev[i + 1] - cur[i + 1], db = prev[i + 2] - cur[i + 2];
+    const dm = (Math.abs(dr) + Math.abs(dg) + Math.abs(db)) / 3;
+    if (dm >= t1) continue;
+    const wgt = maxBlend * (1 - smoothstep(t0, t1, dm));
+    cur[i] += dr * wgt; cur[i + 1] += dg * wgt; cur[i + 2] += db * wgt;
+  }
+}
+
+// ---------- Amélioration automatique : estime le bruit et le flou d'une image ----------
+// `data` doit être pris à la résolution d'origine (un extrait suffit) : réduire l'image cache le bruit.
+export function analyzeAutoEnhance(data, w, h) {
+  if (!data || w < 8 || h < 8) return null;
+  const n = w * h;
+  const Y = new Float32Array(n);
+  for (let p = 0, i = 0; p < n; p++, i += 4) Y[p] = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+  // Bruit : méthode d'Immerkær (réponse d'un filtre laplacien, peu sensible aux contours).
+  let sum = 0, cnt = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const p = y * w + x;
+      const v = Y[p - w - 1] - 2 * Y[p - w] + Y[p - w + 1] - 2 * Y[p - 1] + 4 * Y[p] - 2 * Y[p + 1] + Y[p + w - 1] - 2 * Y[p + w] + Y[p + w + 1];
+      sum += Math.abs(v); cnt++;
+    }
+  }
+  const sigma = (Math.sqrt(Math.PI / 2) * sum) / (6 * Math.max(1, cnt));
+  // Netteté : force des contours les plus nets (90e centile du gradient).
+  const hist = new Uint32Array(512);
+  let total = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const p = y * w + x;
+      const g = Math.abs(Y[p + 1] - Y[p - 1]) + Math.abs(Y[p + w] - Y[p - w]);
+      hist[Math.min(511, g | 0)]++; total++;
+    }
+  }
+  let acc = 0, edge90 = 0;
+  for (let i = 0; i < 512; i++) { acc += hist[i]; if (acc >= total * 0.9) { edge90 = i; break; } }
+  const denoise = Math.round(clamp((sigma - 1.5) * 10, 0, 70));
+  let sharpness = Math.round(clamp((34 - edge90) * 1.6, 0, 65));
+  if (denoise > 35) sharpness = Math.round(sharpness * 0.6); // netteté prudente sur une image bruitée
+  return { denoise, sharpness, noise: Math.round(sigma * 10) / 10, edge: edge90 };
 }
 
 // ---------- Moniteurs (histogramme, forme d'onde, vectorscope) ----------
