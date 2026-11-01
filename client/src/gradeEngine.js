@@ -195,7 +195,7 @@ function hueToHex(hue) {
 const ADJUST_KEYS = [
   'exposure', 'contrast', 'shadows', 'highlights', 'whites', 'blacks',
   'saturation', 'vibrance', 'temperature', 'tint', 'fade', 'clarity',
-  'dehaze', 'vignette', 'grain', 'sharpness', 'denoise', 'skinSmooth', 'bloom', 'tDenoise'
+  'dehaze', 'vignette', 'grain', 'sharpness', 'sharpnessRadius', 'sharpnessNoise', 'denoise', 'skinSmooth', 'bloom', 'enhance', 'tDenoise'
 ];
 
 function resolveAdjustments(filter, intensity, cs, extras) {
@@ -210,7 +210,7 @@ function resolveAdjustments(filter, intensity, cs, extras) {
   for (const key of ADJUST_KEYS) {
     a[key] = clamp(num(preset[key]) * f + num(film[key]) * fa + num(s[key]), -100, 100);
   }
-  for (const key of ['grain', 'denoise', 'skinSmooth', 'bloom', 'tDenoise']) a[key] = clamp(a[key], 0, 100);
+  for (const key of ['grain', 'denoise', 'skinSmooth', 'bloom', 'enhance', 'tDenoise', 'sharpnessRadius', 'sharpnessNoise']) a[key] = clamp(a[key], 0, 100);
   a.grainSize = clamp(num(film.grainSize) * fa + num(s.grainSize), 0, 100);
   a.skinProtect = clamp(num(s.skinProtect), 0, 100) / 100;
   a.match = extras && extras.match ? extras.match : null;
@@ -310,30 +310,32 @@ function prepareGrade(a) {
 
   const vibrance = a.vibrance / 100;
   const skinProtect = a.skinProtect;
-  const lut3d = a.lut && a.lutAmount > 0 ? { size: a.lut.size, data: a.lut.data, amount: a.lutAmount } : null;
+  const lut3d = a.lut && a.lutAmount > 0 ? { size: a.lut.size, data: a.lut.data, amount: a.lutAmount, domainMin: a.lut.domainMin || [0, 0, 0], domainRange: (a.lut.domainMax || [1, 1, 1]).map((max, i) => max - (a.lut.domainMin || [0, 0, 0])[i]) } : null;
   const identity =
     !luts && !matrix && !bandLut && !wheels.length && !vibrance && !lut3d &&
     !a.clarity && !a.sharpness && !a.vignette && !a.grain &&
-    !a.denoise && !a.skinSmooth && !a.bloom;
+    !a.denoise && !a.skinSmooth && !a.bloom && !a.enhance;
 
   // `global` : l'effet dépend de tout le cadre (flous) → pas de découpage en bandes.
-  const global = Boolean(a.clarity || a.sharpness > 0 || a.denoise || a.skinSmooth || a.bloom);
+  const global = Boolean(a.clarity || a.sharpness > 0 || a.denoise || a.skinSmooth || a.bloom || a.enhance);
 
   return {
     identity, global, luts, matrix, bandLut, wheels, vibrance, skinProtect, lut3d,
-    clarity: a.clarity, sharpness: a.sharpness, vignette: a.vignette, grain: a.grain,
-    grainSize: a.grainSize, denoise: a.denoise, skinSmooth: a.skinSmooth, bloom: a.bloom,
+    clarity: a.clarity, sharpness: a.sharpness, sharpnessRadius: a.sharpnessRadius,
+    sharpnessNoise: a.sharpnessNoise, vignette: a.vignette, grain: a.grain,
+    grainSize: a.grainSize, denoise: a.denoise, skinSmooth: a.skinSmooth, bloom: a.bloom, enhance: a.enhance,
     tDenoise: a.tDenoise // débruitage temporel : appliqué à l'export vidéo (voir temporalDenoise)
   };
 }
 
 // ---------- Flou (netteté, clarté, débruitage, peau, lueur) ----------
-let SCRATCH = { luma: null, tmp: null, blurS: null, blurM: null, n: 0 };
+let SCRATCH = { luma: null, tmp: null, blurS: null, blurM: null, enhanceFine: null, enhanceBase: null, n: 0 };
 function getScratch(n) {
   if (SCRATCH.n < n) {
     SCRATCH = {
       luma: new Float32Array(n), tmp: new Float32Array(n),
-      blurS: new Float32Array(n), blurM: new Float32Array(n), n
+      blurS: new Float32Array(n), blurM: new Float32Array(n),
+      enhanceFine: new Float32Array(n), enhanceBase: new Float32Array(n), n
     };
   }
   return SCRATCH;
@@ -428,6 +430,7 @@ function sampleLow(plane, lw, lh, x, y, ds) {
 // ---------- LUT 3D (.cube) ----------
 function parseCubeLut(text) {
   let size = 0, title = '';
+  let domainMin = [0, 0, 0], domainMax = [1, 1, 1];
   const values = [];
   for (const raw of String(text).split(/\r?\n/)) {
     const line = raw.trim();
@@ -435,13 +438,24 @@ function parseCubeLut(text) {
     if (line.startsWith('TITLE')) { title = line.replace(/^TITLE\s*/, '').replace(/"/g, ''); continue; }
     if (line.startsWith('LUT_1D_SIZE')) throw new Error('Les LUT 1D ne sont pas prises en charge (utilisez une LUT 3D).');
     if (line.startsWith('LUT_3D_SIZE')) { size = parseInt(line.split(/\s+/)[1], 10); continue; }
-    if (/^[A-Z_]+/.test(line)) continue; // DOMAIN_MIN / DOMAIN_MAX, etc.
+    if (line.startsWith('DOMAIN_MIN')) {
+      const v = line.split(/\s+/).slice(1).map(Number);
+      if (v.length === 3 && v.every(Number.isFinite)) domainMin = v;
+      continue;
+    }
+    if (line.startsWith('DOMAIN_MAX')) {
+      const v = line.split(/\s+/).slice(1).map(Number);
+      if (v.length === 3 && v.every(Number.isFinite)) domainMax = v;
+      continue;
+    }
+    if (/^[A-Z_]+/.test(line)) continue;
     const parts = line.split(/\s+/).map(Number);
     if (parts.length >= 3 && parts.every(Number.isFinite)) values.push(parts[0], parts[1], parts[2]);
   }
   if (!size || size < 2 || size > 128) throw new Error('Fichier .cube invalide (LUT_3D_SIZE manquant).');
   if (values.length !== size * size * size * 3) throw new Error('Fichier .cube incomplet ou corrompu.');
-  return { size, title, data: Float32Array.from(values) };
+  if (domainMin.some((v, i) => !(domainMax[i] > v))) throw new Error('DOMAIN_MIN / DOMAIN_MAX invalide dans la LUT.');
+  return { size, title, domainMin, domainMax, data: Float32Array.from(values) };
 }
 
 function sampleLut3d(L, N, fr, fg, fb, out) {
@@ -479,10 +493,11 @@ function processImageData(imageData, plan, seed = 0, region = null) {
   const hasDenoise = plan.denoise > 0;
   const hasSkin = plan.skinSmooth > 0;
   const hasBloom = plan.bloom > 0;
-  const hasDetail = hasSharp || hasClarity || hasDenoise || hasSkin;
+  const hasEnhance = plan.enhance > 0;
+  const hasDetail = hasSharp || hasClarity || hasDenoise || hasSkin || hasEnhance;
   const needLuma = hasDetail || hasBloom;
 
-  let luma = null, blurS = null, blurM = null;
+  let luma = null, blurS = null, blurM = null, enhanceFine = null, enhanceBase = null;
   let clarityLow = null, cLw = 0, cLh = 0, cDs = 1;
   let bloomLow = null, bLw = 0, bLh = 0, bDs = 1;
   let cbLow = null, crLow = null, chLw = 0, chLh = 0, chDs = 1;
@@ -492,7 +507,18 @@ function processImageData(imageData, plan, seed = 0, region = null) {
     lumaPlane(data, n, luma);
     if (hasSharp || hasDenoise) {
       blurS = sc.blurS;
-      blurPlane(luma, blurS, sc.tmp, w, h, Math.max(1, Math.round(minSide / 800)));
+      const sharpRadius = 1 + Math.round((minSide / 600) * ((plan.sharpnessRadius || 0) / 100) * 1.2);
+      blurPlane(luma, blurS, sc.tmp, w, h, sharpRadius);
+    }
+    if (hasEnhance) {
+      // Décomposition multi-échelle : micro-détails + contraste de texture.
+      // Le rayon suit la définition, avec des bornes pour éviter un coût excessif.
+      enhanceFine = sc.enhanceFine;
+      enhanceBase = sc.enhanceBase;
+      const fineRadius = Math.max(1, Math.min(2, Math.round(minSide / 1800)));
+      const baseRadius = Math.max(3, Math.min(12, Math.round(minSide / 180)));
+      blurPlane(luma, enhanceFine, sc.tmp, w, h, fineRadius);
+      blurPlane(enhanceFine, enhanceBase, sc.tmp, w, h, baseRadius);
     }
     if (hasDenoise) {
       // Les taches de couleur du bruit se lissent bien en basse résolution.
@@ -526,17 +552,18 @@ function processImageData(imageData, plan, seed = 0, region = null) {
     }
   }
   const kClarity = (plan.clarity / 100) * 1.2;
-  const kSharp = (plan.sharpness / 100) * 1.4;
+  const kSharp = (plan.sharpness / 100) * 1.75;
   const kDenoise = (plan.denoise / 100) * 0.9;
   const kChroma = (plan.denoise / 100) * 0.9;
   const kSkin = (plan.skinSmooth / 100) * 0.9;
   const kBloom = (plan.bloom / 100) * 2.2;
+  const kEnhance = (plan.enhance / 100) * 1.35;
 
   const vib = vibrance;
   const skinProt = plan.skinProtect || 0;
   const bandRgb = [0, 0, 0];
   const lutOut = [0, 0, 0];
-  const lutScale = lut3d ? (lut3d.size - 1) / 255 : 0;
+
   const wheelStrength = 0.22 * 255;
   const vAmt = vignette > 0 ? Math.min(0.9, (vignette / 100) * 0.9) : Math.min(0.7, (-vignette / 100) * 0.7);
   const gAmt = (grain / 100) * 0.2 * 255;
@@ -559,12 +586,16 @@ function processImageData(imageData, plan, seed = 0, region = null) {
         let d = 0;
         if (hasSharp) {
           const diff = srcY - blurS[p];
-          const ad = Math.abs(diff) - 1.5;
-          if (ad > 0) {
-            // Écrêtage doux : les contours très marqués ne forment plus de halos clairs/sombres.
-            const lim = 26;
-            const s = lim * Math.tanh((kSharp * ad) / lim);
-            d += diff > 0 ? s : -s;
+          const absDiff = Math.abs(diff);
+          // Accentuation adaptative : les faibles variations (bruit/compression) sont
+          // moins amplifiées, tandis que les vrais contours récupèrent davantage de détail.
+          const noiseThreshold = 1.25 + (plan.sharpnessNoise || 0) * 0.075 + (plan.denoise || 0) * 0.035;
+          const edgeMask = smoothstep(noiseThreshold, noiseThreshold + 5, absDiff);
+          if (edgeMask > 0) {
+            // Limiteur doux anti-halo, avec une force supérieure à l'ancienne netteté simple.
+            const limit = 24;
+            const sharpened = limit * Math.tanh((kSharp * diff * edgeMask) / limit);
+            d += sharpened;
           }
         }
         if (hasDenoise) {
@@ -597,6 +628,18 @@ function processImageData(imageData, plan, seed = 0, region = null) {
           const low = sampleLow(clarityLow, cLw, cLh, x, y, cDs);
           const yn = srcY / 255;
           d += kClarity * (1 - 0.8 * (2 * yn - 1) * (2 * yn - 1)) * (srcY - low);
+        }
+        if (hasEnhance) {
+          const fine = srcY - enhanceFine[p];
+          const texture = enhanceFine[p] - enhanceBase[p];
+          // Le bruit faible et les aplats sont préservés ; l'accentuation est limitée
+          // sur les contours francs pour réduire les halos et le ringing.
+          const noiseFloor = 2.0 + (plan.denoise || 0) * 0.045;
+          const edge = smoothstep(noiseFloor, noiseFloor + 7, Math.abs(fine));
+          const textureGate = 1 - smoothstep(34, 82, Math.abs(texture));
+          const fineBoost = 8.5 * Math.tanh((fine * edge * (1 - (plan.denoise || 0) / 140)) / 8.5);
+          const textureBoost = 0.22 * texture * textureGate;
+          d += (fineBoost + textureBoost) * kEnhance;
         }
         r += d; g += d; b += d;
       }
@@ -660,7 +703,10 @@ function processImageData(imageData, plan, seed = 0, region = null) {
       }
 
       if (lut3d) {
-        sampleLut3d(lut3d.data, lut3d.size, clamp(r, 0, 255) * lutScale, clamp(g, 0, 255) * lutScale, clamp(b, 0, 255) * lutScale, lutOut);
+        const lr = clamp((r / 255 - lut3d.domainMin[0]) / lut3d.domainRange[0], 0, 1) * (lut3d.size - 1);
+        const lg = clamp((g / 255 - lut3d.domainMin[1]) / lut3d.domainRange[1], 0, 1) * (lut3d.size - 1);
+        const lb = clamp((b / 255 - lut3d.domainMin[2]) / lut3d.domainRange[2], 0, 1) * (lut3d.size - 1);
+        sampleLut3d(lut3d.data, lut3d.size, lr, lg, lb, lutOut);
         const a = lut3d.amount;
         r = r * (1 - a) + lutOut[0] * a;
         g = g * (1 - a) + lutOut[1] * a;

@@ -50,8 +50,12 @@ export function keptRanges(segments) {
 export const keptDuration = (segments) =>
   segments.reduce((sum, s) => (s.removed ? sum : sum + (s.end - s.start)), 0);
 
-export const isTrimmed = (segments, duration) =>
-  segments.length > 1 || (segments[0] && (segments[0].start > 0.05 || segments[0].end < duration - 0.05));
+export const isTrimmed = (segments, duration) => {
+  if (!Array.isArray(segments) || !segments.length || !Number.isFinite(duration) || duration <= 0) return false;
+  const kept = keptRanges(segments);
+  // Plusieurs segments adjacents et conservés représentent toujours la vidéo entière.
+  return kept.length !== 1 || kept[0].start > 0.05 || kept[0].end < duration - 0.05;
+};
 
 // Lecture : si `t` tombe dans une section supprimée, retourne où sauter (ou null s'il n'y a plus rien).
 export function skipTarget(segments, t) {
@@ -95,6 +99,13 @@ export function setBoundary(segments, which, t, duration) {
 
 // Détection automatique des changements de plan : compare des histogrammes d'images échantillonnées.
 export async function detectSceneCuts(videoUrl, duration, { step = 0.5, threshold = 0.45, minGap = 1, onProgress, shouldStop } = {}) {
+  if (!Number.isFinite(duration) || duration <= 0) return [];
+  if (typeof videoUrl !== 'string' || !videoUrl.trim()) throw new Error('Source vidéo absente pour la détection des scènes.');
+  step = Number(step);
+  if (!Number.isFinite(step) || step <= 0) throw new Error('Le pas de détection doit être supérieur à zéro.');
+  threshold = Number.isFinite(Number(threshold)) ? Math.max(0, Math.min(2, Number(threshold))) : 0.45;
+  minGap = Number.isFinite(Number(minGap)) ? Math.max(0, Number(minGap)) : 1;
+  if (typeof document === 'undefined') throw new Error('La détection de scènes nécessite un navigateur.');
   const video = document.createElement('video');
   video.crossOrigin = 'anonymous';
   video.muted = true;
@@ -109,11 +120,24 @@ export async function detectSceneCuts(videoUrl, duration, { step = 0.5, threshol
       video.addEventListener(name, ok);
       video.addEventListener('error', ko);
     });
+  const seekTo = async (time) => {
+    const target = Math.max(0, Math.min(time, Math.max(0, (video.duration || duration) - 0.05)));
+    if (!video.seeking && Math.abs((video.currentTime || 0) - target) < 0.015) return;
+    const seeked = waitFor('seeked');
+    try {
+      video.currentTime = target;
+    } catch (error) {
+      await seeked.catch(() => {});
+      throw error;
+    }
+    await seeked;
+  };
   try {
     if (video.readyState < 2) await waitFor('loadeddata', 10000);
     const canvas = document.createElement('canvas');
     canvas.width = 64; canvas.height = 36;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('Canvas indisponible pour la détection des scènes.');
     const BINS = 16;
     const histogram = () => {
       const d = ctx.getImageData(0, 0, 64, 36).data;
@@ -128,12 +152,11 @@ export async function detectSceneCuts(videoUrl, duration, { step = 0.5, threshol
     const cuts = [];
     let prev = null;
     let lastCut = -Infinity;
-    const total = Math.floor(duration / step);
+    const total = Math.max(1, Math.floor(duration / step));
     for (let k = 0; k <= total; k++) {
       if (shouldStop && shouldStop()) break;
-      const t = Math.min(duration - 0.05, k * step);
-      video.currentTime = t;
-      await waitFor('seeked');
+      const t = Math.max(0, Math.min(Math.max(0, duration - 0.05), k * step));
+      await seekTo(t);
       ctx.drawImage(video, 0, 0, 64, 36);
       const h = histogram();
       if (prev) {
@@ -143,7 +166,7 @@ export async function detectSceneCuts(videoUrl, duration, { step = 0.5, threshol
         if (diff > threshold && t - lastCut >= minGap) { cuts.push(Number((t - step / 2).toFixed(2))); lastCut = t; }
       }
       prev = h;
-      if (onProgress) onProgress(k / total);
+      if (typeof onProgress === 'function') onProgress(k / total);
     }
     return cuts.filter((c) => c > MIN_SEGMENT && c < duration - MIN_SEGMENT);
   } finally {
@@ -229,6 +252,11 @@ export function tickStep(pxPerSec, minPx = 80) {
 
 // Vignettes régulièrement espacées (pour illustrer les clips). Retourne [{ t, url }] ; s'arrête proprement en cas d'erreur.
 export async function generateThumbnails(videoUrl, duration, { count = 24, height = 54, shouldStop } = {}) {
+  if (!Number.isFinite(duration) || duration <= 0) return [];
+  if (typeof videoUrl !== 'string' || !videoUrl.trim()) return [];
+  count = Number.isFinite(Number(count)) ? Math.max(1, Math.min(100, Math.floor(Number(count)))) : 24;
+  height = Number.isFinite(Number(height)) ? Math.max(24, Math.min(512, Math.round(Number(height)))) : 54;
+  if (typeof document === 'undefined') return [];
   const video = document.createElement('video');
   video.crossOrigin = 'anonymous';
   video.muted = true;
@@ -243,6 +271,18 @@ export async function generateThumbnails(videoUrl, duration, { count = 24, heigh
       video.addEventListener(name, ok);
       video.addEventListener('error', ko);
     });
+  const seekTo = async (time) => {
+    const target = Math.max(0, Math.min(time, Math.max(0, (video.duration || duration) - 0.05)));
+    if (!video.seeking && Math.abs((video.currentTime || 0) - target) < 0.015) return;
+    const seeked = waitFor('seeked');
+    try {
+      video.currentTime = target;
+    } catch (error) {
+      await seeked.catch(() => {});
+      throw error;
+    }
+    await seeked;
+  };
   const thumbs = [];
   try {
     if (video.readyState < 2) await waitFor('loadeddata', 10000);
@@ -251,11 +291,11 @@ export async function generateThumbnails(videoUrl, duration, { count = 24, heigh
     canvas.height = Math.max(24, Math.round(height * 2)); // x2 : écrans haute densité
     canvas.width = Math.max(32, Math.round(canvas.height * ratio));
     const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas indisponible pour les vignettes.');
     for (let i = 0; i < count; i++) {
       if (shouldStop && shouldStop()) break;
-      const t = Math.min(duration - 0.05, ((i + 0.5) * duration) / count);
-      video.currentTime = Math.max(0, t);
-      await waitFor('seeked');
+      const t = Math.max(0, Math.min(Math.max(0, duration - 0.05), ((i + 0.5) * duration) / count));
+      await seekTo(t);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       thumbs.push({ t, url: canvas.toDataURL('image/jpeg', 0.6), ratio });
     }

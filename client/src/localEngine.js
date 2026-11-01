@@ -2,10 +2,11 @@
 
 export const DEFAULT_ENGINE_URL = 'http://127.0.0.1:47831';
 
-// Récupère le jeton depuis le fichier .env (Vite) ou utilise une valeur par défaut sécurisée
-export const DEFAULT_ENGINE_TOKEN = 
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OVX_TOKEN) || 
-  'ovx_secret_token_12345';
+// Aucun jeton de secours intégré au code.
+// Attention : toute variable VITE_* est incluse dans le bundle navigateur et n'est pas secrète.
+export const DEFAULT_ENGINE_TOKEN =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_OVX_TOKEN) ||
+  '';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -18,7 +19,7 @@ async function readError(res) {
 }
 
 export function createLocalEngine({ url = DEFAULT_ENGINE_URL, token = DEFAULT_ENGINE_TOKEN } = {}) {
-  const activeToken = token || DEFAULT_ENGINE_TOKEN;
+  const activeToken = typeof token === 'string' ? token : DEFAULT_ENGINE_TOKEN;
   const base = String(url).replace(/\/+$/, '');
   const auth = () => (activeToken ? { Authorization: `Bearer ${activeToken}` } : {});
 
@@ -39,34 +40,48 @@ export function createLocalEngine({ url = DEFAULT_ENGINE_URL, token = DEFAULT_EN
     }
   }
 
-  async function runJob(type, blob, { scale = 4, model = '', onProgress, shouldStop, pollMs = 500 } = {}) {
+  async function runJob(type, blob, { scale = 4, model = '', onProgress, shouldStop, pollMs = 500, timeoutMs = 30 * 60 * 1000 } = {}) {
+    if (!blob || typeof blob !== 'object') throw new Error('Fichier source absent pour le moteur local.');
+    const safePollMs = Number.isFinite(Number(pollMs)) ? Math.max(150, Math.min(5000, Math.round(Number(pollMs)))) : 500;
+    const safeTimeoutMs = Number.isFinite(Number(timeoutMs)) ? Math.max(1000, Math.min(2 * 60 * 60 * 1000, Math.round(Number(timeoutMs)))) : 30 * 60 * 1000;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), safeTimeoutMs);
     const params = new URLSearchParams({ type, scale: String(scale) });
     if (model) params.set('model', model);
-    const post = await fetch(`${base}/jobs?${params}`, {
-      method: 'POST',
-      headers: { ...auth(), 'Content-Type': blob.type || 'application/octet-stream' },
-      body: blob
-    });
-    if (!post.ok) throw new Error(await readError(post));
-    const { id } = await post.json();
-
-    const remove = () => fetch(`${base}/jobs/${id}`, { method: 'DELETE', headers: auth() }).catch(() => {});
+    let id = null;
+    const remove = () => id ? fetch(`${base}/jobs/${encodeURIComponent(id)}`, { method: 'DELETE', headers: auth() }).catch(() => {}) : Promise.resolve();
     try {
+      const post = await fetch(`${base}/jobs?${params}`, {
+        method: 'POST',
+        headers: { ...auth(), 'Content-Type': blob.type || 'application/octet-stream' },
+        body: blob,
+        signal: controller.signal
+      });
+      if (!post.ok) throw new Error(await readError(post));
+      const payload = await post.json();
+      id = payload && payload.id;
+      if (typeof id !== 'string' || !id.trim()) throw new Error('Le moteur local a renvoyé un identifiant de tâche invalide.');
+
       for (;;) {
         if (shouldStop && shouldStop()) throw new Error('Traitement annulé.');
-        const st = await fetch(`${base}/jobs/${id}`, { headers: auth() });
+        if (controller.signal.aborted) throw new Error('Délai maximal du moteur local dépassé.');
+        const st = await fetch(`${base}/jobs/${encodeURIComponent(id)}`, { headers: auth(), signal: controller.signal });
         if (!st.ok) throw new Error(await readError(st));
-        const s = await st.json();
-        if (onProgress) onProgress(s.progress, s.stage);
-        if (s.status === 'done') break;
-        if (s.status === 'error') throw new Error(s.error || 'Échec du moteur local.');
-        if (s.status === 'cancelled') throw new Error('Traitement annulé.');
-        await sleep(pollMs);
+        const status = await st.json();
+        if (typeof onProgress === 'function') onProgress(Number.isFinite(Number(status.progress)) ? Math.max(0, Math.min(1, Number(status.progress))) : 0, status.stage);
+        if (status.status === 'done') break;
+        if (status.status === 'error') throw new Error(status.error || 'Échec du moteur local.');
+        if (status.status === 'cancelled') throw new Error('Traitement annulé.');
+        await sleep(safePollMs);
       }
-      const out = await fetch(`${base}/jobs/${id}/result`, { headers: auth() });
+      const out = await fetch(`${base}/jobs/${encodeURIComponent(id)}/result`, { headers: auth(), signal: controller.signal });
       if (!out.ok) throw new Error(await readError(out));
       return await out.blob();
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error('Délai maximal du moteur local dépassé.');
+      throw error;
     } finally {
+      clearTimeout(timeout);
       await remove(); // libère le disque du PC dans tous les cas
     }
   }

@@ -4,6 +4,7 @@
 // vidéo finale (une par section conservée qui le recoupe).
 export function scheduleChunk(ranges, chunkStart, chunkEnd) {
   const jobs = [];
+  if (!Array.isArray(ranges) || !Number.isFinite(chunkStart) || !Number.isFinite(chunkEnd) || chunkEnd <= chunkStart) return jobs;
   ranges.forEach((r) => {
     const from = Math.max(chunkStart, r.start);
     const to = Math.min(chunkEnd, r.end);
@@ -48,11 +49,17 @@ export async function collectOriginalAudio(mediabunny, inputAudioTrack, sourceBl
 }
 
 // music : { buffer, volume (0..2), offset (s), loop, fadeIn (s), fadeOut (s) } | null
-export async function renderMix({ ranges, totalDuration, originalChunks, originalVolume, music, sampleRate = 48000 }) {
-  if (typeof OfflineAudioContext === 'undefined') throw new Error('Rendu audio hors ligne non supporté.');
+export async function renderMix({ ranges, totalDuration, originalChunks = [], originalVolume = 1, music = null, sampleRate = 48000 }) {
+  const OfflineCtor = typeof OfflineAudioContext !== 'undefined'
+    ? OfflineAudioContext
+    : (typeof window !== 'undefined' ? window.webkitOfflineAudioContext : null);
+  if (!OfflineCtor) throw new Error('Rendu audio hors ligne non supporté.');
+  if (!Number.isFinite(totalDuration) || totalDuration <= 0) throw new Error('Durée audio invalide.');
+  if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 192000) throw new Error('Fréquence audio invalide.');
   const length = Math.ceil(totalDuration * sampleRate);
+  if (!Number.isSafeInteger(length) || length <= 0) throw new Error('Taille du rendu audio invalide.');
   if (length * 2 * 4 > 450 * 1024 * 1024) throw new Error('Durée trop longue pour le mixage audio (environ 20 minutes maximum).');
-  const ctx = new OfflineAudioContext(2, length, sampleRate);
+  const ctx = new OfflineCtor(2, length, sampleRate);
 
   if (originalVolume > 0) {
     const master = ctx.createGain();
@@ -92,9 +99,14 @@ export async function renderMix({ ranges, totalDuration, originalChunks, origina
 // Découpe un AudioBuffer en blocs AudioSample (repli quand AudioBufferSource n'existe pas).
 export function* iterateSamples(mediabunny, audioBuffer, chunkSeconds = 1) {
   if (!mediabunny || typeof mediabunny.AudioSample !== 'function') throw new Error('AudioSample indisponible.');
+  if (!audioBuffer || !Number.isFinite(audioBuffer.sampleRate) || audioBuffer.sampleRate <= 0 || !Number.isInteger(audioBuffer.numberOfChannels) || audioBuffer.numberOfChannels < 1 || !Number.isInteger(audioBuffer.length) || audioBuffer.length < 0) {
+    throw new Error('AudioBuffer invalide.');
+  }
+  const seconds = Number(chunkSeconds);
+  if (!Number.isFinite(seconds) || seconds <= 0) throw new Error('La durée des blocs audio doit être supérieure à zéro.');
   const sr = audioBuffer.sampleRate;
   const ch = audioBuffer.numberOfChannels;
-  const step = Math.floor(sr * chunkSeconds);
+  const step = Math.max(1, Math.floor(sr * seconds));
   const channels = Array.from({ length: ch }, (_, c) => audioBuffer.getChannelData(c));
   for (let start = 0; start < audioBuffer.length; start += step) {
     const len = Math.min(step, audioBuffer.length - start);

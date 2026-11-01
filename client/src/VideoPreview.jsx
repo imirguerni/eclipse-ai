@@ -5,27 +5,30 @@ function VideoPreview({ src }) {
 
   useEffect(() => {
     const video = ref.current;
-    if (!video || !src) return;
-
-    // Réinitialisation forcée si le src change
-    video.load(); 
+    if (!video || !src) return undefined;
+    let disposed = false;
 
     const tryPlay = async () => {
+      if (disposed || !video.isConnected) return;
       try {
-        video.currentTime = 0.1;
+        // Ne jamais demander 0,1 s au-delà de la durée d'une vidéo très courte.
+        if (Number.isFinite(video.duration) && video.duration > 0) {
+          const startAt = Math.min(0.1, Math.max(0, video.duration - 0.01));
+          if (Math.abs(video.currentTime - startAt) > 0.015 && !video.seeking) video.currentTime = startAt;
+        }
         await video.play();
-      } catch (err) {
-        // L'autoplay est souvent bloqué par le navigateur si l'utilisateur n'a pas interagi
-        console.log("Autoplay bloqué, attend l'interaction.");
+      } catch {
+        // L'autoplay peut être refusé par le navigateur : les contrôles restent disponibles.
       }
     };
 
-    // On utilise 'loadeddata' car c'est le moment où la première frame est disponible
     video.addEventListener("loadeddata", tryPlay);
+    if (video.readyState >= 2) tryPlay();
+    else video.load();
 
     return () => {
+      disposed = true;
       video.removeEventListener("loadeddata", tryPlay);
-      // Optionnel : arrêter la vidéo au démontage
       video.pause();
     };
   }, [src]);
@@ -37,13 +40,14 @@ function VideoPreview({ src }) {
       muted
       playsInline
       loop
+      preload="metadata"
       className="render-media"
       style={{
         maxHeight: "70vh",
         borderRadius: "12px",
         objectFit: "cover",
         backgroundColor: "#000",
-        width: "100%" // Ajouté pour assurer le comportement responsive
+        width: "100%"
       }}
     />
   );

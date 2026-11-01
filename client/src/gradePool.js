@@ -7,7 +7,8 @@ export const workersSupported = () => typeof Worker !== 'undefined';
 
 export class GradePool {
   constructor(size, { onFail = null } = {}) {
-    this.size = Math.max(1, Math.floor(size));
+    const requestedSize = Number(size);
+    this.size = Number.isFinite(requestedSize) ? Math.max(1, Math.min(8, Math.floor(requestedSize))) : 1;
     this.onFail = onFail;
     this.workers = [];
     this.idle = [];
@@ -35,7 +36,10 @@ export class GradePool {
   setPlan(plan) {
     this.plan = plan;
     if (this.closed) return;
-    this.workers.forEach((w) => w.postMessage({ type: 'plan', plan }));
+    for (const worker of this.workers) {
+      try { worker.postMessage({ type: 'plan', plan }); }
+      catch (error) { this.fail(error); break; }
+    }
   }
 
   // `buffer` appartient désormais au worker (transfert). Retourne les pixels traités.
@@ -52,10 +56,18 @@ export class GradePool {
       const worker = this.idle.pop();
       const job = this.queue.shift();
       this.pending.set(job.id, { resolve: job.resolve, reject: job.reject, worker });
-      worker.postMessage(
-        { type: 'job', id: job.id, buffer: job.buffer, width: job.width, height: job.height, seed: job.seed, region: job.region },
-        [job.buffer]
-      );
+      try {
+        worker.postMessage(
+          { type: 'job', id: job.id, buffer: job.buffer, width: job.width, height: job.height, seed: job.seed, region: job.region },
+          [job.buffer]
+        );
+      } catch (error) {
+        this.pending.delete(job.id);
+        this.idle.push(worker);
+        job.reject(error);
+        this.fail(error);
+        return;
+      }
     }
   }
 
@@ -70,6 +82,7 @@ export class GradePool {
   }
 
   fail(error) {
+    if (this.closed) return;
     this.failed = true;
     this.pending.forEach((entry) => entry.reject(error));
     this.queue.forEach((job) => job.reject(error));
@@ -112,8 +125,14 @@ export class GradePool {
     return this.submit(imageData.data.slice().buffer, imageData.width, imageData.height, seed, null);
   }
 
-  terminate() {
+  terminate(reason = new Error('Pool de workers arrêté.')) {
+    if (this.closed) return;
     this.closed = true;
+    // Une tâche en attente ne doit jamais rester bloquée après la fermeture du pool.
+    this.pending.forEach((entry) => entry.reject(reason));
+    this.queue.forEach((job) => job.reject(reason));
+    this.pending.clear();
+    this.queue = [];
     this.workers.forEach((w) => { try { w.terminate(); } catch { /* ignoré */ } });
     this.workers = [];
     this.idle = [];
